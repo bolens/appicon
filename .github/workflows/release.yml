@@ -80,7 +80,7 @@ jobs:
           (cd dist && sha256sum ./*.tar.gz > SHA256SUMS)
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v4
+        uses: sigstore/cosign-installer@v4.1.2
 
       - name: Sign SHA256SUMS (keyless)
         run: |
