@@ -112,7 +112,37 @@ install -m 755 appicon ~/.local/bin/appicon
 appicon version   # → v0.1.0
 ```
 
-Checksums: download `SHA256SUMS` from the same release and verify before install. [waybar-config](https://github.com/bolens/waybar-config) pins this via `make install-appicon`.
+Checksums: download `SHA256SUMS` (and optionally `SHA256SUMS.sigstore.json`) from the same release.
+
+```bash
+# checksums
+sha256sum --check --ignore-missing SHA256SUMS
+
+# optional cosign keyless verify (Sigstore)
+cosign verify-blob \
+  --bundle SHA256SUMS.sigstore.json \
+  --certificate-identity-regexp '^https://github.com/bolens/appicon/\.github/workflows/release\.yml@refs/tags/v' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  SHA256SUMS
+```
+
+Or: `bash scripts/ci/verify-release.sh /path/to/downloaded/assets`.
+
+[waybar-config](https://github.com/bolens/waybar-config) pins this via `make install-appicon`.
+
+### AUR (Arch)
+
+Reference PKGBUILDs live under [packaging/aur/](packaging/aur/) (`appicon` source build, `appicon-bin` prebuilt). Not auto-published — fill checksums and push to aur.archlinux.org when ready.
+
+### Nix
+
+```bash
+nix flake lock    # once
+nix run github:bolens/appicon -- version
+# local: fix vendorHash in flake.nix after first `nix build` (see nix/README.md)
+```
+
+Home Manager: `programs.appicon.enable = true` via `homeManagerModules.default` (add the flake overlay or set `package`).
 
 From source:
 
@@ -138,16 +168,6 @@ bash examples/rofi-appicon.sh
 bash examples/walker-appicon.sh firefox
 bash examples/notify-appicon.sh firefox "Hello" "Icon from appicon"
 ```
-
-## Nix
-
-```bash
-nix flake lock    # once
-nix run github:bolens/appicon -- version
-# local: fix vendorHash in flake.nix after first `nix build` (see nix/README.md)
-```
-
-Home Manager: `programs.appicon.enable = true` via `homeManagerModules.default` (add the flake overlay or set `package`).
 
 ## Development
 

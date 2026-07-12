@@ -1,0 +1,49 @@
+# Maintainer: bolens <https://github.com/bolens>
+# Binary AUR package from GitHub release tarballs (no Go toolchain needed).
+# Update pkgver + sha256sums_* from release SHA256SUMS before uploading.
+
+pkgname=appicon-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Resolve desktop and brand icons to local file paths (prebuilt)'
+arch=('x86_64' 'aarch64')
+url='https://github.com/bolens/appicon'
+license=('MIT')
+depends=('glibc')
+optdepends=(
+  'resvg: preferred SVG→PNG rasterizer'
+  'librsvg: rsvg-convert SVG→PNG fallback'
+)
+provides=('appicon')
+conflicts=('appicon')
+options=('!strip')
+
+source_x86_64=("$url/releases/download/v$pkgver/appicon_v${pkgver}_linux_amd64.tar.gz")
+source_aarch64=("$url/releases/download/v$pkgver/appicon_v${pkgver}_linux_arm64.tar.gz")
+sha256sums_x86_64=('SKIP') # from release SHA256SUMS
+sha256sums_aarch64=('SKIP')
+
+package() {
+  install -Dm755 appicon "$pkgdir/usr/bin/appicon"
+  if [[ -f completions/appicon.bash ]]; then
+    install -Dm644 completions/appicon.bash \
+      "$pkgdir/usr/share/bash-completion/completions/appicon"
+  fi
+  if [[ -f completions/appicon.zsh ]]; then
+    install -Dm644 completions/appicon.zsh \
+      "$pkgdir/usr/share/zsh/site-functions/_appicon"
+  fi
+  if [[ -f completions/appicon.fish ]]; then
+    install -Dm644 completions/appicon.fish \
+      "$pkgdir/usr/share/fish/vendor_completions.d/appicon.fish"
+  fi
+  if [[ -f man/man1/appicon.1 ]]; then
+    install -Dm644 man/man1/appicon.1 "$pkgdir/usr/share/man/man1/appicon.1"
+  fi
+  if [[ -d contrib/systemd ]]; then
+    install -Dm644 contrib/systemd/appicon.service \
+      "$pkgdir/usr/lib/systemd/user/appicon.service"
+    install -Dm644 contrib/systemd/appicon.socket \
+      "$pkgdir/usr/lib/systemd/user/appicon.socket"
+  fi
+}

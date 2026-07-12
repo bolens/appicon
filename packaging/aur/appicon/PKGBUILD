@@ -1,0 +1,61 @@
+# Maintainer: bolens <https://github.com/bolens>
+# Reference PKGBUILD for AUR — update pkgver/sha256sums on each release.
+# Publish via: git clone ssh://aur@aur.archlinux.org/appicon.git
+
+pkgname=appicon
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Resolve desktop and brand icons to local file paths'
+arch=('x86_64' 'aarch64')
+url='https://github.com/bolens/appicon'
+license=('MIT')
+depends=('glibc')
+makedepends=('go')
+optdepends=(
+  'resvg: preferred SVG→PNG rasterizer'
+  'librsvg: rsvg-convert SVG→PNG fallback'
+)
+provides=('appicon')
+conflicts=('appicon-bin')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP') # replace with archive checksum before uploading to AUR
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  mkdir -p build
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export CGO_CPPFLAGS="${CPPFLAGS}"
+  export CGO_CFLAGS="${CFLAGS}"
+  export CGO_CXXFLAGS="${CXXFLAGS}"
+  export CGO_LDFLAGS="${LDFLAGS}"
+  export GOPATH="${srcdir}"
+  export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
+  go build -ldflags "-linkmode=external -X github.com/bolens/appicon/internal/version.Version=v${pkgver}" \
+    -o build/appicon ./cmd/appicon
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  go test ./...
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  install -Dm755 build/appicon "$pkgdir/usr/bin/appicon"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
+  install -Dm644 internal/completion/appicon.1 "$pkgdir/usr/share/man/man1/appicon.1"
+  install -Dm644 internal/completion/appicon.bash \
+    "$pkgdir/usr/share/bash-completion/completions/appicon"
+  install -Dm644 internal/completion/appicon.zsh \
+    "$pkgdir/usr/share/zsh/site-functions/_appicon"
+  install -Dm644 internal/completion/appicon.fish \
+    "$pkgdir/usr/share/fish/vendor_completions.d/appicon.fish"
+  install -Dm644 contrib/systemd/appicon.service \
+    "$pkgdir/usr/lib/systemd/user/appicon.service"
+  install -Dm644 contrib/systemd/appicon.socket \
+    "$pkgdir/usr/lib/systemd/user/appicon.socket"
+}

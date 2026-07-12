@@ -1,6 +1,6 @@
 ---
 name: Standalone appicon CLI
-overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. Core + MCP + daemon + Nix done; AUR/cosign next."
+overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. Plan items complete (daemon, AUR refs, cosign); publish AUR when ready."
 todos:
   - id: scaffold-repo
     content: Clone bolens/appicon into /home/panda/dev/appicon; scaffold Go module, Makefile, LICENSE, CONTRIBUTING, AGENTS, README; push
@@ -55,10 +55,10 @@ todos:
     status: completed
   - id: release-signing
     content: "Post-v1: optional cosign/sigstore signing beyond SHA256SUMS"
-    status: pending
+    status: completed
   - id: aur-package
     content: "Post-v1: AUR package (same tier as Nix flake)"
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -86,7 +86,8 @@ isProject: false
 | Nightly live SVGL smoke | **Done** — `.github/workflows/nightly-svgl.yml` |
 | Extra consumer examples | **Done** — `examples/{rofi,walker,notify}-appicon.sh` |
 | Optional socket daemon | **Done** — `appicon daemon` + `contrib/systemd/` |
-| AUR / release signing (cosign) | Pending |
+| AUR reference PKGBUILDs | **Done** — `packaging/aur/` (not yet pushed to aur.archlinux.org) |
+| Cosign keyless release signing | **Done** — `SHA256SUMS.sigstore.json` on tag releases |
 
 **Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/version`.
 
@@ -246,8 +247,8 @@ Follow-ups after a tagged release + Waybar proof.
 | **Completions + man** | `appicon completion` / `appicon man`; scripts + man1 in release tarball | **Done** |
 | **Nix flake** | `flake.nix`: package + `apps.appicon` for `nix run` | **Done** (update `vendorHash`) |
 | **Home Manager** | `programs.appicon.enable` via `homeManagerModules.default` | **Done** |
-| **AUR** | Same tier as flake — optional beside GitHub release tarballs | Pending |
-| **Release signing** | Optional cosign/sigstore in addition to `SHA256SUMS` | Pending |
+| **AUR** | Reference PKGBUILDs under `packaging/aur/` | **Done** (publish manually) |
+| **Release signing** | Cosign keyless OIDC → `SHA256SUMS.sigstore.json` | **Done** |
 
 ### Pluggable logo sources
 
@@ -319,4 +320,5 @@ path → XDG → dir packs (user) → svgl → miss
 10. ~~Completions/man~~
 11. ~~Nix / Home Manager; nightly SVGL; extra consumer examples~~
 12. ~~Optional socket daemon~~
-13. (optional) AUR package; cosign/sigstore release signing
+13. ~~AUR reference PKGBUILDs; cosign keyless release signing~~
+14. Manual: push AUR packages to aur.archlinux.org; cut next release to publish cosign bundles
