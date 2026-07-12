@@ -40,7 +40,7 @@ jobs:
         uses: actions/attest-build-provenance@v4
         with:
           subject-path: appicon-packs-bundle.tar.gz
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: appicon-packs-bundle
           path: appicon-packs-bundle.tar.gz
