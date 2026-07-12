@@ -32,3 +32,8 @@ These trees are **reference copies** in this repo — the AUR git repos are cano
 Nix mirrors the same three styles as flake attrs `appicon`, `appicon-bin`, and `appicon-git` — see [nix/README.md](../../nix/README.md).
 
 CI: `make check-packaging-versions` keeps flake / AUR / Nix versions + binary checksums aligned; `make build-packaging` (and CI matrix jobs) smoke-build all three styles.
+
+## See also
+
+- [Documentation map](../../docs/README.md)
+- [Root README](../../README.md) · [nix/README.md](../../nix/README.md) · [SECURITY.md](../../SECURITY.md)

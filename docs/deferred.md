@@ -2,6 +2,8 @@
 
 Not a backlog — revisit only if a real consumer needs it.
 
+Part of the [documentation map](README.md). Prefer [consumer-contract.md](consumer-contract.md) misses + [sources.md](sources.md) / [packs.md](packs.md) / overrides over new heuristics.
+
 | Idea | Why deferred | If revisited |
 |------|----------------|--------------|
 | System-wide tray SNI replacement | StatusNotifierItem icons are owned by apps/compositors; swapping them needs a tray host or hacks | Separate tool for *our* panels only; never claim to be a system SNI host without full D-Bus APIs |
@@ -13,3 +15,9 @@ Not a backlog — revisit only if a real consumer needs it.
 - Publish AUR packages: [packaging/aur/README.md](../packaging/aur/README.md)
 - After releases, refresh AUR/Nix checksums: [nix/README.md](../nix/README.md)
 - Security reporting and release verification: [SECURITY.md](../SECURITY.md)
+
+## See also
+
+- [Documentation map](README.md)
+- [consumer-contract.md](consumer-contract.md) · [sources.md](sources.md) · [packs.md](packs.md)
+- [../README.md](../README.md) · [../CHANGELOG.md](../CHANGELOG.md) · [../CONTRIBUTING.md](../CONTRIBUTING.md)

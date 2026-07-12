@@ -1,5 +1,7 @@
 # Security Policy
 
+See also: [README.md](README.md) (install / verify), [docs/README.md](docs/README.md) (docs map), [docs/consumer-contract.md](docs/consumer-contract.md) (misses are supported), [docs/sources.md](docs/sources.md) (allowlists / offline).
+
 ## Supported versions
 
 Security fixes land on `main` and ship in the next tagged release. Older tags are not backported unless a consumer reports a severe issue.

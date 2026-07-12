@@ -2,6 +2,8 @@
 
 Local icon trees registered as `pack` stages in [sources.md](sources.md).
 
+Part of the [documentation map](README.md). Stages/order: [sources.md](sources.md). Consumer contract: [consumer-contract.md](consumer-contract.md).
+
 ## Layout
 
 Recommended root: `$XDG_DATA_HOME/appicon/packs/<name>/` (default `~/.local/share/appicon/packs/`).
@@ -63,3 +65,11 @@ Bump recipe pins in `internal/packs/packs.go` (`Recipes`) when refreshing clones
 | `pack_install_bundle` | Local `.tar.gz` path on the MCP host |
 
 Mutative tools are documented as such in tool descriptions. Prefer these over shelling `appicon` when MCP is connected.
+
+## See also
+
+- [Documentation map](README.md)
+- [sources.md](sources.md) — `pack` stage in `sources.json`
+- [consumer-contract.md](consumer-contract.md)
+- [deferred.md](deferred.md)
+- [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md)

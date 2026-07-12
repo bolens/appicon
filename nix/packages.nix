@@ -33,6 +33,14 @@ let
         "-w"
         "-X github.com/bolens/appicon/internal/version.Version=v${version}"
       ];
+      # Nix sets HOME=/homeless-shelter; give tests a writable XDG tree.
+      preCheck = ''
+        export HOME="$TMPDIR/appicon-home"
+        mkdir -p "$HOME"
+        export XDG_CACHE_HOME="$HOME/.cache"
+        export XDG_CONFIG_HOME="$HOME/.config"
+        export XDG_DATA_HOME="$HOME/.local/share"
+      '';
       postInstall = ''
         install -Dm644 contrib/systemd/appicon.socket \
           $out/lib/systemd/user/appicon.socket

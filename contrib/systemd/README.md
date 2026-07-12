@@ -14,3 +14,9 @@ systemctl --user enable --now appicon.socket
 resolve if the socket is missing (`--local` / `APPICON_NO_DAEMON=1` skips the dial).
 
 Foreground without systemd: `appicon daemon` (creates the socket itself).
+
+## See also
+
+- [Documentation map](../../docs/README.md)
+- [Root README](../../README.md) (daemon section) · [nix/README.md](../../nix/README.md) (`programs.appicon.daemon.enable`)
+- [docs/consumer-contract.md](../../docs/consumer-contract.md)

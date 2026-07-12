@@ -234,11 +234,25 @@ bash examples/notify-appicon.sh firefox "Hello" "Icon from appicon"
 
 ```bash
 make check-fast   # go test + vet + gofmt
-make check        # + golangci-lint + gitleaks + actionlint + markdownlint
+make check        # + golangci-lint + govulncheck + gitleaks + actionlint + markdownlint + docs crosslinks
 make build
 ```
 
-Agent briefing: [AGENTS.md](AGENTS.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Changelog: [CHANGELOG.md](CHANGELOG.md). Consumer contract: [docs/consumer-contract.md](docs/consumer-contract.md).
+## Documentation
+
+Canonical map (update the listed source of truth when behavior changes): **[docs/README.md](docs/README.md)**.
+
+| Topic | Doc |
+|-------|-----|
+| Exit codes / `resolve --json` | [docs/consumer-contract.md](docs/consumer-contract.md), [docs/resolve-result.schema.json](docs/resolve-result.schema.json) |
+| Stages / `sources.json` | [docs/sources.md](docs/sources.md) |
+| Local packs / recipes | [docs/packs.md](docs/packs.md) |
+| Not a backlog | [docs/deferred.md](docs/deferred.md) |
+| Security / verify releases | [SECURITY.md](SECURITY.md) |
+| Agents | [AGENTS.md](AGENTS.md) |
+| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Changelog | [CHANGELOG.md](CHANGELOG.md) |
+| Nix / AUR / systemd | [nix/README.md](nix/README.md), [packaging/aur/README.md](packaging/aur/README.md), [contrib/systemd/README.md](contrib/systemd/README.md) |
 
 To cut a release locally (no push): `bash scripts/ci/cut-release.sh v0.1.1`.
 
