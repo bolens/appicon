@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/bolens/appicon/internal/resolve"
@@ -221,12 +220,15 @@ func ListenSystemd() (ln net.Listener, ok bool, err error) {
 	// Clear so child processes don't inherit.
 	_ = os.Unsetenv("LISTEN_PID")
 	_ = os.Unsetenv("LISTEN_FDS")
-	syscall.CloseOnExec(fd)
+	closeOnExec(fd)
 	return ln, true, nil
 }
 
 // Run listens (systemd activation or SocketPath) and serves until ctx ends.
 func (s *Server) Run(ctx context.Context) error {
+	if !Supported() {
+		return ErrUnsupportedPlatform
+	}
 	if ln, ok, err := ListenSystemd(); err != nil {
 		return err
 	} else if ok {
@@ -239,7 +241,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 	ln, err := Listen(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w (use in-process resolve with --local / APPICON_NO_DAEMON=1)", err)
 	}
 	defer func() {
 		_ = ln.Close()

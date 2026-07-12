@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -77,6 +78,15 @@ type Info struct {
 func Root() string {
 	base := os.Getenv("XDG_DATA_HOME")
 	if base == "" {
+		if runtime.GOOS == "windows" {
+			// Prefer LocalAppData for pack trees (larger than config).
+			if local := strings.TrimSpace(os.Getenv("LOCALAPPDATA")); local != "" {
+				return filepath.Join(local, "appicon", "packs")
+			}
+			if d, err := os.UserConfigDir(); err == nil && d != "" {
+				return filepath.Join(d, "appicon", "packs")
+			}
+		}
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return filepath.Join(os.TempDir(), "appicon", "packs")

@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/bolens/appicon/internal/daemon"
@@ -27,8 +28,10 @@ Rules for agents:
 - A resolve miss (path null, error set, IsError false) is a supported outcome — callers keep glyphs. Do not treat miss as a hard failure.
 - Prefer override_set for long-tail remaps; do not invent speculative aliases or embed SVGL/CDN URLs in other repos.
 - CDN stages (simple-icons, dashboard-icons) are opt-in network lookups; pack_install clones local trees — they are not the same.
+- BYOK stages (logo-dev, iconify, noun-project) and GitHub Contents need token_env/secret_env pointing at env var *names* whose values hold secrets — never put secret paths or tokens in config.
+- Auth-skipped BYOK stages appear in explain tried as stage(auth); check status.credentials.
 - Hot paths should prefetch then resolve with offline=true.
-- Use sources_* / pack_* / status to inspect and configure; never download icons yourself.
+- Use sources_* / pack_* / override_export / override_import / status to inspect and configure; never download icons yourself.
 `
 
 // NewServer builds an MCP server whose tools call internal/resolve.
@@ -55,7 +58,7 @@ func NewServer(opts Options) *mcp.Server {
 	}, h.prefetch)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "status",
-		Description: "Report config/cache/pack paths, effective order, daemon socket, and helper tools (mirrors appicon status --json).",
+		Description: "Report config/cache/pack paths, effective order, BYOK credentials, platform, daemon socket, and helper tools (mirrors appicon status --json).",
 	}, h.status)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "cache_stats",
@@ -93,6 +96,14 @@ func NewServer(opts Options) *mcp.Server {
 		Name:        "override_suggest",
 		Description: "Suggest override targets for a miss query or recent misses (mirrors appicon override suggest).",
 	}, h.overrideSuggest)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "override_export",
+		Description: "Export overrides as JSON or YAML text (mirrors appicon override export).",
+	}, h.overrideExport)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "override_import",
+		Description: "Import overrides from JSON/YAML text (mirrors appicon override import). merge=true keeps existing keys.",
+	}, h.overrideImport)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "sources_list",
 		Description: "List effective resolve stage order (mirrors appicon sources list --json).",
@@ -355,20 +366,24 @@ type statusToolInfo struct {
 }
 
 type statusOutput struct {
-	Version            string           `json:"version"`
-	ConfigDir          string           `json:"config_dir"`
-	SourcesPath        string           `json:"sources_path"`
-	OverridesPath      string           `json:"overrides_path"`
-	CacheDir           string           `json:"cache_dir"`
-	CacheFiles         int              `json:"cache_files"`
-	CacheBytes         int64            `json:"cache_bytes"`
-	PacksRoot          string           `json:"packs_root"`
-	Packs              int              `json:"packs"`
-	Order              []string         `json:"order"`
-	DaemonSocket       string           `json:"daemon_socket"`
-	DaemonSocketExists bool             `json:"daemon_socket_exists"`
-	DaemonAlive        bool             `json:"daemon_alive"`
-	Tools              []statusToolInfo `json:"tools"`
+	Version            string                     `json:"version"`
+	ConfigDir          string                     `json:"config_dir"`
+	SourcesPath        string                     `json:"sources_path"`
+	OverridesPath      string                     `json:"overrides_path"`
+	CacheDir           string                     `json:"cache_dir"`
+	CacheFiles         int                        `json:"cache_files"`
+	CacheBytes         int64                      `json:"cache_bytes"`
+	PacksRoot          string                     `json:"packs_root"`
+	Packs              int                        `json:"packs"`
+	Order              []string                   `json:"order"`
+	DaemonSocket       string                     `json:"daemon_socket"`
+	DaemonSocketExists bool                       `json:"daemon_socket_exists"`
+	DaemonAlive        bool                       `json:"daemon_alive"`
+	DaemonSupported    bool                       `json:"daemon_supported"`
+	Credentials        []resolve.CredentialStatus `json:"credentials"`
+	GOOS               string                     `json:"goos"`
+	GOArch             string                     `json:"goarch"`
+	Tools              []statusToolInfo           `json:"tools"`
 }
 
 func (h *handlers) status(ctx context.Context, _ *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, statusOutput, error) {
@@ -406,6 +421,10 @@ func (h *handlers) status(ctx context.Context, _ *mcp.CallToolRequest, _ emptyIn
 		DaemonSocket:       sock,
 		DaemonSocketExists: sockErr == nil,
 		DaemonAlive:        daemon.Alive(ctx),
+		DaemonSupported:    daemon.Supported(),
+		Credentials:        resolve.CredentialStatuses(stages),
+		GOOS:               runtime.GOOS,
+		GOArch:             runtime.GOARCH,
 		Tools:              tools,
 	}, nil
 }
@@ -571,4 +590,44 @@ func (h *handlers) overrideSuggest(_ context.Context, _ *mcp.CallToolRequest, in
 		out.Applied = &s.Candidates[0]
 	}
 	return nil, out, nil
+}
+
+type overrideExportInput struct {
+	Format string `json:"format,omitempty" jsonschema:"json or yaml (default json)"`
+}
+
+type overrideExportOutput struct {
+	Format string `json:"format"`
+	Data   string `json:"data"`
+}
+
+func (h *handlers) overrideExport(_ context.Context, _ *mcp.CallToolRequest, in overrideExportInput) (*mcp.CallToolResult, overrideExportOutput, error) {
+	format := strings.TrimSpace(in.Format)
+	if format == "" {
+		format = "json"
+	}
+	data, err := resolve.ExportOverrides(h.opts.ConfigDir, format)
+	if err != nil {
+		return &mcp.CallToolResult{IsError: true}, overrideExportOutput{}, err
+	}
+	return nil, overrideExportOutput{Format: format, Data: string(data)}, nil
+}
+
+type overrideImportInput struct {
+	Data  string `json:"data" jsonschema:"JSON or YAML object of query→target remaps"`
+	Merge bool   `json:"merge,omitempty" jsonschema:"merge into existing overrides (default replace)"`
+}
+
+type overrideImportOutput struct {
+	Count int  `json:"count"`
+	Merge bool `json:"merge"`
+	OK    bool `json:"ok"`
+}
+
+func (h *handlers) overrideImport(_ context.Context, _ *mcp.CallToolRequest, in overrideImportInput) (*mcp.CallToolResult, overrideImportOutput, error) {
+	n, err := resolve.ImportOverrides(h.opts.ConfigDir, []byte(in.Data), in.Merge)
+	if err != nil {
+		return &mcp.CallToolResult{IsError: true}, overrideImportOutput{}, err
+	}
+	return nil, overrideImportOutput{Count: n, Merge: in.Merge, OK: true}, nil
 }

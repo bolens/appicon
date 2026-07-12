@@ -69,6 +69,7 @@ func TestMCPListTools(t *testing.T) {
 		"resolve": true, "prefetch": true, "status": true, "cache_stats": true,
 		"cache_clear": true, "cache_prune": true, "version": true,
 		"override_list": true, "override_get": true, "override_set": true, "override_rm": true, "override_suggest": true,
+		"override_export": true, "override_import": true,
 		"sources_list": true, "sources_get": true, "sources_set": true,
 		"pack_list": true, "pack_path": true, "pack_add": true,
 		"pack_install": true, "pack_update": true, "pack_install_bundle": true,
@@ -185,10 +186,13 @@ func TestMCPStatus(t *testing.T) {
 	if !ok {
 		t.Fatalf("structured=%T", res.StructuredContent)
 	}
-	for _, key := range []string{"version", "sources_path", "overrides_path", "cache_dir", "order", "daemon_socket", "daemon_alive", "tools"} {
+	for _, key := range []string{"version", "sources_path", "overrides_path", "cache_dir", "order", "daemon_socket", "daemon_alive", "daemon_supported", "goos", "goarch", "tools"} {
 		if sc[key] == nil {
 			t.Fatalf("missing %q in %v", key, sc)
 		}
+	}
+	if _, ok := sc["credentials"]; !ok {
+		t.Fatalf("missing credentials in %v", sc)
 	}
 	order, _ := sc["order"].([]any)
 	if len(order) == 0 {
@@ -196,6 +200,72 @@ func TestMCPStatus(t *testing.T) {
 	}
 }
 
+func TestMCPOverrideExportImport(t *testing.T) {
+	opts := fixtureXDG(t)
+	opts.ConfigDir = t.TempDir()
+	session := connect(t, opts)
+
+	_, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "override_set",
+		Arguments: map[string]any{
+			"query":  "bulk-a",
+			"target": "firefox",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "override_export",
+		Arguments: map[string]any{"format": "yaml"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("%+v", res)
+	}
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("structured=%T", res.StructuredContent)
+	}
+	data, _ := sc["data"].(string)
+	if !strings.Contains(data, "firefox") {
+		t.Fatalf("%v", sc)
+	}
+
+	opts2 := fixtureXDG(t)
+	opts2.ConfigDir = t.TempDir()
+	session2 := connect(t, opts2)
+	res, err = session2.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "override_import",
+		Arguments: map[string]any{
+			"data":  data,
+			"merge": false,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("%+v", res)
+	}
+	sc, ok = res.StructuredContent.(map[string]any)
+	if !ok || sc["ok"] != true {
+		t.Fatalf("%v", sc)
+	}
+	res, err = session2.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "override_get",
+		Arguments: map[string]any{"query": "bulk-a"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc, ok = res.StructuredContent.(map[string]any)
+	if !ok || sc["target"] != "firefox" {
+		t.Fatalf("%v", sc)
+	}
+}
 func TestMCPInstructions(t *testing.T) {
 	session := connect(t, fixtureXDG(t))
 	init := session.InitializeResult()
@@ -204,6 +274,12 @@ func TestMCPInstructions(t *testing.T) {
 	}
 	if !strings.Contains(init.Instructions, "override_set") {
 		t.Fatalf("instructions missing override guidance: %q", init.Instructions)
+	}
+	if !strings.Contains(init.Instructions, "override_export") {
+		t.Fatalf("instructions missing override_export: %q", init.Instructions)
+	}
+	if !strings.Contains(init.Instructions, "BYOK") && !strings.Contains(init.Instructions, "token_env") {
+		t.Fatalf("instructions missing BYOK guidance: %q", init.Instructions)
 	}
 	if !strings.Contains(init.Instructions, "path null") && !strings.Contains(init.Instructions, "supported outcome") {
 		t.Fatalf("instructions missing miss guidance: %q", init.Instructions)

@@ -14,7 +14,7 @@ _appicon() {
   fi
 
   local cmds="resolve prefetch cache override sources pack status daemon mcp completion man version help"
-  local stages="file overrides xdg svgl pack dir simple-icons dashboard-icons http-index github glyph"
+  local stages="file overrides xdg svgl pack dir simple-icons dashboard-icons http-index github logo-dev iconify noun-project glyph"
 
   if [[ ${COMP_CWORD} -eq 1 ]]; then
     COMPREPLY=($(compgen -W "${cmds}" -- "${cur}"))
@@ -135,7 +135,7 @@ _appicon() {
       ;;
     override)
       if [[ ${COMP_CWORD} -eq 2 ]]; then
-        COMPREPLY=($(compgen -W "list get set rm path suggest" -- "${cur}"))
+        COMPREPLY=($(compgen -W "list get set rm path suggest export import" -- "${cur}"))
         return
       fi
       case "${COMP_WORDS[2]}" in
@@ -148,6 +148,16 @@ _appicon() {
             if [[ -n "${qs}" ]]; then
               COMPREPLY=($(compgen -W "${qs}" -- "${cur}"))
             fi
+          fi
+          ;;
+        export)
+          if [[ ${cur} == -* ]]; then
+            COMPREPLY=($(compgen -W "--format --help" -- "${cur}"))
+          fi
+          ;;
+        import)
+          if [[ ${cur} == -* ]]; then
+            COMPREPLY=($(compgen -W "--file --merge --help" -- "${cur}"))
           fi
           ;;
         *)

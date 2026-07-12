@@ -6,8 +6,17 @@
 
 - BYOK stages: `logo-dev`, `iconify`, `noun-project`; GitHub PAT + private repo Contents API; optional Bearer on `http-index` via `token_env`
 - Sources/overrides as JSON **or** YAML (`sources.yaml` / `overrides.yaml`); `sources set --format`; [docs/sources.schema.json](docs/sources.schema.json)
-- `appicon status` / MCP `status`: `daemon_alive` (socket ping)
-- Home Manager: declarative `sources` / `overrides` / `environment` / `configFormat`
+- `appicon status` / MCP `status`: `daemon_alive`, `credentials`, `goos`/`goarch`, `daemon_supported`
+- `appicon override export|import` (+ MCP `override_export` / `override_import`)
+- Home Manager: declarative `sources` / `overrides` / `environment` / `environmentFiles` / `configFormat`
+- Auth-skip visibility: explain `tried` labels `stage(auth)` when BYOK env is missing
+- CI: unit-test matrix covers `logodev` / `iconify` / `nounproject` / `version`; `windows-compile` job; matrix completeness check
+- Daemon: unix-only `CloseOnExec` helper so `GOOS=windows` builds cleanly
+
+### Changed
+
+- Portability: Linux-only Flatpak/Snap/`/usr` XDG defaults; Windows config/cache/packs via OS user dirs; safer daemon runtime fallback; `daemon` refused on Windows
+- Home Manager: document sops EnvironmentFile (secret *values*); do not put `sops.secrets.*.path` into `environment`
 
 ## [0.2.0] — 2026-07-12
 

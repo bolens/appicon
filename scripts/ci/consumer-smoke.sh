@@ -72,9 +72,16 @@ if proc.returncode != 0 or obj.get("source") != "glyph" or not obj.get("path"):
 
 # Completions / man mention new surfaces (binary embeds scripts).
 comp = subprocess.run([bin_path, "completion", "bash"], capture_output=True, text=True, check=True)
-for needle in ("__complete queries", "suggest", "--from-desktop"):
+for needle in ("__complete queries", "suggest", "--from-desktop", "logo-dev", "export"):
     if needle not in comp.stdout:
         raise SystemExit(f"bash completion missing {needle!r}")
+
+# status contract fields for agents / consumers.
+proc = subprocess.run([bin_path, "status", "--json"], capture_output=True, text=True, check=True)
+status = json.loads(proc.stdout)
+for key in ("daemon_supported", "goos", "goarch", "credentials", "daemon_alive", "order"):
+    if key not in status:
+        raise SystemExit(f"status --json missing {key!r}")
 
 print(f"consumer-smoke ok ({len(queries)} dock queries checked)")
 PY

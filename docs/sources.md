@@ -43,7 +43,7 @@ Secrets are **never** stored in sources/overrides files. Use env var **names** o
 | `token_env` | Name of env var holding API token / OAuth1 consumer key / Logo.dev publishable key / GitHub PAT |
 | `secret_env` | Name of env var holding OAuth1 consumer secret (`noun-project` only) |
 
-If `token_env` / `secret_env` is set on a stage but the env var is missing/empty, that stage is **skipped** (benign miss in `--explain` / `tried`).
+If `token_env` / `secret_env` is set on a stage but the env var is missing/empty, that stage is **skipped** (benign miss). With `--explain`, `tried` labels it as `stage(auth)` (e.g. `logo-dev(auth)`, `noun-project(auth)`, `github(auth)`). Check readiness with `appicon status` → `credentials`.
 
 ```yaml
 sources:
@@ -71,6 +71,17 @@ sources:
   - `owner/repo/path/to/icon.svg` or blob URL → Contents API (requires PAT); raw accept stays on `api.github.com`
   - Stage `path: owner/repo` + stem query tries `{stem}.svg` then `.png`
   - Minimal PAT scopes: `read:user` (avatars), `repo` (private contents)
+
+## Platform notes
+
+Primary target is **Linux** (FreeDesktop XDG, Flatpak/Snap data roots, optional systemd user daemon).
+
+| Surface | Notes |
+|---------|--------|
+| Config / cache / packs | Honor `XDG_*` when set; otherwise `~/.config`, `~/.cache`, `~/.local/share` on Unix, and OS user dirs on Windows (`UserConfigDir` / `UserCacheDir` / `%LOCALAPPDATA%` for packs) |
+| XDG icon lookup | Flatpak/Snap/`/usr` defaults are Linux-only |
+| Daemon | Unix socket only; `status.daemon_supported` is false on Windows — resolve stays in-process |
+| Home Manager | Linux/systemd; use `environmentFiles` for BYOK secret *values* (never `sops.secrets.*.path` in `environment`) |
 
 ## Compatibility
 
@@ -144,8 +155,8 @@ Custom catalog + host allowlist (do not point at third-party CDNs unless you con
 | `sources_list` / `sources_get` / `sources_set` | Effective order / raw config / overwrite |
 | `resolve` | Optional `order`, `theme`, `explain`; `query` or `queries` (batch → `{results:[…]}`) |
 | `prefetch` | Optional `order`, `theme`, `offline`, `from_desktop` |
-| `override_suggest` | Candidate remaps for a miss / `--from-misses` |
-| `status` | Includes `daemon_alive` (ping) plus socket path |
+| `override_suggest` / `override_export` / `override_import` | Remap suggestions; bulk JSON/YAML dump/load |
+| `status` | Paths, order, `credentials` (BYOK readiness), `daemon_alive`, `daemon_supported`, `goos`/`goarch` |
 
 Allowlisted CDN hosts (when those stages are enabled): `cdn.jsdelivr.net`; GitHub: `github.com`, `avatars.githubusercontent.com`, `api.github.com`; Logo.dev: `img.logo.dev`; Iconify: host from `base` (default `api.iconify.design`); Noun Project: `api.thenounproject.com`. Consumers must not embed these URLs — call `appicon` / MCP only.
 

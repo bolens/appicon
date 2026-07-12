@@ -263,3 +263,28 @@ func TestDaemonPing(t *testing.T) {
 		t.Fatalf("resp=%+v", resp)
 	}
 }
+
+func TestSupported(t *testing.T) {
+	t.Parallel()
+	got := daemon.Supported()
+	want := runtime.GOOS != "windows"
+	if got != want {
+		t.Fatalf("Supported()=%v want %v (GOOS=%s)", got, want, runtime.GOOS)
+	}
+	if !got && runtime.GOOS != "windows" {
+		t.Fatal("unix should support daemon")
+	}
+}
+
+func TestSocketPathFallbackAbsolute(t *testing.T) {
+	t.Setenv("APPICON_SOCKET", "")
+	t.Setenv("XDG_RUNTIME_DIR", "")
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	p := daemon.SocketPath()
+	if !filepath.IsAbs(p) {
+		t.Fatalf("socket path not absolute: %q", p)
+	}
+	if filepath.Base(p) != daemon.SocketName {
+		t.Fatalf("base=%q", filepath.Base(p))
+	}
+}

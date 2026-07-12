@@ -34,7 +34,7 @@ func (f *Finder) lookupIcon(name string) (string, error) {
 		return "", ErrNotFound
 	}
 	// Absolute or home-relative path in Icon=
-	if strings.Contains(name, string(filepath.Separator)) || strings.HasPrefix(name, "/") {
+	if strings.Contains(name, string(filepath.Separator)) || filepath.IsAbs(name) {
 		if st, err := os.Stat(name); err == nil && !st.IsDir() {
 			abs, err := filepath.Abs(name)
 			if err != nil {
