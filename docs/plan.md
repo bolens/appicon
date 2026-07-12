@@ -1,6 +1,6 @@
 ---
 name: Standalone appicon CLI
-overview: Create bolens/appicon — a Go CLI that resolves desktop icons (XDG first, SVGL cached fallback), with waybar-grade tests/CI, signed-style release installs, and a thin waybar-config consumer using CSS background-image (PNG-safe for GTK).
+overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths (XDG → packs/SVGL/http-index). Core resolve is implemented; remaining v1 work is release + waybar-config consumer."
 todos:
   - id: scaffold-repo
     content: Clone bolens/appicon into /home/panda/dev/appicon; scaffold Go module, Makefile, LICENSE, CONTRIBUTING, AGENTS, README; push
@@ -17,6 +17,15 @@ todos:
   - id: ci-tests
     content: Wire make check / check-fast, golangci-lint, go test, gofmt, gitleaks, actionlint, markdownlint; PR + release workflows
     status: completed
+  - id: offline-prune
+    content: "--offline + cache prune"
+    status: completed
+  - id: pluggable-sources
+    content: "sources.json — svgl, dir packs, http-index (allowlisted); docs for Simple Icons / dashboard-icons"
+    status: completed
+  - id: resolve-quality
+    content: "Steam/games heuristics + Snap (/var/lib/snapd/desktop) + Flatpak exports"
+    status: completed
   - id: release-v0
     content: Tag v0.1.0 with checksums; verify install script against release assets
     status: pending
@@ -30,24 +39,43 @@ todos:
     content: "Post-v1: Home Manager module (programs.appicon.enable) pairing with the flake"
     status: pending
   - id: cli-polish
-    content: "Post-v1: shell completions (bash/zsh/fish), man page (--offline + cache prune done)"
+    content: "Post-v1: shell completions (bash/zsh/fish), man page"
     status: pending
-  - id: pluggable-sources
-    content: "Post-v1: http-index + docs for Simple Icons / dashboard-icons dir packs"
-    status: completed
-  - id: resolve-quality
-    content: "Post-v1: Steam/games heuristics + Snap export dirs"
-    status: completed
   - id: nightly-svgl
     content: "Post-v1: nightly/workflow_dispatch live SVGL smoke (1–2 titles); not required to merge"
     status: pending
   - id: release-signing
     content: "Post-v1: optional cosign/sigstore signing beyond SHA256SUMS"
     status: pending
+  - id: extra-consumers
+    content: "Post-v1: Rofi/walker + notification helper examples (shell out to appicon only)"
+    status: pending
 isProject: false
 ---
 
 # Standalone appicon CLI + Waybar consumer
+
+## Progress (2026-07-12)
+
+**Repo:** [bolens/appicon](https://github.com/bolens/appicon) at `/home/panda/dev/appicon`. Local `main` is ahead of `origin` with the resolve implementation (not required to be pushed for this plan doc).
+
+| Area | Status |
+|------|--------|
+| Scaffold + CI workflows + `make check` / `check-fast` | **Done** |
+| XDG / `.desktop` (Flatpak + Snap roots, theme inheritance) | **Done** |
+| Steam appid / `steam_icon_*` / `steam://rungameid/` | **Done** |
+| SVGL cache-first + allowlist + stale catalog | **Done** |
+| Local `dir` packs + `http-index` remotes via `sources.json` | **Done** |
+| PNG raster (`resvg`/`rsvg-convert`/oksvg) + raster cache | **Done** |
+| `--offline`, `cache prune`/`clear`/`stats`/`path` | **Done** |
+| Overrides (`overrides.json`) + CLI `--json` e2e tests | **Done** |
+| Tag **`v0.1.0`** + checksummed release assets | **Next** |
+| waybar-config install + dock CSS proof | **Next** (other repo) |
+| Completions/man, Nix/AUR/Home Manager, nightly live SVGL | Post-v1 |
+
+**Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/version`.
+
+**Tests:** fixture trees under `testdata/xdg` + `testdata/svgl`; httptest for SVGL/http-index; CLI e2e in `cmd/appicon`; behavioral resolve-order tests in `internal/resolve`. `make check` is the gate.
 
 ## Decision
 
@@ -55,7 +83,7 @@ Build **`bolens/appicon`** (new Go repo), **not** `waybar-appicon`. The CLI retu
 
 Go: static linux/amd64 + arm64 release binaries (same install pattern as this config’s CI tool downloads).
 
-**Remote already exists:** [bolens/appicon](https://github.com/bolens/appicon) (empty). Clone to `/home/panda/dev/appicon`, scaffold, push to `main` — do not create a new GitHub repo.
+**Remote:** [bolens/appicon](https://github.com/bolens/appicon). Clone to `/home/panda/dev/appicon`; do not create a new GitHub repo.
 
 ## Architecture
 
@@ -64,7 +92,7 @@ flowchart LR
   consumer["Waybar / Rofi / scripts"] -->|"appicon resolve query"| cli[appicon CLI]
   cli --> cache["~/.cache/appicon"]
   cli --> xdg[XDG icon theme + .desktop]
-  cli --> sources["Remote / pack sources (SVGL first)"]
+  cli --> sources["sources.json: dir / svgl / http-index"]
   cache -->|"hit"| path[Local SVG or PNG path]
   xdg --> cache
   sources --> cache
@@ -75,89 +103,125 @@ flowchart LR
 **Resolve order (fixed):**
 
 1. Existing file path
-2. Freedesktop icon theme (via `.desktop` `Icon=` / name / class)
-3. Configured logo sources in order (v1: SVGL only; post-v1: packs + extra remotes)
+2. Freedesktop icon theme (via `.desktop` `Icon=` / name / class / Steam heuristics)
+3. Configured logo sources in order (`sources.json`; default: SVGL only)
 4. Miss → exit `1` / JSON `"path": null` (callers keep glyphs)
 
-**Cache policy:** network never on hit. Catalog TTL ~7d; downloaded assets permanent until `appicon cache clear` (post-v1: also `cache prune`). Offline = XDG + disk only. XDG hits return the theme file path directly (no copy); only remote/pack assets are written under `$XDG_CACHE_HOME/appicon/`.
+**Cache policy:** network never on hit. Catalog/index TTL ~7d; downloaded assets permanent until `appicon cache clear` or pruned. `--offline` = XDG + disk + local packs only. XDG hits return the theme file path directly (no copy); remote/pack assets live under `$XDG_CACHE_HOME/appicon/` (`svgs/`, `http/`, `raster/`).
 
 ## Gaps folded into v1 (previously missing)
 
-| Gap | Plan |
-|-----|------|
-| **GTK/Waybar SVG CSS** | GTK3 `background-image` is unreliable with SVG. Default Waybar path: `resolve --format png --size 24` (rasterize + cache PNG). Keep SVG for non-GTK consumers. |
-| **Size / theme** | `--size N`, `--theme dark\|light`, optional `APPICON_THEME` / icon-theme name override. |
-| **Name mismatches** | Optional user override map: `$XDG_CONFIG_HOME/appicon/overrides.json` (`{"zen-browser":"Firefox"}` style) plus a few built-in aliases. |
-| **SSRF / safety** | Download only from allowlisted hosts (`api.svgl.app`, `svgl.app`). Reject other redirect targets. |
-| **Rate limits** | Cache-first; on HTTP 429/5xx backoff and serve stale catalog if present; never block callers longer than a short timeout (~2–3s). |
-| **Atomic cache** | Write `.tmp` + rename; simple file lock for catalog refresh. |
-| **License / brands** | MIT (or Apache-2.0) for **code only**. README: SVGL/brand logos are third-party marks — cache locally, do not republish a logo pack in releases. |
-| **Install integrity** | Release assets + `SHA256SUMS`; waybar `install-appicon.sh` verifies checksum. |
-| **Flatpak** | Resolve `.desktop` under Flatpak export dirs (same idea as waybar `xdg-applications.sh`). Snap: `/var/lib/snapd/desktop`. |
-| **Docs for agents** | Repo gets `AGENTS.md` + `CONTRIBUTING.md` (check gates, no secret commits). |
+| Gap | Plan | Status |
+|-----|------|--------|
+| **GTK/Waybar SVG CSS** | Default Waybar path: `resolve --format png --size 24`. | **Done** |
+| **Size / theme** | `--size N`, `--theme dark\|light`, `APPICON_THEME` / icon-theme override. | **Done** |
+| **Name mismatches** | `overrides.json` + small built-in aliases. | **Done** |
+| **SSRF / safety** | SVGL hosts allowlisted; http-index requires per-source `hosts`. | **Done** |
+| **Rate limits** | Cache-first; 429/5xx → stale catalog; ~2.5s timeout. | **Done** |
+| **Atomic cache** | `.tmp` + rename; flock on catalog refresh. | **Done** |
+| **License / brands** | MIT for code only; no logo packs in releases. | **Done** (docs) |
+| **Install integrity** | Release `SHA256SUMS`; waybar install script verifies. | Pending release |
+| **Flatpak / Snap** | Flatpak export dirs + `/var/lib/snapd/desktop`. | **Done** |
+| **Steam** | appid / WM class / Exec `steam://rungameid/`. | **Done** |
+| **Docs for agents** | `AGENTS.md` + `CONTRIBUTING.md`. | **Done** |
 
 ## CLI surface
 
-| Command | Behavior |
-|---------|----------|
-| `appicon resolve <query>` | Print absolute path |
-| `appicon resolve --json <query>` | Structured result incl. `source`, `theme`, `cached`, `format` |
-| `appicon resolve --format png\|svg --size N --theme dark\|light` | Output format / variant |
-| `appicon prefetch <query>...` | Warm cache |
-| `appicon cache path\|clear\|stats` | Cache management |
-| `appicon version` | Semver from release ldflags |
+| Command | Behavior | Status |
+|---------|----------|--------|
+| `appicon resolve <query>` | Print absolute path | **Done** |
+| `appicon resolve --json` | Structured result (`source`, `theme`, `cached`, `format`, …) | **Done** |
+| `appicon resolve --format png\|svg --size N --theme dark\|light` | Output format / variant | **Done** |
+| `appicon resolve --offline` | No network | **Done** |
+| `appicon prefetch <query>...` | Warm cache | **Done** |
+| `appicon cache path\|clear\|stats\|prune` | Cache management | **Done** |
+| `appicon version` | Semver from release ldflags | **Done** |
 
-**Query inputs:** app id, WM class, `foo.desktop`, display name, or filesystem path.
+**Query inputs:** app id, WM class, `foo.desktop`, display name, Steam appid, or filesystem path.
 
-**Packages:** `cmd/appicon`, `internal/xdg`, `internal/svgl`, `internal/cache`, `internal/raster` (SVG→PNG; prefer a pure-Go lib or optional `rsvg-convert`/`resvg` if present — pick one approach in implementation and document the dependency).
+**Config:**
 
-## Tests and CI (waybar-grade, Go-shaped)
+- `$XDG_CONFIG_HOME/appicon/overrides.json` — query remaps
+- `$XDG_CONFIG_HOME/appicon/sources.json` — ordered `svgl` / `dir` / `http-index`
 
-Mirror the **discipline** of [waybar-config](https://github.com/bolens/waybar-config) (`make check` / `check-fast`, gitleaks, actionlint, markdownlint), not shell suite matrices.
+## Tests and CI
 
-**Local gates (`Makefile`):**
+**Local gates:** `make check-fast` (test + vet + gofmt), `make check` (+ golangci-lint when present, gitleaks, actionlint, markdownlint).
 
-- `make check-fast` — `go test ./...` (short), `go vet`, `gofmt -l` clean
-- `make check` — check-fast + `golangci-lint` + race tests where cheap + gitleaks + markdownlint + actionlint on workflows
-- `make test` / `make lint` / `make fmt`
+**Coverage in tree:** XDG fixtures (incl. Flatpak/Snap/Steam), SVGL httptest, http-index httptest, pack unit tests, resolve behavioral order, CLI e2e (`cmd/appicon`).
 
-**Test types:**
-
-- **Unit:** XDG resolver against checked-in fixture trees (`testdata/xdg/...` fake `apps/*.desktop` + `icons/hicolor/...`)
-- **Unit:** SVGL client against `httptest` + recorded JSON/SVG fixtures (no live network in CI)
-- **Unit:** cache TTL, atomic write, host allowlist rejection
-- **Unit:** override map + resolve order
-- **CLI smoke:** `go test` / small exec tests for `resolve --json` exit codes
-- **Optional integration job** (`workflow_dispatch` or nightly): live SVGL resolve of 1–2 known titles; not required to merge
-
-**GitHub Actions:**
-
-- `ci.yml` on PR/push — check-fast + golangci-lint + gitleaks + actionlint + markdownlint
-- `release.yml` on tag `v*` — build amd64/arm64, `SHA256SUMS`, GitHub Release
-- Pin tool versions (golangci-lint, gitleaks) like waybar pins shfmt/gitleaks
-
-**Repo hygiene:** `.gitignore`, LICENSE, CONTRIBUTING, AGENTS.md, CODEOWNERS optional, `go.mod` with Go 1.22+.
+**GitHub Actions:** `ci.yml` on PR/push; `release.yml` on tag `v*` (amd64/arm64 + `SHA256SUMS`).
 
 ## Waybar-config consumer (after first release)
 
 1. `scripts/infra/install-appicon.sh` — pin `APPICON_VERSION`, download + checksum verify → `~/.local/bin/appicon` (or `$WAYBAR_HOME/bin/`).
 2. `make install-appicon` + README/scripts note.
 3. Proof integration: dock launcher only — prefetch/resolve to PNG, generate CSS (`#custom-dock-* { background-image: url(...); }`), glyph fallback if binary missing or resolve fails.
-4. Settings: `icons.appicon.enabled` / `theme` / `size` in [data/waybar-settings.jsonc](data/waybar-settings.jsonc); no-op when binary absent.
+4. Settings: `icons.appicon.enabled` / `theme` / `size` in waybar-settings; no-op when binary absent.
 
 No SVGL URLs inside waybar scripts — only `appicon resolve`.
 
-## Out of scope for v1 (still)
+## Explicitly out of scope (deferred)
 
-- Daemon/socket
-- Replacing tray SNI icons
-- Full logo catalogs vendored into release tarballs
-- `appicon self-update` (re-run install script / package manager instead)
-- Perfect coverage for obscure apps
+These stay **out of the product roadmap unless a concrete consumer forces them**. Notes below are enough to restart the design without rediscovering constraints.
+
+### Daemon / socket
+
+**Why deferred:** Waybar/Rofi/scripts already shell out per query; warm cache + ~ms XDG hits make a long-lived process unnecessary for the dock use case. A daemon adds lifecycle (systemd user unit), IPC versioning, and failure modes (stale socket, double instance) without changing the public “print a path” contract.
+
+**If revisited:**
+
+- Prefer a **user systemd** `appicon.socket` + `appicon.service` (socket activation), not a root daemon.
+- Protocol: length-prefixed JSON request/response mirroring `resolve --json` fields (`query`, `format`, `size`, `theme`, `offline`) so CLI and socket share one resolver.
+- Transport: `AF_UNIX` under `$XDG_RUNTIME_DIR/appicon.sock` (mode `0600`); reject abstract-namespace unless documented.
+- Concurrency: single-flight per cache key for catalog refresh (existing flock); do not invent a second cache.
+- Clients stay thin: `appicon resolve` can dial the socket when present and fall back to in-process resolve — never require the daemon.
+- **Do not** put SVGL credentials or non-allowlisted downloads in the daemon; same security model as the CLI.
+
+### Replacing tray SNI icons
+
+**Why deferred:** StatusNotifierItem / KDE tray / AppIndicator icons are owned by the application process and compositor/panel. Swapping them means either LD_PRELOAD/hacks, a custom tray host, or patching each app — far outside “return a file path.”
+
+**If revisited:**
+
+- Scope as a **separate tool** (e.g. `appicon-trayd`) that only helps *our* panels (Waybar custom modules), not system-wide SNI replacement.
+- Read icons for *display* via `appicon resolve` (PNG); never claim to be an SNI host unless implementing the full StatusNotifierWatcher/Item D-Bus APIs.
+- Document that Electron/Chromium tray icons and proprietary indicators will remain opaque.
+
+### Full logo catalogs vendored into release tarballs
+
+**Why deferred:** Brand marks are third-party; shipping a logo pack in GitHub Releases creates redistribution / trademark / size problems and fights the “code only, MIT” stance. SVGL’s catalog is large and changes upstream.
+
+**If revisited:**
+
+- Prefer **user-cloned `dir` packs** (Simple Icons, dashboard-icons) or `http-index` with explicit hosts — already supported.
+- Optional “offline bundle” would be a **separate artifact** (not the default `appicon_*_linux_*.tar.gz`), with its own license file and pin to an upstream commit SHA.
+- Never merge a full catalog into `go:embed` or the main binary; keep releases tiny and static.
+
+### `appicon self-update`
+
+**Why deferred:** One more updater channel to secure (signature, rollback, partial downloads). We already plan checksummed GitHub releases + waybar `install-appicon.sh`, plus later Nix/AUR/Home Manager.
+
+**Instead:**
+
+- Re-run the install script / `make install-appicon` with a bumped pin.
+- Or upgrade via package manager once AUR/Nix exist.
+- If a self-update subcommand appears later: download release asset + `SHA256SUMS` (and cosign if enabled), verify, atomic replace under the same path as the running binary; refuse to update when installed via Nix/pacman (detect read-only store / package manager metadata).
+
+### Perfect coverage for obscure apps
+
+**Why deferred:** Infinite tail — proprietary WM classes, broken `.desktop` files, games without shortcuts, renamed Electron apps. Chasing 100% match rate balloons aliases and special cases.
+
+**Instead:**
+
+- Overrides file + Steam/Flatpak/Snap heuristics (done) cover the common miss classes.
+- Users add `dir` packs / `http-index` / `overrides.json` for personal long-tail apps.
+- Accept miss → exit `1` / glyph fallback as a **supported** outcome, not a bug.
+- New heuristics only when a recurring miss shows up in a real consumer (e.g. waybar dock list), with a fixture test — no speculative alias dumps.
 
 ## Post-v1
 
-Follow-ups after a tagged release + Waybar proof. Same packaging tier as each other unless noted.
+Follow-ups after a tagged release + Waybar proof.
 
 ### Packaging / install
 
@@ -169,64 +233,22 @@ Follow-ups after a tagged release + Waybar proof. Same packaging tier as each ot
 | **Release signing** | Optional cosign/sigstore in addition to `SHA256SUMS` |
 | **Completions + man** | bash/zsh/fish completions; short man page |
 
-### CLI / cache
+### Pluggable logo sources
 
-| Item | Notes |
-|------|-------|
-| **`--offline`** | **Done** — never touch the network; XDG + on-disk cache + local packs only |
-| **`cache prune`** | **Done** — drop regenerable `raster/` and SVGL assets not in catalog; keep `cache clear` as wipe-all |
+**Done:** `sources.json` with `svgl`, `dir`, `http-index` (per-source host allowlist).
 
-### Resolve quality
-
-| Item | Notes |
-|------|-------|
-| **Steam / games** | **Done** — `steam_app_<id>` / numeric appid / `steam://rungameid/` Exec + `steam_icon_<id>` fallback |
-| **Snap exports** | **Done** — `/var/lib/snapd/desktop` alongside Flatpak export shares |
-
-### Pluggable logo sources (supplement SVGL)
-
-**Done:** ordered `sources.json` with `svgl`, local `dir` packs, and `http-index` remotes (per-source host allowlist). Default remains SVGL-only.
-
-**Docs still useful:** point users at Simple Icons / dashboard-icons as `dir` packs (clone locally; do not bake CDNs into the binary).
-
-**Still open:** optional first-class `simple-icons` slug helper only if plain `dir` feels awkward.
-
-**Recommended supplements (priority):**
-
-| Priority | Option | Notes |
-|----------|--------|-------|
-| **1** | **`http-index`** | Generic allowlisted remotes (self-hosted indexes, pinned CDNs, private brand packs). Same timeout + stale-index behavior as SVGL. Primary post-v1 implementation work. |
-| **2** | **[Simple Icons](https://github.com/simple-icons/simple-icons) as a documented `dir` pack** | Largest monochrome brand set; clean license story. User clones locally — do **not** bake `cdn.simpleicons.org` / jsDelivr into the binary. |
-| **3** | **[dashboard-icons](https://github.com/homarr-labs/dashboard-icons) as a documented `dir` pack** | Strong for docks / self-hosted apps where SVGL + XDG often miss. Same clone → `type: dir` pattern. |
-
-**Lower priority / later:**
-
-- Optional first-class `simple-icons` source type — only if plain `dir` + slug lookup feels awkward; prefer keeping the surface small.
-- Other packs (e.g. Devicon) — same `dir` recipe; no new source types until needed.
-
-**Do not add / do not promote:**
-
-- Built-in Logo.dev / Brandfetch / Clearbit (API keys, ToS).
-- Built-in Iconify (huge host/license surface).
-- Shipping any third-party pack in GitHub releases.
-- A second hard-coded remote like SVGL unless license + allowlist are as clean as SVGL — preference stays **user-configured** sources.
-
-**Suggested dock-oriented order** (document as an example; default stays SVGL-only until the user edits config):
+**Docs:** clone Simple Icons / dashboard-icons locally; do not bake CDNs into the binary. Example dock-oriented order:
 
 ```text
 path → XDG → dir packs (user) → svgl → miss
 ```
 
-Local packs often beat SVGL for Waybar docks; brand-first users can put `svgl` before `dir`.
-
-**Config sketch** (`$XDG_CONFIG_HOME/appicon/sources.json`):
-
 ```json
 {
   "sources": [
     { "type": "dir", "path": "~/.local/share/appicon/packs/dashboard-icons" },
-    { "type": "dir", "path": "~/.local/share/appicon/packs/simple-icons" },
-    { "type": "svgl", "enabled": true },
+    { "type": "dir", "path": "~/.local/share/appicon/packs/simple-icons/icons" },
+    { "type": "svgl" },
     {
       "type": "http-index",
       "name": "my-cdn",
@@ -237,34 +259,22 @@ Local packs often beat SVGL for Waybar docks; brand-first users can put `svgl` b
 }
 ```
 
-**Rules:**
+**Do not promote:** Logo.dev / Brandfetch / Clearbit (API keys), Iconify (host/license surface), vendoring packs in releases.
 
-- Resolve still runs **path → XDG → sources (in order) → miss**.
-- **Local `dir` packs:** tree or flat folder of `.svg`/`.png` plus optional `index.json` (`{"Firefox":"firefox.svg"}`); no network.
-- **Remote providers:** must declare an **explicit host allowlist** (extend today’s `api.svgl.app` / `svgl.app` gate). Reject redirects off-allowlist. Same short timeout + stale-index behavior as SVGL.
-- **Do not** ship third-party logo packs inside GitHub releases; document how to clone Simple Icons, dashboard-icons, or a custom brand folder and point `sources.json` at them.
-- Brand/trademark disclaimer stays: cache for personal use; appicon distributes code only.
-- Built-in second remote only if license + allowlist story is clean; preference is **user-configured** sources.
+### Extra consumers / CI
 
-### Extra consumers
-
-- Rofi / walker example scripts (icon path via `appicon resolve --format png`)
-- Notification / window-switcher helper notes — still shell-out only; no SVGL URLs in consumer repos
-
-### CI
-
-- Nightly or `workflow_dispatch` live SVGL smoke (1–2 known titles); not required to merge PRs
+- Rofi / walker examples; notification helper notes — shell-out only
+- Nightly or `workflow_dispatch` live SVGL smoke (1–2 titles); not required to merge
 
 ## Execution order
 
-1. Clone `bolens/appicon` → `/home/panda/dev/appicon`; scaffold Makefile + docs + LICENSE; first push
-2. XDG resolve + fixture tests
-3. Cache + SVGL + httptest tests + allowlist
-4. PNG output path for GTK/Waybar
-5. Full CI workflows + `make check`
-6. Cut `v0.1.0` with checksums
-7. waybar-config install + dock CSS proof behind settings flag
-8. (post-v1) Packaging: Nix flake, Home Manager, AUR; optional release signing
-9. (post-v1) CLI polish: completions, man, `--offline`, `cache prune`
-10. (post-v1) Pluggable sources: `http-index` + docs for Simple Icons / dashboard-icons `dir` packs; Steam/Snap resolve quality
-11. (post-v1) Extra consumers + nightly live SVGL job
+1. ~~Clone + scaffold~~
+2. ~~XDG resolve + fixtures~~
+3. ~~Cache + SVGL + httptest + allowlist~~
+4. ~~PNG output~~
+5. ~~CI workflows + `make check`~~
+6. ~~`--offline`, prune, packs, http-index, Steam, Snap~~
+7. **Cut `v0.1.0` with checksums** ← current
+8. waybar-config install + dock CSS proof
+9. (post-v1) Completions/man; Nix / Home Manager / AUR; optional release signing
+10. (post-v1) Extra consumers + nightly live SVGL job
