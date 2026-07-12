@@ -1,8 +1,12 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -252,4 +256,84 @@ func TestCLIUsageMissingCommand(t *testing.T) {
 	if !strings.Contains(errOut, "Usage:") {
 		t.Fatalf("stderr=%q", errOut)
 	}
+}
+
+func TestCLISourcesList(t *testing.T) {
+	xdgEnv(t)
+	out, _, err := captureRun("sources", "list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "order=file,overrides,xdg,svgl") {
+		t.Fatalf("out=%q", out)
+	}
+	out, _, err = captureRun("sources", "list", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `"effective"`) {
+		t.Fatalf("json=%q", out)
+	}
+}
+
+func TestCLIPackInstallArchiveURL(t *testing.T) {
+	xdgEnv(t)
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	archivePath := filepath.Join(t.TempDir(), "pack.tar.gz")
+	if err := writeCLITarGZ(archivePath, "icons/cli.svg", `<svg xmlns="http://www.w3.org/2000/svg"/>`); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := os.ReadFile(archivePath)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		_, _ = w.Write(b)
+	}))
+	t.Cleanup(srv.Close)
+
+	_, _, err := captureRun("pack", "install", "--name", "cli-pack", "--subdir", "icons", srv.URL+"/pack.tar.gz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := captureRun("pack", "list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "cli-pack") {
+		t.Fatalf("list=%q", out)
+	}
+}
+
+func TestCLIResolveOrder(t *testing.T) {
+	xdgEnv(t)
+	out, _, err := captureRun("resolve", "--json", "--offline", "--order", "glyph", "zzzz-cli-order")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `"source":"glyph"`) {
+		t.Fatalf("out=%q", out)
+	}
+}
+
+func writeCLITarGZ(path, name, body string) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	gz := gzip.NewWriter(f)
+	tw := tar.NewWriter(gz)
+	if err := tw.WriteHeader(&tar.Header{Name: name, Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
+		return err
+	}
+	if _, err := tw.Write([]byte(body)); err != nil {
+		return err
+	}
+	if err := tw.Close(); err != nil {
+		return err
+	}
+	return gz.Close()
 }

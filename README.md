@@ -17,29 +17,39 @@ appicon completion bash   # print completion script
 appicon man | man -l -    # view man page
 ```
 
-**Resolve order:** existing path → FreeDesktop icon theme / `.desktop` → configured sources ([SVGL](https://svgl.app/) and/or local packs) → miss.
+**Resolve order (default):** file → overrides → XDG / `.desktop` → [SVGL](https://svgl.app/). Fully reorderable via `sources.json` / `--order` — including opt-in `simple-icons`, `dashboard-icons`, `github`, `glyph`, and local packs. See [docs/sources.md](docs/sources.md) and [docs/packs.md](docs/packs.md).
 
-XDG, SVGL (cache-first), local logo packs (`sources.json`), PNG rasterization, `--offline`, `cache prune`, MCP, optional socket daemon, and shell completions are implemented. See [docs/plan.md](docs/plan.md).
+XDG, SVGL (cache-first), local packs, opt-in CDN/github/glyph stages, PNG rasterization, `--offline`, `cache prune`, MCP, optional socket daemon, and shell completions are implemented. Deferred ideas: [docs/deferred.md](docs/deferred.md).
 
 **Consumer contract:** exit `0` / `1` (miss) / `2` (error); stable `resolve --json` fields — [docs/consumer-contract.md](docs/consumer-contract.md). Misses are supported (callers keep glyphs). Treat appicon like optional peers such as `zscroll` / `cava`: never require the binary for a working bar.
 
 **PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`.
 
-**Sources:** optional `$XDG_CONFIG_HOME/appicon/sources.json` — ordered `svgl`, local `dir` packs, and `http-index` remotes (explicit host allowlist required). Default is SVGL only.
+**Sources:** `$XDG_CONFIG_HOME/appicon/sources.json` — every stage is an ordered entry. Default without a file is `file → overrides → xdg → svgl`. Opt-in remotes are never enabled by default.
 
-Example — local [Simple Icons](https://github.com/simple-icons/simple-icons) / [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) clones before SVGL:
+```bash
+appicon sources list
+appicon pack install simple-icons   # local clone + register
+appicon pack install --name mine --subdir icons https://github.com/org/my-icons.git
+appicon resolve --order glyph,svgl,xdg my-app
+```
+
+Example — remaps and a personal pack before path/XDG/SVGL:
 
 ```json
 {
   "sources": [
-    { "type": "dir", "path": "~/.local/share/appicon/packs/dashboard-icons" },
-    { "type": "dir", "path": "~/.local/share/appicon/packs/simple-icons/icons" },
-    { "type": "svgl" }
+    { "type": "overrides" },
+    { "type": "pack", "name": "mine", "path": "~/.local/share/appicon/packs/mine" },
+    { "type": "file" },
+    { "type": "xdg" },
+    { "type": "svgl" },
+    { "type": "simple-icons" }
   ]
 }
 ```
 
-Do not point `http-index` at third-party CDNs unless you control the allowlist and accept their terms; prefer cloning packs locally.
+CDN stages (`simple-icons` / `dashboard-icons`) are separate from **local** `pack install` clones of the same upstreams. Do not point `http-index` at third-party CDNs unless you control the allowlist and accept their terms.
 
 ## Overrides
 
@@ -60,8 +70,10 @@ appicon mcp
 
 | Tool | Mirrors |
 |------|---------|
-| `resolve` | `appicon resolve --json` |
-| `prefetch` | `appicon prefetch` |
+| `resolve` | `appicon resolve --json` (optional `order`) |
+| `prefetch` | `appicon prefetch` (optional `order`) |
+| `sources_list` / `sources_get` / `sources_set` | `appicon sources …` (`sources_set` overwrites config) |
+| `pack_list` / `pack_path` / `pack_add` / `pack_install` / `pack_update` / `pack_install_bundle` | `appicon pack …` (`pack_install`: `recipe` or `url`, plus `name`/`subdir`/`ref`) |
 | `cache_stats` / `cache_clear` / `cache_prune` | matching `cache` subcommands |
 | `override_list` / `override_get` / `override_set` / `override_rm` | `appicon override …` |
 | `version` | `appicon version` |
@@ -79,7 +91,7 @@ Example Cursor / Claude Desktop snippet:
 }
 ```
 
-Agents should call `resolve` only — never invent SVGL URLs in other repos.
+Agents should prefer MCP tools over shelling `appicon` when MCP is connected. Call `resolve` / `sources_*` / `pack_*` only — never invent CDN or SVGL URLs in other repos.
 
 ## Daemon (optional)
 

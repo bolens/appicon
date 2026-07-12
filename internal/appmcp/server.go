@@ -63,6 +63,42 @@ func NewServer(opts Options) *mcp.Server {
 		Name:        "override_rm",
 		Description: "Remove a query remap from overrides.json (mirrors appicon override rm).",
 	}, h.overrideRm)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "sources_list",
+		Description: "List effective resolve stage order (mirrors appicon sources list --json).",
+	}, h.sourcesList)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "sources_get",
+		Description: "Read sources.json (or describe defaults when missing).",
+	}, h.sourcesGet)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "sources_set",
+		Description: "Overwrite sources.json (destructive; validates stage types).",
+	}, h.sourcesSet)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "pack_list",
+		Description: "List configured pack stages (mirrors appicon pack list --json).",
+	}, h.packList)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "pack_path",
+		Description: "Print recommended packs root (mirrors appicon pack path).",
+	}, h.packPath)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "pack_add",
+		Description: "Register a local pack directory in sources.json (mirrors appicon pack add).",
+	}, h.packAdd)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "pack_install",
+		Description: "Clone a recipe or URL into packs and register it (destructive/network; mirrors appicon pack install). Pass recipe (simple-icons|dashboard-icons) or url (git / .tar.gz).",
+	}, h.packInstall)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "pack_update",
+		Description: "Refresh cloned recipe packs (network; mirrors appicon pack update).",
+	}, h.packUpdate)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "pack_install_bundle",
+		Description: "Install packs from a local .tar.gz bundle (mirrors pack install --from-bundle).",
+	}, h.packInstallBundle)
 
 	return s
 }
@@ -77,11 +113,12 @@ type handlers struct {
 }
 
 type resolveInput struct {
-	Query   string `json:"query" jsonschema:"icon query: app id, WM class, .desktop id, display name, Steam appid, or file path"`
-	Format  string `json:"format,omitempty" jsonschema:"svg or png (default svg)"`
-	Size    int    `json:"size,omitempty" jsonschema:"pixel size for png / XDG preference (default 48)"`
-	Theme   string `json:"theme,omitempty" jsonschema:"prefer dark or light variants when available"`
-	Offline bool   `json:"offline,omitempty" jsonschema:"skip network; use cache, XDG, and local packs only"`
+	Query   string   `json:"query" jsonschema:"icon query: app id, WM class, .desktop id, display name, Steam appid, or file path"`
+	Format  string   `json:"format,omitempty" jsonschema:"svg or png (default svg)"`
+	Size    int      `json:"size,omitempty" jsonschema:"pixel size for png / XDG preference (default 48)"`
+	Theme   string   `json:"theme,omitempty" jsonschema:"prefer dark or light variants when available"`
+	Offline bool     `json:"offline,omitempty" jsonschema:"skip network; use cache, XDG, and local packs only"`
+	Order   []string `json:"order,omitempty" jsonschema:"optional stage type order override (same as resolve --order)"`
 }
 
 type resolveOutput struct {
@@ -106,6 +143,9 @@ func (h *handlers) resolve(ctx context.Context, _ *mcp.CallToolRequest, in resol
 		opts.Theme = in.Theme
 	}
 	opts.Offline = opts.Offline || in.Offline
+	if len(in.Order) > 0 {
+		opts.Order = in.Order
+	}
 
 	out := resolveOutput{
 		Query:  in.Query,
@@ -139,7 +179,9 @@ type prefetchInput struct {
 	Queries []string `json:"queries" jsonschema:"one or more icon queries to warm in the cache"`
 	Format  string   `json:"format,omitempty" jsonschema:"svg or png (default svg)"`
 	Size    int      `json:"size,omitempty" jsonschema:"pixel size preference (default 48)"`
+	Theme   string   `json:"theme,omitempty" jsonschema:"prefer dark or light variants when available"`
 	Offline bool     `json:"offline,omitempty" jsonschema:"skip network while prefetching"`
+	Order   []string `json:"order,omitempty" jsonschema:"optional stage type order override (same as resolve --order)"`
 }
 
 type prefetchItem struct {
@@ -161,7 +203,13 @@ func (h *handlers) prefetch(ctx context.Context, _ *mcp.CallToolRequest, in pref
 	if in.Size > 0 {
 		opts.Size = in.Size
 	}
+	if in.Theme != "" {
+		opts.Theme = in.Theme
+	}
 	opts.Offline = opts.Offline || in.Offline
+	if len(in.Order) > 0 {
+		opts.Order = in.Order
+	}
 
 	out := prefetchOutput{Results: make([]prefetchItem, 0, len(in.Queries))}
 	for _, q := range in.Queries {

@@ -20,7 +20,7 @@ Stable keys (do not rename):
 |-------|------|-------|
 | `query` | string | Echo of the request |
 | `path` | string \| `null` | Absolute local file path on success |
-| `source` | string | `file` \| `xdg` \| `svgl` \| `pack` \| `http-index` \| `""` on miss |
+| `source` | string | `file` \| `xdg` \| `svgl` \| `pack` \| `http-index` \| `simple-icons` \| `dashboard-icons` \| `github` \| `glyph` \| `""` on miss |
 | `theme` | string | Effective theme hint |
 | `format` | string | `svg` \| `png` |
 | `cached` | bool | Whether the hit came from appicon’s durable cache |
@@ -43,3 +43,4 @@ Like `zscroll` / `cava`: install is optional. Consumers must:
 3. Never embed SVGL (or other) URLs — only shell out to `appicon`.
 
 - Optional remaps: `$XDG_CONFIG_HOME/appicon/overrides.json` via `appicon override` / MCP `override_*`.
+- Resolve stages / packs: [sources.md](sources.md), [packs.md](packs.md). Enabling `glyph` as a stage yields exit `0` with `source: glyph` instead of a miss.

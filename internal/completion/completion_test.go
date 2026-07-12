@@ -33,7 +33,20 @@ func TestManPage(t *testing.T) {
 	if !strings.Contains(man, ".TH APPICON") {
 		t.Fatal("missing .TH")
 	}
-	if !strings.Contains(man, "resolve") || !strings.Contains(man, "mcp") {
-		t.Fatal("man page missing commands")
+	for _, cmd := range []string{"resolve", "mcp", "sources", "pack"} {
+		if !strings.Contains(man, cmd) {
+			t.Fatalf("man page missing %q", cmd)
+		}
+	}
+}
+
+func TestBashMentionsSourcesPack(t *testing.T) {
+	t.Parallel()
+	s, err := completion.Script("bash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(s, "sources") || !strings.Contains(s, "pack") || !strings.Contains(s, "--order") {
+		t.Fatal("bash completion missing sources/pack/--order")
 	}
 }

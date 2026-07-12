@@ -14,9 +14,13 @@ import (
 	"strings"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/dashboardicons"
+	"github.com/bolens/appicon/internal/githubicon"
+	"github.com/bolens/appicon/internal/glyph"
 	"github.com/bolens/appicon/internal/httpindex"
 	"github.com/bolens/appicon/internal/pack"
 	"github.com/bolens/appicon/internal/raster"
+	"github.com/bolens/appicon/internal/simpleicons"
 	"github.com/bolens/appicon/internal/svgl"
 	"github.com/bolens/appicon/internal/xdg"
 )
@@ -40,6 +44,9 @@ type Options struct {
 	IconDirs []string
 	// ConfigDir overrides XDG_CONFIG_HOME/appicon for overrides.json / sources.json.
 	ConfigDir string
+
+	// Order overrides effective stage types (see EffectiveStages / --order).
+	Order []string
 
 	// SVGL injects a client (tests). Nil uses svgl.Default.
 	SVGL *svgl.Client
@@ -82,7 +89,7 @@ func CacheDir() string {
 	return filepath.Join(base, "appicon")
 }
 
-// Resolve looks up an icon: existing path → overrides → XDG → configured sources.
+// Resolve looks up an icon using the effective ordered stages from sources.json.
 func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
 	if opts.Format == "" {
 		opts.Format = "svg"
@@ -102,43 +109,34 @@ func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
 		return Result{}, ErrNotFound
 	}
 
-	if st, err := os.Stat(query); err == nil && !st.IsDir() {
-		abs, err := filepath.Abs(query)
-		if err != nil {
-			return Result{}, err
-		}
-		res := Result{
-			Path:   abs,
-			Source: "file",
-			Theme:  opts.Theme,
-			Format: opts.Format,
-			Cached: false,
-		}
-		return ensureFormat(res, opts)
-	}
-
-	query = applyOverrides(query, opts.ConfigDir)
-
-	xdgOpts := xdg.Options{
-		Size:      opts.Size,
-		IconTheme: opts.IconTheme,
-		DataDirs:  opts.DataDirs,
-		IconDirs:  opts.IconDirs,
-	}
-	if xdgRes, err := xdg.Resolve(query, xdgOpts); err == nil {
-		res := Result{
-			Path:   xdgRes.Path,
-			Source: "xdg",
-			Theme:  opts.Theme,
-			Format: opts.Format,
-			Cached: false,
-		}
-		return ensureFormat(res, opts)
-	} else if !errors.Is(err, xdg.ErrNotFound) {
+	stages, _, err := LoadEffectiveStages(opts.ConfigDir, opts.Order)
+	if err != nil {
 		return Result{}, err
 	}
 
-	for _, src := range loadSources(opts.ConfigDir) {
+	for _, src := range stages {
+		switch src.Type {
+		case "overrides":
+			query = applyOverrides(query, opts.ConfigDir)
+			continue
+		case "file":
+			if st, err := os.Stat(query); err == nil && !st.IsDir() {
+				abs, err := filepath.Abs(query)
+				if err != nil {
+					return Result{}, err
+				}
+				res := Result{
+					Path:   abs,
+					Source: "file",
+					Theme:  opts.Theme,
+					Format: opts.Format,
+					Cached: false,
+				}
+				return ensureFormat(res, opts)
+			}
+			continue
+		}
+
 		res, err := resolveSource(ctx, src, query, opts)
 		if err == nil {
 			return ensureFormat(res, opts)
@@ -156,12 +154,35 @@ func isBenignMiss(err error) bool {
 	return errors.Is(err, ErrNotFound) ||
 		errors.Is(err, svgl.ErrNotFound) ||
 		errors.Is(err, pack.ErrNotFound) ||
-		errors.Is(err, httpindex.ErrNotFound)
+		errors.Is(err, httpindex.ErrNotFound) ||
+		errors.Is(err, simpleicons.ErrNotFound) ||
+		errors.Is(err, dashboardicons.ErrNotFound) ||
+		errors.Is(err, githubicon.ErrNotFound) ||
+		errors.Is(err, glyph.ErrNotFound) ||
+		errors.Is(err, xdg.ErrNotFound)
 }
 
 func resolveSource(ctx context.Context, src sourceSpec, query string, opts Options) (Result, error) {
 	switch src.Type {
-	case "dir":
+	case "xdg":
+		xdgOpts := xdg.Options{
+			Size:      opts.Size,
+			IconTheme: opts.IconTheme,
+			DataDirs:  opts.DataDirs,
+			IconDirs:  opts.IconDirs,
+		}
+		xdgRes, err := xdg.Resolve(query, xdgOpts)
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{
+			Path:   xdgRes.Path,
+			Source: "xdg",
+			Theme:  opts.Theme,
+			Format: opts.Format,
+			Cached: false,
+		}, nil
+	case "pack", "dir":
 		packRes, err := pack.Lookup(src.Path, query)
 		if err != nil {
 			return Result{}, err
@@ -191,6 +212,57 @@ func resolveSource(ctx context.Context, src sourceSpec, query string, opts Optio
 			Theme:  svglRes.Theme,
 			Format: opts.Format,
 			Cached: svglRes.Cached,
+		}, nil
+	case "simple-icons":
+		res, err := simpleicons.Lookup(ctx, query, simpleicons.Options{Offline: opts.Offline})
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{
+			Path:   res.Path,
+			Source: "simple-icons",
+			Theme:  opts.Theme,
+			Format: opts.Format,
+			Cached: res.Cached,
+		}, nil
+	case "dashboard-icons":
+		res, err := dashboardicons.Lookup(ctx, query, dashboardicons.Options{
+			Theme:   opts.Theme,
+			Offline: opts.Offline,
+		})
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{
+			Path:   res.Path,
+			Source: "dashboard-icons",
+			Theme:  opts.Theme,
+			Format: opts.Format,
+			Cached: res.Cached,
+		}, nil
+	case "github":
+		res, err := githubicon.Lookup(ctx, query, githubicon.Options{Offline: opts.Offline})
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{
+			Path:   res.Path,
+			Source: "github",
+			Theme:  opts.Theme,
+			Format: opts.Format,
+			Cached: res.Cached,
+		}, nil
+	case "glyph":
+		res, err := glyph.Generate(query)
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{
+			Path:   res.Path,
+			Source: "glyph",
+			Theme:  opts.Theme,
+			Format: opts.Format,
+			Cached: false,
 		}, nil
 	case "http-index":
 		client := opts.HTTPIndex

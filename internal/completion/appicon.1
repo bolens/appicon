@@ -11,17 +11,20 @@ looks up an application or brand icon and prints a local filesystem path.
 Consumers such as Waybar, Rofi, and scripts can use the path without embedding
 remote download logic.
 .PP
-Resolve order: existing path, overrides.json, FreeDesktop icon theme / .desktop (including
-Flatpak, Snap, and Steam heuristics), then configured logo sources (SVGL and/or
-local packs via sources.json). A miss exits with status 1.
+Default resolve order: file, overrides.json, FreeDesktop icon theme / .desktop
+(including Flatpak, Snap, and Steam heuristics), then SVGL. Customize the full
+pipeline (including opt-in CDN/github/glyph stages and local packs) via
+sources.json. See docs/sources.md and docs/packs.md. A miss exits with status 1
+unless a glyph stage is reached.
 .SH COMMANDS
 .TP
-.B resolve [\-\-json] [\-\-offline] [\-\-local] [\-\-format svg|png] [\-\-size N] [\-\-theme dark|light] \fIquery\fR
+.B resolve [\-\-json] [\-\-offline] [\-\-local] [\-\-order \fITYPES\fR] [\-\-format svg|png] [\-\-size N] [\-\-theme dark|light] \fIquery\fR
 Resolve \fIquery\fR and print the absolute path (or JSON with \-\-json).
+\-\-order is a comma-separated list of stage types (same semantics as sources.json).
 When a daemon socket is present, dial it unless \-\-local or APPICON_NO_DAEMON is set.
 .TP
 .B prefetch \fIquery\fR...
-Warm the cache for one or more queries.
+Warm the cache for one or more queries (same effective order as resolve).
 .TP
 .B cache path|clear|stats|prune
 Inspect or manage the on-disk cache under $XDG_CACHE_HOME/appicon.
@@ -29,11 +32,19 @@ Inspect or manage the on-disk cache under $XDG_CACHE_HOME/appicon.
 .B override list|get|set|rm|path [\-\-json]
 Manage $XDG_CONFIG_HOME/appicon/overrides.json query remaps (long-tail aliases).
 .TP
+.B sources list|path [\-\-json]
+Show effective resolve stage order or the sources.json path.
+.TP
+.B pack list|path|add|install|update [\-\-json] ...
+Manage local icon packs (add directory, install recipes or git/.tar.gz URLs,
+update clones, or install from \-\-from-bundle).
+.TP
 .B daemon [\-\-socket \fIpath\fR]
 Run the optional unix-socket resolve daemon (or under systemd socket activation).
 .TP
 .B mcp
-Run a stdio MCP server for coding agents (tools: resolve, prefetch, cache_*, override_*, version).
+Run a stdio MCP server for coding agents (tools: resolve, prefetch, sources_*,
+pack_*, override_*, cache_*, version). Prefer MCP tools over shelling the CLI when connected.
 .TP
 .B completion bash|zsh|fish
 Print a shell completion script to stdout.
@@ -51,6 +62,9 @@ Cache root parent (default ~/.cache). Assets live in $XDG_CACHE_HOME/appicon.
 .B XDG_CONFIG_HOME
 Config parent (default ~/.config). Reads appicon/overrides.json and sources.json.
 .TP
+.B XDG_DATA_HOME
+Data parent (default ~/.local/share). Packs default under appicon/packs/.
+.TP
 .B APPICON_THEME
 Default dark|light preference when \-\-theme is omitted.
 .TP
@@ -62,27 +76,31 @@ Override daemon socket path (default $XDG_RUNTIME_DIR/appicon.sock).
 .TP
 .B APPICON_NO_DAEMON
 When set, resolve never dials the daemon socket.
+.TP
+.B APPICON_OFFLINE
+When set, skip network (same as resolve \-\-offline); pack install/update refuse.
 .SH FILES
 .TP
 .I $XDG_CONFIG_HOME/appicon/overrides.json
 Query remaps (e.g. WM class to catalog name).
 .TP
 .I $XDG_CONFIG_HOME/appicon/sources.json
-Ordered logo sources: svgl, dir packs, http-index.
+Ordered resolve stages (file, overrides, xdg, pack, svgl, opt-in remotes, glyph).
+.TP
+.I $XDG_DATA_HOME/appicon/packs/
+Recommended local pack root.
 .TP
 .I $XDG_CACHE_HOME/appicon/
-Downloaded SVGs, http-index assets, and rasterized PNGs.
+Downloaded SVGs, CDN/github assets, glyph SVGs, and rasterized PNGs.
 .SH EXIT STATUS
 .TP
 .B 0
 Success.
 .TP
 .B 1
-Icon not found (resolve miss).
+Not found (supported miss for consumers).
 .TP
 .B 2
-Other error.
+Usage or configuration error.
 .SH SEE ALSO
-Documentation: https://github.com/bolens/appicon
-.SH LICENSE
-MIT for code only. Brand logos from upstream sources are third-party marks.
+docs/sources.md, docs/packs.md, docs/consumer-contract.md

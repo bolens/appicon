@@ -1,0 +1,285 @@
+package packs_test
+
+import (
+	"archive/tar"
+	"compress/gzip"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/bolens/appicon/internal/packs"
+)
+
+func TestInstallUpdateLocalGit(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	if err := os.MkdirAll(cfg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	src := t.TempDir()
+	icons := filepath.Join(src, "icons")
+	if err := os.MkdirAll(icons, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(icons, "foo.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run := func(dir string, args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = dir
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	run(src, "init", "-b", "main")
+	run(src, "add", ".")
+	run(src, "commit", "-m", "init")
+
+	orig := packs.Recipes["simple-icons"]
+	packs.Recipes["simple-icons"] = packs.Recipe{
+		Name:       "simple-icons",
+		Repo:       src,
+		Pin:        "main",
+		PackSubdir: "icons",
+	}
+	t.Cleanup(func() { packs.Recipes["simple-icons"] = orig })
+
+	if err := packs.Install(cfg, packs.InstallOpts{Target: "simple-icons"}); err != nil {
+		t.Fatal(err)
+	}
+	list, err := packs.List(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || !list[0].Exists {
+		t.Fatalf("list=%+v", list)
+	}
+	if err := packs.Update(cfg, "simple-icons", false); err != nil {
+		t.Fatal(err)
+	}
+	if err := packs.Install(cfg, packs.InstallOpts{Target: "simple-icons", Offline: true}); err != packs.ErrOffline {
+		t.Fatalf("offline want ErrOffline got %v", err)
+	}
+}
+
+func TestInstallFromGitURL(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	if err := os.MkdirAll(cfg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	src := t.TempDir()
+	if err := os.WriteFile(filepath.Join(src, "brand.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = src
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	run("init", "-b", "main")
+	run("add", ".")
+	run("commit", "-m", "init")
+
+	if err := packs.Install(cfg, packs.InstallOpts{
+		Target: "file://" + src,
+		Name:   "from-url",
+		Ref:    "main",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	list, err := packs.List(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, p := range list {
+		if p.Name == "from-url" && p.Exists {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("list=%+v", list)
+	}
+}
+
+func TestInstallFromArchiveURL(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	if err := os.MkdirAll(cfg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var archive []byte
+	{
+		buf := &writeBuffer{}
+		gz := gzip.NewWriter(buf)
+		tw := tar.NewWriter(gz)
+		body := []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`)
+		_ = tw.WriteHeader(&tar.Header{Name: "icons/foo.svg", Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg})
+		_, _ = tw.Write(body)
+		_ = tw.Close()
+		_ = gz.Close()
+		archive = buf.Bytes()
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/gzip")
+		_, _ = w.Write(archive)
+	}))
+	defer srv.Close()
+
+	url := srv.URL + "/mypack.tar.gz"
+	if !packs.IsArchiveURL(url) {
+		t.Fatalf("expected archive URL: %s", url)
+	}
+	if err := packs.Install(cfg, packs.InstallOpts{
+		Target: url,
+		Name:   "mypack",
+		Subdir: "icons",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	list, err := packs.List(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || list[0].Name != "mypack" || !list[0].Exists {
+		t.Fatalf("list=%+v", list)
+	}
+}
+
+func TestInstallUnknownRecipe(t *testing.T) {
+	err := packs.Install(t.TempDir(), packs.InstallOpts{Target: "nope"})
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestNameFromURLHelpers(t *testing.T) {
+	if !packs.IsURL("https://github.com/foo/bar.git") {
+		t.Fatal("https")
+	}
+	if !packs.IsURL("git@github.com:foo/bar.git") {
+		t.Fatal("git@")
+	}
+	if !packs.IsURL("file:///tmp/repo") {
+		t.Fatal("file")
+	}
+	if !packs.IsArchiveURL("https://example.com/x/pack.tar.gz") {
+		t.Fatal("tar.gz")
+	}
+	if packs.IsArchiveURL("https://github.com/foo/bar.git") {
+		t.Fatal("git should not be archive")
+	}
+	if packs.IsArchiveURL("file:///tmp/pack.tar.gz") {
+		t.Fatal("file archive should not use HTTP install path")
+	}
+	cases := map[string]string{
+		"https://github.com/org/My-Icons.git": "My-Icons",
+		"git@github.com:org/cool_pack.git":    "cool_pack",
+		"https://cdn.example/a/b/pack.tar.gz": "pack",
+		"https://example.com/icons.tgz":       "icons",
+	}
+	for in, want := range cases {
+		if got := packs.NameFromURL(in); got != want {
+			t.Fatalf("%s: got %q want %q", in, got, want)
+		}
+	}
+}
+
+func TestInstallFromGitURLDerivesNameAndSubdir(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	if err := os.MkdirAll(cfg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	src := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(src, "svg"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(src, "svg", "brand.svg"), []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run := func(args ...string) {
+		t.Helper()
+		cmd := exec.Command("git", args...)
+		cmd.Dir = src
+		cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@t", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@t")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
+		}
+	}
+	run("init", "-b", "main")
+	run("add", ".")
+	run("commit", "-m", "init")
+
+	// Name derived from path basename when --name omitted: last segment of file URL path
+	if err := packs.Install(cfg, packs.InstallOpts{
+		Target: "file://" + src,
+		Subdir: "svg",
+		Ref:    "main",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	list, err := packs.List(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || !list[0].Exists {
+		t.Fatalf("list=%+v", list)
+	}
+	if !strings.HasSuffix(list[0].Path, filepath.Join(list[0].Name, "svg")) && !strings.Contains(list[0].Path, string(filepath.Separator)+"svg") {
+		t.Fatalf("expected subdir in path: %+v", list[0])
+	}
+}
+
+func TestInstallArchiveURLNotFound(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	_ = os.MkdirAll(cfg, 0o755)
+	srv := httptest.NewServer(http.NotFoundHandler())
+	defer srv.Close()
+	err := packs.Install(cfg, packs.InstallOpts{Target: srv.URL + "/missing.tar.gz", Name: "x"})
+	if err == nil {
+		t.Fatal("expected HTTP error")
+	}
+}
+
+type writeBuffer struct {
+	b []byte
+}
+
+func (w *writeBuffer) Write(p []byte) (int, error) {
+	w.b = append(w.b, p...)
+	return len(p), nil
+}
+
+func (w *writeBuffer) Bytes() []byte { return w.b }

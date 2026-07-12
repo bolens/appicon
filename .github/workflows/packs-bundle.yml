@@ -1,0 +1,47 @@
+# Optional packs bundle (not part of the main binary release tarball).
+name: Packs bundle
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    name: Build appicon-packs-bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Clone pinned recipes
+        run: |
+          set -euo pipefail
+          ROOT="${RUNNER_TEMP}/packs"
+          mkdir -p "$ROOT"
+          # Pins must match internal/packs/packs.go Recipes.
+          git clone --depth 1 --branch 16.15.0 https://github.com/simple-icons/simple-icons.git "$ROOT/simple-icons"
+          git clone --depth 1 https://github.com/homarr-labs/dashboard-icons.git "$ROOT/dashboard-icons"
+          {
+            echo "appicon packs bundle"
+            echo
+            echo "Contains pinned checkouts of:"
+            echo "- simple-icons (https://github.com/simple-icons/simple-icons) — see LICENSE in tree"
+            echo "- dashboard-icons (https://github.com/homarr-labs/dashboard-icons) — see LICENSE in tree"
+            echo
+            echo "Install: appicon pack install --from-bundle appicon-packs-bundle.tar.gz"
+          } > "$ROOT/NOTICE"
+          tar -C "$ROOT" -czf appicon-packs-bundle.tar.gz NOTICE simple-icons dashboard-icons
+          ls -lh appicon-packs-bundle.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: appicon-packs-bundle
+          path: appicon-packs-bundle.tar.gz
+      - name: Attach to release (tag pushes only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Soft-fail if the release is not published yet; main release workflow may race.
+          gh release upload "${GITHUB_REF_NAME}" appicon-packs-bundle.tar.gz --clobber || true

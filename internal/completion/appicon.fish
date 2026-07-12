@@ -8,6 +8,8 @@ complete -c appicon -n __fish_use_subcommand -a resolve -d 'Resolve an icon quer
 complete -c appicon -n __fish_use_subcommand -a prefetch -d 'Warm the icon cache for queries'
 complete -c appicon -n __fish_use_subcommand -a cache -d 'Cache path/clear/stats/prune'
 complete -c appicon -n __fish_use_subcommand -a override -d 'Manage overrides.json remaps'
+complete -c appicon -n __fish_use_subcommand -a sources -d 'List effective resolve stage order'
+complete -c appicon -n __fish_use_subcommand -a pack -d 'Manage local icon packs'
 complete -c appicon -n __fish_use_subcommand -a daemon -d 'Run optional unix-socket resolve daemon'
 complete -c appicon -n __fish_use_subcommand -a mcp -d 'Run stdio MCP server for agents'
 complete -c appicon -n __fish_use_subcommand -a completion -d 'Print shell completion script'
@@ -21,6 +23,24 @@ complete -c appicon -n '__fish_seen_subcommand_from resolve' -l local -d 'Skip d
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l format -xa 'svg png'
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l size -r -d 'Pixel size'
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l theme -xa 'dark light'
+complete -c appicon -n '__fish_seen_subcommand_from resolve' -l order -r -d 'Stage type order override'
+
+complete -c appicon -n '__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list path' -a list -d 'List effective order'
+complete -c appicon -n '__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list path' -a path -d 'Print sources.json path'
+complete -c appicon -n '__fish_seen_subcommand_from sources' -l json -d 'Emit JSON'
+
+complete -c appicon -n '__fish_seen_subcommand_from pack; and not __fish_seen_subcommand_from list path add install update' -a list -d 'List packs'
+complete -c appicon -n '__fish_seen_subcommand_from pack; and not __fish_seen_subcommand_from list path add install update' -a path -d 'Print packs root'
+complete -c appicon -n '__fish_seen_subcommand_from pack; and not __fish_seen_subcommand_from list path add install update' -a add -d 'Register a pack directory'
+complete -c appicon -n '__fish_seen_subcommand_from pack; and not __fish_seen_subcommand_from list path add install update' -a install -d 'Clone a recipe pack'
+complete -c appicon -n '__fish_seen_subcommand_from pack; and not __fish_seen_subcommand_from list path add install update' -a update -d 'Refresh cloned packs'
+complete -c appicon -n '__fish_seen_subcommand_from pack' -l json -d 'Emit JSON'
+complete -c appicon -n '__fish_seen_subcommand_from pack' -l path -r -d 'Clone destination'
+complete -c appicon -n '__fish_seen_subcommand_from pack' -l name -r -d 'Pack name'
+complete -c appicon -n '__fish_seen_subcommand_from pack' -l subdir -r -d 'Pack root subdir'
+complete -c appicon -n '__fish_seen_subcommand_from pack' -l ref -r -d 'Git branch or tag'
+complete -c appicon -n '__fish_seen_subcommand_from pack' -l from-bundle -r -d 'Install from tarball'
+complete -c appicon -n '__fish_seen_subcommand_from pack' -l offline -d 'Refuse network'
 
 complete -c appicon -n '__fish_seen_subcommand_from daemon' -l socket -r -d 'Unix socket path'
 

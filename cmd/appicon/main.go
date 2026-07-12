@@ -56,6 +56,10 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return cmdCache(args[1:], stdout)
 	case "override":
 		return cmdOverride(args[1:], stdout, stderr)
+	case "sources":
+		return cmdSources(args[1:], stdout, stderr)
+	case "pack":
+		return cmdPack(args[1:], stdout, stderr)
 	case "mcp":
 		return cmdMCP(args[1:], stderr)
 	case "completion":
@@ -74,17 +78,20 @@ func printUsage(w io.Writer) {
 	_, _ = fmt.Fprintf(w, `appicon — resolve desktop / brand icons to local file paths
 
 Usage:
-  appicon resolve [--json] [--offline] [--local] [--format png|svg] [--size N] [--theme dark|light] <query>
+  appicon resolve [--json] [--offline] [--local] [--order T,…] [--format png|svg] [--size N] [--theme dark|light] <query>
   appicon prefetch <query>...
   appicon cache path|clear|stats|prune
   appicon override list|get|set|rm|path [--json] ...
+  appicon sources list|path [--json]
+  appicon pack list|path|add|install|update [--json] ...
   appicon daemon [--socket PATH]
   appicon mcp
   appicon completion bash|zsh|fish
   appicon man
   appicon version
 
-Resolve order: existing path → overrides.json → XDG icon theme / .desktop → sources (SVGL / local packs) → miss.
+Default resolve order: file → overrides → xdg → svgl.
+Customize via $XDG_CONFIG_HOME/appicon/sources.json (docs/sources.md, docs/packs.md).
 
 Exit codes (resolve/override get|rm): 0=ok, 1=not found (supported miss), 2=usage/error.
 --json always emits one object (path null + error on miss) before a non-zero exit.
@@ -92,14 +99,13 @@ Exit codes (resolve/override get|rm): 0=ok, 1=not found (supported miss), 2=usag
 Daemon: optional user socket at $XDG_RUNTIME_DIR/appicon.sock; resolve dials it when present
 (unless --local or APPICON_NO_DAEMON=1) and falls back to in-process resolve.
 
-MCP: run "appicon mcp" over stdio for agent tooling (resolve, prefetch, cache_*, override_*, version).
+MCP: run "appicon mcp" over stdio (resolve, prefetch, sources_*, pack_*, override_*, cache_*, version).
 
 Completions: eval "$(appicon completion bash)"  # or zsh/fish; see README.
 
 Consumer contract: docs/consumer-contract.md
 `)
 }
-
 func cmdDaemon(args []string, stderr io.Writer) error {
 	fs := flag.NewFlagSet("daemon", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -167,6 +173,7 @@ func cmdResolve(args []string, stdout, stderr io.Writer) error {
 	format := fs.String("format", "svg", "output format: svg|png")
 	size := fs.Int("size", 48, "pixel size for png (and XDG size preference)")
 	theme := fs.String("theme", "", "prefer dark|light variants when available")
+	order := fs.String("order", "", "comma-separated stage types override (see docs/sources.md)")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -179,6 +186,7 @@ func cmdResolve(args []string, stdout, stderr io.Writer) error {
 		Size:    *size,
 		Theme:   *theme,
 		Offline: *offline,
+		Order:   parseOrderFlag(*order),
 	}
 	ctx := context.Background()
 	var (

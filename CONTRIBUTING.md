@@ -16,7 +16,7 @@ make build
 1. Implement behind the packages in `internal/`.
 2. Add unit tests (XDG fixtures under `testdata/`, SVGL via `httptest`).
 3. `make check-fast` locally; `make check` before opening a PR if tools are available.
-4. Update [README.md](README.md) / [docs/plan.md](docs/plan.md) when behavior changes.
+4. Update [README.md](README.md), [docs/consumer-contract.md](docs/consumer-contract.md), and stage docs ([docs/sources.md](docs/sources.md) / [docs/packs.md](docs/packs.md)) when behavior changes.
 
 ## Checks
 

@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- Fully reorderable resolve stages (`file`, `overrides`, `xdg`, packs, SVGL, opt-in CDN/github/glyph) via `sources.json` and `resolve --order`
+- `appicon sources` / `appicon pack` (+ MCP `sources_*` / `pack_*`); pack recipes, URL install (git / `.tar.gz`), update, and `--from-bundle`
+- Opt-in `simple-icons`, `dashboard-icons`, `github`, and `glyph` stages
+- Docs: [docs/sources.md](docs/sources.md), [docs/packs.md](docs/packs.md); deferred ideas in [docs/deferred.md](docs/deferred.md)
+
 ## [0.1.2] — 2026-07-12
 
 ### Added

@@ -152,10 +152,16 @@ jobs:
           - ./internal/cache
           - ./internal/completion
           - ./internal/daemon
+          - ./internal/dashboardicons
+          - ./internal/githubicon
+          - ./internal/glyph
           - ./internal/httpindex
           - ./internal/pack
+          - ./internal/packs
           - ./internal/raster
           - ./internal/resolve
+          - ./internal/simpleicons
+          - ./internal/slugcdn
           - ./internal/svgl
           - ./internal/xdg
     steps:
@@ -164,6 +170,10 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: go test ${{ matrix.package }}
+        env:
+          XDG_CACHE_HOME: ${{ runner.temp }}/xdg-cache
+          XDG_CONFIG_HOME: ${{ runner.temp }}/xdg-config
+          XDG_DATA_HOME: ${{ runner.temp }}/xdg-data
         run: go test ${{ matrix.package }}
 
   vet-fmt:
