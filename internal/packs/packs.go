@@ -385,11 +385,10 @@ func extractTarGZInto(archive, dest string) error {
 		if err != nil {
 			return err
 		}
-		name := filepath.Clean(hdr.Name)
-		if name == "." || strings.HasPrefix(name, "..") {
-			continue
+		target, err := safeArchiveJoin(dest, hdr.Name)
+		if err != nil {
+			return err
 		}
-		target := filepath.Join(dest, name)
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(target, 0o755); err != nil {
@@ -411,6 +410,31 @@ func extractTarGZInto(archive, dest string) error {
 		}
 	}
 	return nil
+}
+
+// safeArchiveJoin joins root and an archive entry name, rejecting Zip Slip
+// (absolute paths, ".." segments, or any path that resolves outside root).
+func safeArchiveJoin(root, entry string) (string, error) {
+	if entry == "" {
+		return "", fmt.Errorf("empty archive entry")
+	}
+	// CodeQL / Zip Slip: refuse ".." in the raw entry before Join.
+	if strings.Contains(entry, "..") {
+		return "", fmt.Errorf("archive entry escapes destination: %q", entry)
+	}
+	cleaned := filepath.Clean(entry)
+	if cleaned == "." {
+		return "", fmt.Errorf("archive entry escapes destination: %q", entry)
+	}
+	if filepath.IsAbs(cleaned) {
+		return "", fmt.Errorf("archive entry is absolute: %q", entry)
+	}
+	target := filepath.Join(root, cleaned)
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("archive entry escapes destination: %q", entry)
+	}
+	return target, nil
 }
 
 // NameFromURL derives a pack name from a git or archive URL.
@@ -543,18 +567,21 @@ func InstallBundle(configDir, bundlePath string) error {
 		if err != nil {
 			return err
 		}
-		name := filepath.Clean(hdr.Name)
-		if name == "." || strings.HasPrefix(name, "..") {
-			continue
+		target, err := safeArchiveJoin(root, hdr.Name)
+		if err != nil {
+			return err
 		}
-		target := filepath.Join(root, name)
+		rel, err := filepath.Rel(root, target)
+		if err != nil {
+			return err
+		}
+		top := strings.Split(rel, string(os.PathSeparator))[0]
 		switch hdr.Typeflag {
 		case tar.TypeDir:
 			if err := os.MkdirAll(target, 0o755); err != nil {
 				return err
 			}
-			top := strings.Split(name, string(os.PathSeparator))[0]
-			if top != "" {
+			if top != "" && top != "." {
 				registered[top] = filepath.Join(root, top)
 			}
 		case tar.TypeReg:
@@ -570,8 +597,7 @@ func InstallBundle(configDir, bundlePath string) error {
 				return err
 			}
 			_ = out.Close()
-			top := strings.Split(name, string(os.PathSeparator))[0]
-			if top != "" {
+			if top != "" && top != "." {
 				registered[top] = filepath.Join(root, top)
 			}
 		}

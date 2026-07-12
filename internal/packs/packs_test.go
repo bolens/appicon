@@ -260,6 +260,110 @@ func TestInstallFromGitURLDerivesNameAndSubdir(t *testing.T) {
 	}
 }
 
+func TestInstallBundleRejectsZipSlip(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	if err := os.MkdirAll(cfg, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	outside := filepath.Join(dataHome, "should-not-exist")
+	body := []byte("pwned")
+	var buf writeBuffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	_ = tw.WriteHeader(&tar.Header{
+		Name:     "../should-not-exist",
+		Mode:     0o644,
+		Size:     int64(len(body)),
+		Typeflag: tar.TypeReg,
+	})
+	_, _ = tw.Write(body)
+	_ = tw.Close()
+	_ = gz.Close()
+
+	bundle := filepath.Join(t.TempDir(), "bundle.tar.gz")
+	if err := os.WriteFile(bundle, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := packs.InstallBundle(cfg, bundle)
+	if err == nil {
+		t.Fatal("expected Zip Slip rejection")
+	}
+	if !strings.Contains(err.Error(), "escapes destination") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, err := os.Stat(outside); !os.IsNotExist(err) {
+		t.Fatalf("Zip Slip wrote outside pack root: %v", err)
+	}
+}
+
+func TestInstallBundleRejectsAbsoluteEntry(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	_ = os.MkdirAll(cfg, 0o755)
+
+	body := []byte("nope")
+	var buf writeBuffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	_ = tw.WriteHeader(&tar.Header{
+		Name:     "/tmp/appicon-zipslip-absolute",
+		Mode:     0o644,
+		Size:     int64(len(body)),
+		Typeflag: tar.TypeReg,
+	})
+	_, _ = tw.Write(body)
+	_ = tw.Close()
+	_ = gz.Close()
+
+	bundle := filepath.Join(t.TempDir(), "bundle.tar.gz")
+	if err := os.WriteFile(bundle, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := packs.InstallBundle(cfg, bundle)
+	if err == nil {
+		t.Fatal("expected absolute entry rejection")
+	}
+}
+
+func TestInstallArchiveURLRejectsZipSlip(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	_ = os.MkdirAll(cfg, 0o755)
+
+	body := []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`)
+	var buf writeBuffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	_ = tw.WriteHeader(&tar.Header{
+		Name:     "../../evil.svg",
+		Mode:     0o644,
+		Size:     int64(len(body)),
+		Typeflag: tar.TypeReg,
+	})
+	_, _ = tw.Write(body)
+	_ = tw.Close()
+	_ = gz.Close()
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(buf.Bytes())
+	}))
+	defer srv.Close()
+
+	err := packs.Install(cfg, packs.InstallOpts{Target: srv.URL + "/pack.tar.gz", Name: "zipslip"})
+	if err == nil {
+		t.Fatal("expected Zip Slip rejection")
+	}
+	if !strings.Contains(err.Error(), "escapes destination") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestInstallArchiveURLNotFound(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
