@@ -1,0 +1,21 @@
+# Binaries
+/appicon
+/bin/
+/dist/
+*.exe
+
+# Test / coverage
+coverage.out
+coverage.html
+*.test
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Local tool caches (CI downloads)
+.cache/
+.tools/
