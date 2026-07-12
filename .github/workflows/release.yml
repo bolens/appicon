@@ -29,7 +29,12 @@ jobs:
             GOOS=linux GOARCH="${pair}" CGO_ENABLED=0 \
               go build -ldflags "-X github.com/bolens/appicon/internal/version.Version=${ver}" \
               -o "${out}/appicon" ./cmd/appicon
-            tar -C "${out}" -czf "dist/appicon_${ver}_linux_${pair}.tar.gz" appicon
+            mkdir -p "${out}/completions" "${out}/man/man1"
+            cp internal/completion/appicon.bash "${out}/completions/"
+            cp internal/completion/appicon.zsh "${out}/completions/"
+            cp internal/completion/appicon.fish "${out}/completions/"
+            cp internal/completion/appicon.1 "${out}/man/man1/"
+            tar -C "${out}" -czf "dist/appicon_${ver}_linux_${pair}.tar.gz" appicon completions man
             rm -rf "${out}"
           done
           (cd dist && sha256sum ./*.tar.gz > SHA256SUMS)

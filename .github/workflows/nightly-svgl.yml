@@ -1,0 +1,28 @@
+name: Nightly SVGL smoke
+
+# Live resolve against api.svgl.app — not required to merge.
+# Runs on a schedule and on manual dispatch.
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # 06:17 UTC daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  svgl-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22.x"
+
+      - name: Build
+        run: make build
+
+      - name: Live resolve (known titles)
+        run: bash scripts/ci/nightly-svgl-smoke.sh

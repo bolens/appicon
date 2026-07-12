@@ -30,13 +30,43 @@ func xdgEnv(t *testing.T) (share, flatpak, cache string) {
 	return share, flatpak, cache
 }
 
-func TestCLIVersion(t *testing.T) {
-	out, _, err := captureRun("version")
+func TestCLIHelpMentionsMCP(t *testing.T) {
+	_, errOut, err := captureRun("help")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.TrimSpace(out) == "" {
-		t.Fatal("empty version")
+	if !strings.Contains(errOut, "appicon mcp") {
+		t.Fatalf("usage missing mcp: %s", errOut)
+	}
+	if !strings.Contains(errOut, "completion") {
+		t.Fatalf("usage missing completion: %s", errOut)
+	}
+}
+
+func TestCLIMCPRejectsArgs(t *testing.T) {
+	_, _, err := captureRun("mcp", "nope")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestCLICompletionBash(t *testing.T) {
+	out, _, err := captureRun("completion", "bash")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "_appicon") {
+		t.Fatalf("unexpected script: %s", out[:min(80, len(out))])
+	}
+}
+
+func TestCLIMan(t *testing.T) {
+	out, _, err := captureRun("man")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, ".TH APPICON") {
+		t.Fatal("not a man page")
 	}
 }
 

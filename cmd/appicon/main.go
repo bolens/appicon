@@ -11,6 +11,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/bolens/appicon/internal/appmcp"
+	"github.com/bolens/appicon/internal/completion"
 	"github.com/bolens/appicon/internal/resolve"
 	"github.com/bolens/appicon/internal/version"
 )
@@ -48,6 +50,12 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return cmdPrefetch(args[1:], stderr)
 	case "cache":
 		return cmdCache(args[1:], stdout)
+	case "mcp":
+		return cmdMCP(args[1:], stderr)
+	case "completion":
+		return cmdCompletion(args[1:], stdout, stderr)
+	case "man":
+		return cmdMan(args[1:], stdout, stderr)
 	default:
 		printUsage(stderr)
 		return fmt.Errorf("unknown command %q", args[0])
@@ -61,12 +69,61 @@ Usage:
   appicon resolve [--json] [--offline] [--format png|svg] [--size N] [--theme dark|light] <query>
   appicon prefetch <query>...
   appicon cache path|clear|stats|prune
+  appicon mcp
+  appicon completion bash|zsh|fish
+  appicon man
   appicon version
 
 Resolve order: existing path → XDG icon theme / .desktop → sources (SVGL / local packs) → miss.
 
+MCP: run "appicon mcp" over stdio for agent tooling (resolve, prefetch, cache_*, version).
+
+Completions: eval "$(appicon completion bash)"  # or zsh/fish; see README.
+
 See README.md and docs/plan.md for design details.
 `)
+}
+
+func cmdMCP(args []string, stderr io.Writer) error {
+	fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("mcp takes no arguments (stdio transport)")
+	}
+	return appmcp.RunStdio(context.Background(), appmcp.Options{})
+}
+
+func cmdCompletion(args []string, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("completion", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("completion requires bash|zsh|fish")
+	}
+	script, err := completion.Script(fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	_, err = io.WriteString(stdout, script)
+	return err
+}
+
+func cmdMan(args []string, stdout, stderr io.Writer) error {
+	fs := flag.NewFlagSet("man", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("man takes no arguments")
+	}
+	_, err := io.WriteString(stdout, completion.ManPage())
+	return err
 }
 
 func cmdResolve(args []string, stdout, stderr io.Writer) error {

@@ -9,11 +9,14 @@ appicon resolve --offline some-cached-app
 appicon prefetch firefox discord
 appicon cache stats
 appicon cache prune
+appicon mcp   # stdio MCP for agents
+appicon completion bash   # print completion script
+appicon man | man -l -    # view man page
 ```
 
 **Resolve order:** existing path → FreeDesktop icon theme / `.desktop` → configured sources ([SVGL](https://svgl.app/) and/or local packs) → miss.
 
-XDG, SVGL (cache-first), local logo packs (`sources.json`), PNG rasterization, `--offline`, and `cache prune` are implemented. Remaining v1: cut `v0.1.0`, then waybar-config consumer. See [docs/plan.md](docs/plan.md).
+XDG, SVGL (cache-first), local logo packs (`sources.json`), PNG rasterization, `--offline`, `cache prune`, MCP, and shell completions are implemented. See [docs/plan.md](docs/plan.md).
 
 **PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`.
 
@@ -33,7 +36,58 @@ Example — local [Simple Icons](https://github.com/simple-icons/simple-icons) /
 
 Do not point `http-index` at third-party CDNs unless you control the allowlist and accept their terms; prefer cloning packs locally.
 
-## Install (after first release)
+## MCP (agents)
+
+Run the same binary as a stdio MCP server — tools call `internal/resolve` (no extra download logic):
+
+```bash
+appicon mcp
+```
+
+| Tool | Mirrors |
+|------|---------|
+| `resolve` | `appicon resolve --json` |
+| `prefetch` | `appicon prefetch` |
+| `cache_stats` / `cache_clear` / `cache_prune` | matching `cache` subcommands |
+| `version` | `appicon version` |
+
+Example Cursor / Claude Desktop snippet:
+
+```json
+{
+  "mcpServers": {
+    "appicon": {
+      "command": "appicon",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+Agents should call `resolve` only — never invent SVGL URLs in other repos.
+
+## Shell completions
+
+```bash
+# bash
+eval "$(appicon completion bash)"
+# or install: appicon completion bash > ~/.local/share/bash-completion/completions/appicon
+
+# zsh
+appicon completion zsh > "${fpath[1]}/_appicon"   # then: compinit
+
+# fish
+appicon completion fish > ~/.config/fish/completions/appicon.fish
+```
+
+## Man page
+
+```bash
+appicon man | man -l -
+# or: appicon man > /usr/local/share/man/man1/appicon.1
+```
+
+## Install
 
 ```bash
 ver=v0.1.0
@@ -47,9 +101,9 @@ install -m 755 appicon ~/.local/bin/appicon
 appicon version   # → v0.1.0
 ```
 
-Checksums: download `SHA256SUMS` from the same release and verify before install. waybar-config will pin this via `install-appicon.sh`.
+Checksums: download `SHA256SUMS` from the same release and verify before install. [waybar-config](https://github.com/bolens/waybar-config) pins this via `make install-appicon`.
 
-Until releases exist:
+From source:
 
 ```bash
 git clone https://github.com/bolens/appicon.git
@@ -63,6 +117,26 @@ make build
 Remote assets live under `$XDG_CACHE_HOME/appicon` (default `~/.cache/appicon`). XDG hits return theme paths directly and are not copied. Optional overrides: `$XDG_CONFIG_HOME/appicon/overrides.json`.
 
 Brand logos from SVGL are third-party marks — cached for personal use; this project does not redistribute a logo pack.
+
+## Examples
+
+Shell-out-only consumers (no SVGL URLs):
+
+```bash
+bash examples/rofi-appicon.sh
+bash examples/walker-appicon.sh firefox
+bash examples/notify-appicon.sh firefox "Hello" "Icon from appicon"
+```
+
+## Nix
+
+```bash
+nix flake lock    # once
+nix run github:bolens/appicon -- version
+# local: fix vendorHash in flake.nix after first `nix build` (see nix/README.md)
+```
+
+Home Manager: `programs.appicon.enable = true` via `homeManagerModules.default` (add the flake overlay or set `package`).
 
 ## Development
 

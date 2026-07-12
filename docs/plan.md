@@ -1,6 +1,6 @@
 ---
 name: Standalone appicon CLI
-overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. v0.1.0 shipped; waybar-config consumer done; next is MCP/completions/packaging."
+overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. Core + MCP + completions + Nix/HM + nightly SVGL done; optional release signing left."
 todos:
   - id: scaffold-repo
     content: Clone bolens/appicon into /home/panda/dev/appicon; scaffold Go module, Makefile, LICENSE, CONTRIBUTING, AGENTS, README; push
@@ -34,25 +34,25 @@ todos:
     status: completed
   - id: mcp-server
     content: "Post-v1: MCP server wrapping resolve/prefetch/cache so agents can call appicon without shelling out"
-    status: pending
-  - id: nix-flake
-    content: "Post-v1: flake.nix (build + apps.appicon) for nix run / nix profile; same packaging tier as AUR"
-    status: pending
-  - id: home-manager
-    content: "Post-v1: Home Manager module (programs.appicon.enable) pairing with the flake"
-    status: pending
+    status: completed
   - id: cli-polish
     content: "Post-v1: shell completions (bash/zsh/fish), man page"
-    status: pending
+    status: completed
+  - id: nix-flake
+    content: "Post-v1: flake.nix (build + apps.appicon) for nix run / nix profile; same packaging tier as AUR"
+    status: completed
+  - id: home-manager
+    content: "Post-v1: Home Manager module (programs.appicon.enable) pairing with the flake"
+    status: completed
   - id: nightly-svgl
     content: "Post-v1: nightly/workflow_dispatch live SVGL smoke (1–2 titles); not required to merge"
-    status: pending
+    status: completed
   - id: release-signing
     content: "Post-v1: optional cosign/sigstore signing beyond SHA256SUMS"
     status: pending
   - id: extra-consumers
     content: "Post-v1: Rofi/walker + notification helper examples (shell out to appicon only)"
-    status: pending
+    status: completed
 isProject: false
 ---
 
@@ -60,7 +60,7 @@ isProject: false
 
 ## Progress (2026-07-12)
 
-**Repo:** [bolens/appicon](https://github.com/bolens/appicon) at `/home/panda/dev/appicon`. Local `main` is ahead of `origin` with the resolve implementation (not required to be pushed for this plan doc).
+**Repo:** [bolens/appicon](https://github.com/bolens/appicon) at `/home/panda/dev/appicon`.
 
 | Area | Status |
 |------|--------|
@@ -74,12 +74,16 @@ isProject: false
 | Overrides (`overrides.json`) + CLI `--json` e2e tests | **Done** |
 | Tag **`v0.1.0`** + checksummed release assets | **Done** — [v0.1.0](https://github.com/bolens/appicon/releases/tag/v0.1.0) |
 | waybar-config install + dock CSS proof | **Done** — `make install-appicon` + `icons.appicon` in waybar-config |
-| MCP server for agent tooling | Post-v1 |
-| Completions/man, Nix/AUR/Home Manager, nightly live SVGL | Post-v1 |
+| MCP server (`appicon mcp`) | **Done** — `internal/appmcp` + stdio tools |
+| Completions + man (`appicon completion`, `appicon man`) | **Done** |
+| Nix flake + Home Manager module | **Done** — `flake.nix`, `nix/home-manager.nix` (set `vendorHash` on first build) |
+| Nightly live SVGL smoke | **Done** — `.github/workflows/nightly-svgl.yml` |
+| Extra consumer examples | **Done** — `examples/{rofi,walker,notify}-appicon.sh` |
+| Release signing (cosign) | Post-v1 optional |
 
-**Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/version`.
+**Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/version`.
 
-**Tests:** fixture trees under `testdata/xdg` + `testdata/svgl`; httptest for SVGL/http-index; CLI e2e in `cmd/appicon`; behavioral resolve-order tests in `internal/resolve`. `make check` is the gate.
+**Tests:** fixture trees under `testdata/xdg` + `testdata/svgl`; httptest for SVGL/http-index; CLI e2e in `cmd/appicon`; behavioral resolve-order tests in `internal/resolve`; MCP in-memory session tests in `internal/appmcp`. `make check` is the gate.
 
 ## Decision
 
@@ -139,6 +143,9 @@ flowchart LR
 | `appicon resolve --offline` | No network | **Done** |
 | `appicon prefetch <query>...` | Warm cache | **Done** |
 | `appicon cache path\|clear\|stats\|prune` | Cache management | **Done** |
+| `appicon mcp` | Stdio MCP tools (resolve/prefetch/cache/version) | **Done** |
+| `appicon completion bash\|zsh\|fish` | Print shell completion script | **Done** |
+| `appicon man` | Print embedded man page | **Done** |
 | `appicon version` | Semver from release ldflags | **Done** |
 
 **Query inputs:** app id, WM class, `foo.desktop`, display name, Steam appid, or filesystem path.
@@ -229,13 +236,13 @@ Follow-ups after a tagged release + Waybar proof.
 
 ### Packaging / install
 
-| Item | Notes |
-|------|-------|
-| **Nix flake** | `flake.nix`: package + `apps.appicon` for `nix run github:bolens/appicon` |
-| **Home Manager** | `programs.appicon.enable` (pairs with flake) |
-| **AUR** | Same tier as flake — optional beside GitHub release tarballs |
-| **Release signing** | Optional cosign/sigstore in addition to `SHA256SUMS` |
-| **Completions + man** | bash/zsh/fish completions; short man page |
+| Item | Notes | Status |
+|------|-------|--------|
+| **Completions + man** | `appicon completion` / `appicon man`; scripts + man1 in release tarball | **Done** |
+| **Nix flake** | `flake.nix`: package + `apps.appicon` for `nix run` | **Done** (update `vendorHash`) |
+| **Home Manager** | `programs.appicon.enable` via `homeManagerModules.default` | **Done** |
+| **AUR** | Same tier as flake — optional beside GitHub release tarballs | Pending |
+| **Release signing** | Optional cosign/sigstore in addition to `SHA256SUMS` | Pending |
 
 ### Pluggable logo sources
 
@@ -267,16 +274,12 @@ path → XDG → dir packs (user) → svgl → miss
 
 ### Extra consumers / CI
 
-- Rofi / walker examples; notification helper notes — shell-out only
-- Nightly or `workflow_dispatch` live SVGL smoke (1–2 titles); not required to merge
+- **Done:** `examples/rofi-appicon.sh`, `examples/walker-appicon.sh`, `examples/notify-appicon.sh` — shell-out only
+- **Done:** Nightly / `workflow_dispatch` live SVGL smoke (`.github/workflows/nightly-svgl.yml`)
 
 ### MCP server (agent tooling)
 
-**Why:** Coding agents (Cursor, Claude Code, etc.) already speak MCP. A thin server lets them resolve icons, prefetch, and inspect cache without inventing shell commands or embedding SVGL URLs.
-
-**Placement:** live in this repo (e.g. `cmd/appicon-mcp` or `appicon mcp` subcommand) so one release ships CLI + MCP; consumers only need the binary on `PATH`.
-
-**Transport:** stdio MCP (default for local agent configs). Optional later: same JSON tools over the deferred unix socket if a daemon exists.
+**Status:** **Done** — `appicon mcp` via `internal/appmcp` (official Go MCP SDK, stdio).
 
 **Tools (map 1:1 to CLI; no new resolve logic):**
 
@@ -285,15 +288,15 @@ path → XDG → dir packs (user) → svgl → miss
 | `resolve` | `appicon resolve --json` | args: `query`, optional `format`, `size`, `theme`, `offline`; returns path/source/cached/error |
 | `prefetch` | `appicon prefetch` | args: `queries[]` |
 | `cache_stats` | `appicon cache stats` | |
-| `cache_clear` / `cache_prune` | matching subcommands | destructive — document clearly |
+| `cache_clear` / `cache_prune` | matching subcommands | destructive — documented in tool descriptions |
 | `version` | `appicon version` | |
 
 **Rules:**
 
 - Call into `internal/resolve` (same as CLI) — **never** reimplement download/allowlist in the MCP layer.
 - Still no SVGL URLs in agent prompts or other repos; agents call `resolve` only.
-- Ship example Cursor/Claude MCP config snippet in README (`command`: `appicon`, `args`: `["mcp"]` or path to `appicon-mcp`).
-- Tests: MCP tool unit tests with fixture XDG roots + injected clients (same pattern as CLI e2e); no live network required.
+- Example Cursor/Claude config in README (`command`: `appicon`, `args`: `["mcp"]`).
+- Tests: in-memory MCP session tests with fixture XDG roots (`internal/appmcp`); no live network required.
 
 **Out of scope for the MCP:** browsing remote catalogs in-agent, writing `overrides.json` without an explicit tool, or exposing raw HTTP downloads.
 
@@ -306,6 +309,8 @@ path → XDG → dir packs (user) → svgl → miss
 5. ~~CI workflows + `make check`~~
 6. ~~`--offline`, prune, packs, http-index, Steam, Snap~~
 7. ~~Cut `v0.1.0` with checksums~~
-8. waybar-config install + dock CSS proof ← current
-9. (post-v1) MCP server for agents; completions/man; Nix / Home Manager / AUR; optional release signing
-10. (post-v1) Extra consumers + nightly live SVGL job
+8. ~~waybar-config install + dock CSS proof~~
+9. ~~MCP server for agents~~
+10. ~~Completions/man~~
+11. ~~Nix / Home Manager; nightly SVGL; extra consumer examples~~
+12. (optional) AUR package; cosign/sigstore release signing

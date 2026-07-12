@@ -6,13 +6,14 @@ Short rules for AI coding agents in this repository.
 
 - This is a standalone Go CLI: `github.com/bolens/appicon`.
 - Consumers (e.g. [waybar-config](https://github.com/bolens/waybar-config)) shell out to `appicon resolve` and get a local path.
-- Do **not** embed SVGL URLs or download logic in consumer repos — only call this binary.
+- Agents can also run `appicon mcp` (stdio MCP) — tools wrap the same resolve path.
+- Do **not** embed SVGL URLs or download logic in consumer repos — only call this binary / MCP tools.
 
 ## Source of truth
 
 - Design / remaining work: [docs/plan.md](docs/plan.md) (also mirrored under `.cursor/plans/`).
-- Public CLI: `cmd/appicon`.
-- Packages: `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/cache`, `internal/raster`.
+- Public CLI: `cmd/appicon` (`resolve`, `prefetch`, `cache`, `mcp`, `completion`, `man`, `version`).
+- Packages: `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`.
 
 ## Do / don’t
 
@@ -20,6 +21,7 @@ Short rules for AI coding agents in this repository.
 - **Do** allowlist download hosts (`api.svgl.app`, `svgl.app`).
 - **Do** add fixture/`httptest` tests — no live network required to merge.
 - **Do** run `make check-fast` before committing.
+- **Do** keep MCP tools thin wrappers over `internal/resolve` — no second download path.
 - **Don’t** vendor SVGL’s full catalog into releases.
 - **Don’t** commit secrets or live API tokens (none are required today).
 
