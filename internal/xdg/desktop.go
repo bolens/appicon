@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -14,6 +15,7 @@ type DesktopEntry struct {
 	Name           string
 	Icon           string
 	StartupWMClass string
+	Exec           string
 }
 
 func parseDesktopFile(path string) (DesktopEntry, error) {
@@ -62,12 +64,26 @@ func parseDesktopFile(path string) (DesktopEntry, error) {
 			if e.StartupWMClass == "" {
 				e.StartupWMClass = val
 			}
+		case "Exec":
+			if e.Exec == "" {
+				e.Exec = val
+			}
 		}
 	}
 	if err := sc.Err(); err != nil {
 		return DesktopEntry{}, err
 	}
 	return e, nil
+}
+
+var steamAppIDRe = regexp.MustCompile(`(?i)^(?:steam_app_|steam_icon_)?(\d+)$`)
+
+func steamAppID(query string) (string, bool) {
+	m := steamAppIDRe.FindStringSubmatch(strings.TrimSpace(query))
+	if m == nil {
+		return "", false
+	}
+	return m[1], true
 }
 
 func (f *Finder) findDesktop(query string) (DesktopEntry, bool) {
@@ -82,10 +98,18 @@ func (f *Finder) findDesktop(query string) (DesktopEntry, bool) {
 		byID    DesktopEntry
 		byClass DesktopEntry
 		byName  DesktopEntry
+		bySteam DesktopEntry
 		foundID bool
 		foundCl bool
 		foundNm bool
+		foundSt bool
 	)
+
+	appID, hasSteamID := steamAppID(q)
+	steamNeedle := ""
+	if hasSteamID {
+		steamNeedle = "steam://rungameid/" + appID
+	}
 
 	for _, dir := range f.applicationDirs() {
 		entries, err := os.ReadDir(dir)
@@ -115,6 +139,14 @@ func (f *Finder) findDesktop(query string) (DesktopEntry, bool) {
 				byName = desk
 				foundNm = true
 			}
+			if hasSteamID && !foundSt {
+				if idLower == "steam_app_"+appID ||
+					strings.EqualFold(desk.StartupWMClass, "steam_app_"+appID) ||
+					strings.Contains(strings.ToLower(desk.Exec), steamNeedle) {
+					bySteam = desk
+					foundSt = true
+				}
+			}
 		}
 	}
 
@@ -123,6 +155,8 @@ func (f *Finder) findDesktop(query string) (DesktopEntry, bool) {
 		return byID, true
 	case foundCl:
 		return byClass, true
+	case foundSt:
+		return bySteam, true
 	case foundNm:
 		return byName, true
 	default:

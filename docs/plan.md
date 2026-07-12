@@ -36,8 +36,8 @@ todos:
     content: "Post-v1: http-index + docs for Simple Icons / dashboard-icons dir packs"
     status: completed
   - id: resolve-quality
-    content: "Post-v1: Steam/games heuristics; Snap export dirs (Snap done)"
-    status: pending
+    content: "Post-v1: Steam/games heuristics + Snap export dirs"
+    status: completed
   - id: nightly-svgl
     content: "Post-v1: nightly/workflow_dispatch live SVGL smoke (1–2 titles); not required to merge"
     status: pending
@@ -181,8 +181,8 @@ Follow-ups after a tagged release + Waybar proof. Same packaging tier as each ot
 | Item | Notes |
 |------|-------|
 | **Steam / games** | Heuristics for Steam shortcuts / `steam_appid` / common game `.desktop` misses |
+| **Steam / games** | **Done** — `steam_app_<id>` / numeric appid / `steam://rungameid/` Exec + `steam_icon_<id>` fallback |
 | **Snap exports** | **Done** — `/var/lib/snapd/desktop` alongside Flatpak export shares |
-| **Steam / games** | Heuristics for Steam shortcuts / `steam_appid` / common game `.desktop` misses |
 
 ### Pluggable logo sources (supplement SVGL)
 

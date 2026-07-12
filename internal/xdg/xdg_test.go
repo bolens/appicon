@@ -159,6 +159,35 @@ func TestResolveSnapDesktop(t *testing.T) {
 	}
 }
 
+func TestResolveSteamByAppID(t *testing.T) {
+	t.Parallel()
+	f := testFinder(t, 48, "hicolor")
+	for _, q := range []string{"730", "steam_app_730", "steam_icon_730"} {
+		res, err := f.Resolve(q)
+		if err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+		if res.IconName != "steam_icon_730" {
+			t.Fatalf("%s: icon=%q", q, res.IconName)
+		}
+		if filepath.Base(res.Path) != "steam_icon_730.png" {
+			t.Fatalf("%s: path=%s", q, res.Path)
+		}
+	}
+}
+
+func TestResolveSteamByGameName(t *testing.T) {
+	t.Parallel()
+	f := testFinder(t, 48, "hicolor")
+	res, err := f.Resolve("Counter-Strike 2")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IconName != "steam_icon_730" {
+		t.Fatalf("icon=%q", res.IconName)
+	}
+}
+
 func TestResolveMissing(t *testing.T) {
 	t.Parallel()
 	f := testFinder(t, 48, "hicolor")

@@ -33,7 +33,10 @@ todos:
     content: "Post-v1: shell completions (bash/zsh/fish), man page (--offline + cache prune done)"
     status: pending
   - id: pluggable-sources
-    content: "Post-v1: http-index + docs for Simple Icons / dashboard-icons dir packs (dir + sources.json done)"
+    content: "Post-v1: http-index + docs for Simple Icons / dashboard-icons dir packs"
+    status: completed
+  - id: resolve-quality
+    content: "Post-v1: Steam/games heuristics; Snap export dirs (Snap done)"
     status: pending
   - id: nightly-svgl
     content: "Post-v1: nightly/workflow_dispatch live SVGL smoke (1–2 titles); not required to merge"
@@ -90,7 +93,7 @@ flowchart LR
 | **Atomic cache** | Write `.tmp` + rename; simple file lock for catalog refresh. |
 | **License / brands** | MIT (or Apache-2.0) for **code only**. README: SVGL/brand logos are third-party marks — cache locally, do not republish a logo pack in releases. |
 | **Install integrity** | Release assets + `SHA256SUMS`; waybar `install-appicon.sh` verifies checksum. |
-| **Flatpak** | Resolve `.desktop` under Flatpak export dirs (same idea as waybar `xdg-applications.sh`). Snap: post-v1 best-effort. |
+| **Flatpak** | Resolve `.desktop` under Flatpak export dirs (same idea as waybar `xdg-applications.sh`). Snap: `/var/lib/snapd/desktop`. |
 | **Docs for agents** | Repo gets `AGENTS.md` + `CONTRIBUTING.md` (check gates, no secret commits). |
 
 ## CLI surface
@@ -178,13 +181,16 @@ Follow-ups after a tagged release + Waybar proof. Same packaging tier as each ot
 | Item | Notes |
 |------|-------|
 | **Steam / games** | Heuristics for Steam shortcuts / `steam_appid` / common game `.desktop` misses |
-| **Snap exports** | Best-effort `.desktop` + icons under Snap export dirs (like Flatpak) |
+| **Snap exports** | **Done** — `/var/lib/snapd/desktop` alongside Flatpak export shares |
+| **Steam / games** | Heuristics for Steam shortcuts / `steam_appid` / common game `.desktop` misses |
 
 ### Pluggable logo sources (supplement SVGL)
 
-**Done so far:** ordered `sources.json` with `svgl` + local `dir` packs; default remains SVGL-only.
+**Done:** ordered `sources.json` with `svgl`, local `dir` packs, and `http-index` remotes (per-source host allowlist). Default remains SVGL-only.
 
-**Still open:** `http-index` remote providers with per-source host allowlists (see sketch below). Document recommended packs; no new built-in logo APIs.
+**Docs still useful:** point users at Simple Icons / dashboard-icons as `dir` packs (clone locally; do not bake CDNs into the binary).
+
+**Still open:** optional first-class `simple-icons` slug helper only if plain `dir` feels awkward.
 
 **Recommended supplements (priority):**
 

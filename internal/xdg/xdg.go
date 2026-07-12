@@ -158,6 +158,15 @@ func (f *Finder) Resolve(query string) (Result, error) {
 		return Result{Path: path, IconName: desk.Icon, Desktop: desk.Path}, nil
 	}
 
+	// Steam: try icon names steam_icon_<id> / steam_app_<id> when query is an appid.
+	if appID, ok := steamAppID(query); ok {
+		for _, name := range []string{"steam_icon_" + appID, "steam_app_" + appID} {
+			if path, err := f.lookupIcon(name); err == nil {
+				return Result{Path: path, IconName: name}, nil
+			}
+		}
+	}
+
 	path, err := f.lookupIcon(query)
 	if err != nil {
 		return Result{}, err

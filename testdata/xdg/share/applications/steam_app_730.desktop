@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Counter-Strike 2
+Exec=steam steam://rungameid/730
+Icon=steam_icon_730
+StartupWMClass=steam_app_730
+Type=Application
