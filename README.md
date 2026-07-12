@@ -19,6 +19,8 @@ appicon man | man -l -    # view man page
 
 XDG, SVGL (cache-first), local logo packs (`sources.json`), PNG rasterization, `--offline`, `cache prune`, MCP, optional socket daemon, and shell completions are implemented. See [docs/plan.md](docs/plan.md).
 
+**Consumer contract:** exit `0` / `1` (miss) / `2` (error); stable `resolve --json` fields — [docs/consumer-contract.md](docs/consumer-contract.md). Misses are supported (callers keep glyphs). Treat appicon like optional peers such as `zscroll` / `cava`: never require the binary for a working bar.
+
 **PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`.
 
 **Sources:** optional `$XDG_CONFIG_HOME/appicon/sources.json` — ordered `svgl`, local `dir` packs, and `http-index` remotes (explicit host allowlist required). Default is SVGL only.
@@ -101,7 +103,7 @@ appicon man | man -l -
 ## Install
 
 ```bash
-ver=v0.1.0
+ver=v0.1.1
 arch=$(uname -m)
 case "$arch" in
   x86_64) arch=amd64 ;;
@@ -109,7 +111,7 @@ case "$arch" in
 esac
 curl -fsSL "https://github.com/bolens/appicon/releases/download/${ver}/appicon_${ver}_linux_${arch}.tar.gz" | tar -xz
 install -m 755 appicon ~/.local/bin/appicon
-appicon version   # → v0.1.0
+appicon version   # → v0.1.1
 ```
 
 Checksums: download `SHA256SUMS` (and optionally `SHA256SUMS.sigstore.json`) from the same release.
@@ -185,7 +187,7 @@ make check        # + golangci-lint + gitleaks + actionlint + markdownlint
 make build
 ```
 
-Agent briefing: [AGENTS.md](AGENTS.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Changelog: [CHANGELOG.md](CHANGELOG.md).
+Agent briefing: [AGENTS.md](AGENTS.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Changelog: [CHANGELOG.md](CHANGELOG.md). Consumer contract: [docs/consumer-contract.md](docs/consumer-contract.md).
 
 To cut a release locally (no push): `bash scripts/ci/cut-release.sh v0.1.1`.
 

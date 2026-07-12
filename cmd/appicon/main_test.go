@@ -89,6 +89,11 @@ func TestCLIResolveXDGJSON(t *testing.T) {
 	if path == "" || !strings.Contains(path, "example-app") {
 		t.Fatalf("path=%q", path)
 	}
+	for _, key := range []string{"query", "path", "source", "theme", "format", "cached", "error"} {
+		if _, ok := payload[key]; !ok {
+			t.Fatalf("missing contract key %q", key)
+		}
+	}
 }
 
 func TestCLIResolveMissingExitSemantics(t *testing.T) {
@@ -104,11 +109,30 @@ func TestCLIResolveMissingExitSemantics(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &payload); err != nil {
 		t.Fatal(err)
 	}
+	for _, key := range []string{"query", "path", "source", "theme", "format", "cached", "error"} {
+		if _, ok := payload[key]; !ok {
+			t.Fatalf("missing contract key %q in %v", key, payload)
+		}
+	}
 	if payload["path"] != nil {
 		t.Fatalf("path should be null, got %v", payload["path"])
 	}
 	if payload["error"] == nil {
 		t.Fatal("expected error field")
+	}
+	if payload["query"] != "zzzz-missing-cli-icon" {
+		t.Fatalf("query=%v", payload["query"])
+	}
+}
+
+func TestCLIResolveUsageExitIsTwo(t *testing.T) {
+	xdgEnv(t)
+	_, _, err := captureRun("resolve", "--json")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if exitCode(err) != 2 {
+		t.Fatalf("exit=%d want 2", exitCode(err))
 	}
 }
 

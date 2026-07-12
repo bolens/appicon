@@ -82,6 +82,9 @@ Usage:
 
 Resolve order: existing path → XDG icon theme / .desktop → sources (SVGL / local packs) → miss.
 
+Exit codes (resolve): 0=found, 1=not found (supported miss), 2=usage/error.
+--json always emits one object (path null + error on miss) before a non-zero exit.
+
 Daemon: optional user socket at $XDG_RUNTIME_DIR/appicon.sock; resolve dials it when present
 (unless --local or APPICON_NO_DAEMON=1) and falls back to in-process resolve.
 
@@ -89,7 +92,7 @@ MCP: run "appicon mcp" over stdio for agent tooling (resolve, prefetch, cache_*,
 
 Completions: eval "$(appicon completion bash)"  # or zsh/fish; see README.
 
-See README.md and docs/plan.md for design details.
+Consumer contract: docs/consumer-contract.md
 `)
 }
 

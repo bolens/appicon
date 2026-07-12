@@ -328,3 +328,4 @@ path → XDG → dir packs (user) → svgl → miss
 13. ~~AUR reference PKGBUILDs; cosign keyless release signing~~
 14. ~~Cut **`v0.1.1`** (push tag; release + cosign)~~
 15. Manual: publish AUR packages to aur.archlinux.org (`appicon` / `appicon-bin` / `appicon-git`)
+16. ~~Consumer hygiene (zscroll/cava peers): stable contract doc, binary-miss negative cache, launch prefetch~~

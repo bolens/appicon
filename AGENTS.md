@@ -12,6 +12,7 @@ Short rules for AI coding agents in this repository.
 ## Source of truth
 
 - Design / remaining work: [docs/plan.md](docs/plan.md) (also mirrored under `.cursor/plans/`).
+- Consumer exit codes / `--json` schema: [docs/consumer-contract.md](docs/consumer-contract.md).
 - Public CLI: `cmd/appicon` (`resolve`, `prefetch`, `cache`, `daemon`, `mcp`, `completion`, `man`, `version`).
 - Packages: `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/daemon`.
 - Optional daemon: unix socket under `$XDG_RUNTIME_DIR`; never required — CLI falls back in-process.
@@ -23,8 +24,10 @@ Short rules for AI coding agents in this repository.
 - **Do** add fixture/`httptest` tests — no live network required to merge.
 - **Do** run `make check-fast` before committing.
 - **Do** keep MCP tools thin wrappers over `internal/resolve` — no second download path.
+- **Do** treat resolve miss (exit `1`) as a supported outcome for consumers.
 - **Don’t** vendor SVGL’s full catalog into releases.
 - **Don’t** commit secrets or live API tokens (none are required today).
+- **Don’t** require appicon in consumer bars — optional peer like zscroll/cava (glyph fallback).
 
 ## Checks
 
