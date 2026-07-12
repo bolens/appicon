@@ -21,8 +21,9 @@ Include: affected version/commit, reproduce steps, impact, and any suggested fix
 
 - Warm cache / `--offline` must not hit remotes (including SVGL).
 - Downloads are restricted to **allowlisted hosts** (built-in stages such as `api.svgl.app` / `svgl.app`; custom `http-index` only with an explicit host allowlist you control).
-- Opt-in CDN / GitHub stages are never enabled by default — configure them via `sources.json` / `--order`.
-- The optional daemon uses the same resolve path and allowlists; the socket is under `$XDG_RUNTIME_DIR` with mode `0600`.
+- Opt-in CDN / API / GitHub stages are never enabled by default — configure them via `sources.json`/`sources.yaml` / `--order`.
+- **Bring-your-own-key (BYOK):** API tokens for Logo.dev, Noun Project, GitHub PAT, and optional `http-index` Bearer auth are read from environment variables named in `token_env` / `secret_env`. Never put secrets in config files. Missing credentials skip that stage.
+- The optional daemon uses the same resolve path and allowlists; the socket is under `$XDG_RUNTIME_DIR` with mode `0600`. `appicon status` reports `daemon_alive` via ping.
 
 Treat resolve misses (exit `1`) as normal. Do not require `appicon` for a working bar — fall back to glyphs.
 
@@ -39,5 +40,5 @@ gh attestation verify dist/appicon_vX.Y.Z_linux_amd64.tar.gz \
 
 ## Scope notes
 
-- Do not commit secrets or live API tokens (none are required today).
+- Do not commit secrets or live API tokens. Use `token_env` / `secret_env` pointing at your own env / secret manager (sops, agenix, etc.).
 - Do not vendor third-party icon catalogs into this repository’s releases unless via the optional packs bundle workflow, which carries upstream licenses in-tree.

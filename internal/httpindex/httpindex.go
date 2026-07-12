@@ -42,6 +42,7 @@ type Options struct {
 	Hosts    []string // required allowlist (hostname only)
 	Theme    string   // dark|light|""
 	Offline  bool
+	Token    string // optional Bearer token
 }
 
 // Result is a downloaded or cached asset.
@@ -96,7 +97,7 @@ func (c *Client) Lookup(ctx context.Context, query string, opts Options) (Result
 		return Result{}, err
 	}
 
-	entries, err := c.loadIndex(ctx, name, opts.IndexURL, hosts, opts.Offline)
+	entries, err := c.loadIndex(ctx, name, opts.IndexURL, hosts, opts.Offline, opts.Token)
 	if err != nil {
 		return Result{}, err
 	}
@@ -125,7 +126,7 @@ func (c *Client) Lookup(ctx context.Context, query string, opts Options) (Result
 		return Result{}, ErrNotFound
 	}
 
-	data, err := c.download(ctx, assetURL, hosts)
+	data, err := c.download(ctx, assetURL, hosts, opts.Token)
 	if err != nil {
 		return Result{}, err
 	}
@@ -158,7 +159,7 @@ func validateOpts(opts Options) error {
 	return nil
 }
 
-func (c *Client) loadIndex(ctx context.Context, name, indexURL string, hosts []string, offline bool) ([]entry, error) {
+func (c *Client) loadIndex(ctx context.Context, name, indexURL string, hosts []string, offline bool, token string) ([]entry, error) {
 	rel := filepath.Join("http", name, "index.json")
 	path, err := cache.Path(rel)
 	if err != nil {
@@ -182,7 +183,7 @@ func (c *Client) loadIndex(ctx context.Context, name, indexURL string, hosts []s
 		}
 	}
 
-	entries, fetchErr := c.fetchIndex(ctx, indexURL, hosts)
+	entries, fetchErr := c.fetchIndex(ctx, indexURL, hosts, token)
 	if fetchErr != nil {
 		if stale, err := readIndex(path); err == nil {
 			return stale, nil
@@ -211,8 +212,8 @@ func readIndex(path string) ([]entry, error) {
 	return parseIndexJSON(data)
 }
 
-func (c *Client) fetchIndex(ctx context.Context, indexURL string, hosts []string) ([]entry, error) {
-	data, err := c.download(ctx, indexURL, hosts)
+func (c *Client) fetchIndex(ctx context.Context, indexURL string, hosts []string, token string) ([]entry, error) {
+	data, err := c.download(ctx, indexURL, hosts, token)
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +342,7 @@ func pickURL(e entry, theme string) (assetURL, usedTheme string, err error) {
 	return "", "", ErrNotFound
 }
 
-func (c *Client) download(ctx context.Context, rawURL string, hosts []string) ([]byte, error) {
+func (c *Client) download(ctx context.Context, rawURL string, hosts []string, token string) ([]byte, error) {
 	if err := assertAllowedURL(rawURL, hosts); err != nil {
 		return nil, err
 	}
@@ -350,6 +351,9 @@ func (c *Client) download(ctx context.Context, rawURL string, hosts []string) ([
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "appicon/0 (+https://github.com/bolens/appicon)")
+	if token != "" {
+		req.Header.Set("Authorization", "Bearer "+token)
+	}
 	client := c.HTTP
 	if client == nil {
 		client = New().HTTP

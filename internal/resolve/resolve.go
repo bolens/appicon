@@ -18,6 +18,9 @@ import (
 	"github.com/bolens/appicon/internal/githubicon"
 	"github.com/bolens/appicon/internal/glyph"
 	"github.com/bolens/appicon/internal/httpindex"
+	"github.com/bolens/appicon/internal/iconify"
+	"github.com/bolens/appicon/internal/logodev"
+	"github.com/bolens/appicon/internal/nounproject"
 	"github.com/bolens/appicon/internal/pack"
 	"github.com/bolens/appicon/internal/raster"
 	"github.com/bolens/appicon/internal/simpleicons"
@@ -168,14 +171,19 @@ func resolvePipeline(ctx context.Context, query string, opts Options) (Result, e
 
 func isBenignMiss(err error) bool {
 	return errors.Is(err, ErrNotFound) ||
+		errors.Is(err, ErrAuthSkipped) ||
 		errors.Is(err, svgl.ErrNotFound) ||
 		errors.Is(err, pack.ErrNotFound) ||
 		errors.Is(err, httpindex.ErrNotFound) ||
 		errors.Is(err, simpleicons.ErrNotFound) ||
 		errors.Is(err, dashboardicons.ErrNotFound) ||
 		errors.Is(err, githubicon.ErrNotFound) ||
+		errors.Is(err, githubicon.ErrAuthRequired) ||
 		errors.Is(err, glyph.ErrNotFound) ||
-		errors.Is(err, xdg.ErrNotFound)
+		errors.Is(err, xdg.ErrNotFound) ||
+		errors.Is(err, logodev.ErrNotFound) ||
+		errors.Is(err, iconify.ErrNotFound) ||
+		errors.Is(err, nounproject.ErrNotFound)
 }
 
 func resolveSource(ctx context.Context, src sourceSpec, query string, opts Options) (Result, error) {
@@ -258,13 +266,76 @@ func resolveSource(ctx context.Context, src sourceSpec, query string, opts Optio
 			Cached: res.Cached,
 		}, nil
 	case "github":
-		res, err := githubicon.Lookup(ctx, query, githubicon.Options{Offline: opts.Offline})
+		ghOpts := githubicon.Options{Offline: opts.Offline, Repo: strings.TrimSpace(src.Path)}
+		if src.TokenEnv != "" {
+			tok, err := RequireTokenEnv(src.TokenEnv)
+			if err != nil {
+				return Result{}, err
+			}
+			ghOpts.Token = tok
+		}
+		res, err := githubicon.Lookup(ctx, query, ghOpts)
 		if err != nil {
 			return Result{}, err
 		}
 		return Result{
 			Path:   res.Path,
 			Source: "github",
+			Theme:  opts.Theme,
+			Format: opts.Format,
+			Cached: res.Cached,
+		}, nil
+	case "logo-dev":
+		tok, err := RequireTokenEnv(src.TokenEnv)
+		if err != nil {
+			return Result{}, err
+		}
+		res, err := logodev.Lookup(ctx, query, logodev.Options{
+			Token:   tok,
+			Theme:   opts.Theme,
+			Offline: opts.Offline,
+		})
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{
+			Path:   res.Path,
+			Source: "logo-dev",
+			Theme:  opts.Theme,
+			Format: opts.Format,
+			Cached: res.Cached,
+		}, nil
+	case "iconify":
+		res, err := iconify.Lookup(ctx, query, iconify.Options{
+			Base:    src.Base,
+			Offline: opts.Offline,
+		})
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{
+			Path:   res.Path,
+			Source: "iconify",
+			Theme:  opts.Theme,
+			Format: opts.Format,
+			Cached: res.Cached,
+		}, nil
+	case "noun-project":
+		key, secret, err := RequireTokenAndSecret(src.TokenEnv, src.SecretEnv)
+		if err != nil {
+			return Result{}, err
+		}
+		res, err := nounproject.Lookup(ctx, query, nounproject.Options{
+			Key:     key,
+			Secret:  secret,
+			Offline: opts.Offline,
+		})
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{
+			Path:   res.Path,
+			Source: "noun-project",
 			Theme:  opts.Theme,
 			Format: opts.Format,
 			Cached: res.Cached,
@@ -286,13 +357,21 @@ func resolveSource(ctx context.Context, src sourceSpec, query string, opts Optio
 		if client == nil {
 			client = httpindex.Default
 		}
-		res, err := client.Lookup(ctx, query, httpindex.Options{
+		hiOpts := httpindex.Options{
 			Name:     src.Name,
 			IndexURL: src.Index,
 			Hosts:    src.Hosts,
 			Theme:    opts.Theme,
 			Offline:  opts.Offline,
-		})
+		}
+		if src.TokenEnv != "" {
+			tok, err := RequireTokenEnv(src.TokenEnv)
+			if err != nil {
+				return Result{}, err
+			}
+			hiOpts.Token = tok
+		}
+		res, err := client.Lookup(ctx, query, hiOpts)
 		if err != nil {
 			return Result{}, err
 		}

@@ -2,7 +2,6 @@
 package resolve
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -11,25 +10,28 @@ import (
 	"strings"
 )
 
-// ErrInvalidConfig means sources.json is invalid.
+// ErrInvalidConfig means sources config is invalid.
 var ErrInvalidConfig = errors.New("invalid sources config")
 
-// Stage is one entry from sources.json (or a synthetic builtin).
+// Stage is one entry from sources.json/yaml (or a synthetic builtin).
 type Stage struct {
-	Type    string   `json:"type"`
-	Path    string   `json:"path,omitempty"`
-	Name    string   `json:"name,omitempty"`
-	Index   string   `json:"index,omitempty"`
-	Hosts   []string `json:"hosts,omitempty"`
-	Enabled *bool    `json:"enabled,omitempty"`
+	Type      string   `json:"type" yaml:"type"`
+	Path      string   `json:"path,omitempty" yaml:"path,omitempty"`
+	Name      string   `json:"name,omitempty" yaml:"name,omitempty"`
+	Index     string   `json:"index,omitempty" yaml:"index,omitempty"`
+	Hosts     []string `json:"hosts,omitempty" yaml:"hosts,omitempty"`
+	Enabled   *bool    `json:"enabled,omitempty" yaml:"enabled,omitempty"`
+	TokenEnv  string   `json:"token_env,omitempty" yaml:"token_env,omitempty"`
+	SecretEnv string   `json:"secret_env,omitempty" yaml:"secret_env,omitempty"`
+	Base      string   `json:"base,omitempty" yaml:"base,omitempty"`
 }
 
-// SourcesConfig is the on-disk sources.json shape.
+// SourcesConfig is the on-disk sources config shape.
 type SourcesConfig struct {
-	Sources   []Stage `json:"sources"`
-	File      *bool   `json:"file,omitempty"`      // false = do not auto-prepend / skip file stage
-	Overrides *bool   `json:"overrides,omitempty"` // false = skip overrides stage
-	XDG       *bool   `json:"xdg,omitempty"`       // false = skip xdg stage
+	Sources   []Stage `json:"sources" yaml:"sources"`
+	File      *bool   `json:"file,omitempty" yaml:"file,omitempty"`
+	Overrides *bool   `json:"overrides,omitempty" yaml:"overrides,omitempty"`
+	XDG       *bool   `json:"xdg,omitempty" yaml:"xdg,omitempty"`
 }
 
 // sourceSpec is an alias used by resolveSource (same fields).
@@ -47,6 +49,9 @@ var knownTypes = map[string]struct{}{
 	"http-index":      {},
 	"github":          {},
 	"glyph":           {},
+	"logo-dev":        {},
+	"iconify":         {},
+	"noun-project":    {},
 }
 
 func defaultStages() []Stage {
@@ -65,51 +70,83 @@ func boolOr(p *bool, def bool) bool {
 	return *p
 }
 
-// SourcesPath returns the path to sources.json for configDir (empty = ConfigDir()).
+// SourcesPath returns the active sources config path (existing file, else sources.json).
 func SourcesPath(configDir string) string {
-	dir := configDir
-	if dir == "" {
-		dir = ConfigDir()
+	dir := configDirOr(configDir)
+	path, err := findConfigBasename(dir, "sources")
+	if err != nil || path == "" {
+		return filepath.Join(dir, "sources.json")
 	}
-	return filepath.Join(dir, "sources.json")
+	return path
 }
 
-// LoadSourcesConfig reads sources.json (missing file → empty Sources, nil flags).
+// LoadSourcesConfig reads sources.json/yaml (missing file → empty Sources, nil flags).
 func LoadSourcesConfig(configDir string) (SourcesConfig, error) {
-	path := SourcesPath(configDir)
+	dir := configDirOr(configDir)
+	path, err := findConfigBasename(dir, "sources")
+	if err != nil {
+		return SourcesConfig{}, err
+	}
+	if path == "" {
+		return SourcesConfig{}, nil
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return SourcesConfig{}, nil
-		}
 		return SourcesConfig{}, err
 	}
 	if len(strings.TrimSpace(string(data))) == 0 {
 		return SourcesConfig{}, nil
 	}
 	var cfg SourcesConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return SourcesConfig{}, fmt.Errorf("%w: %v", ErrInvalidConfig, err)
+	if err := DecodeConfigData(data, &cfg); err != nil {
+		return SourcesConfig{}, err
 	}
 	return cfg, nil
 }
 
-// WriteSourcesConfig writes sources.json atomically.
+// WriteSourcesConfig writes sources config atomically in the existing format,
+// or JSON when no file exists yet.
 func WriteSourcesConfig(configDir string, cfg SourcesConfig) error {
-	path := SourcesPath(configDir)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(cfg, "", "  ")
+	return WriteSourcesConfigFormat(configDir, cfg, "")
+}
+
+// WriteSourcesConfigFormat writes sources config. format is json|yaml|"" (auto).
+func WriteSourcesConfigFormat(configDir string, cfg SourcesConfig, format string) error {
+	dir := configDirOr(configDir)
+	existing, err := findConfigBasename(dir, "sources")
 	if err != nil {
 		return err
 	}
-	data = append(data, '\n')
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+	var path string
+	var fmtKind ConfigFormat
+	if existing != "" {
+		path = existing
+		fmtKind = formatFromPath(existing)
+		if format != "" {
+			want, err := ParseConfigFormat(format)
+			if err != nil {
+				return err
+			}
+			if want != fmtKind {
+				return fmt.Errorf("%w: existing sources file is %s; remove it before writing %s", ErrInvalidConfig, fmtKind, want)
+			}
+		}
+	} else {
+		fmtKind, err = ParseConfigFormat(format)
+		if err != nil {
+			return err
+		}
+		if fmtKind == ConfigFormatYAML {
+			path = filepath.Join(dir, "sources.yaml")
+		} else {
+			path = filepath.Join(dir, "sources.json")
+		}
+	}
+	data, err := EncodeConfigData(cfg, fmtKind)
+	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	return writeAtomic(path, data)
 }
 
 // EffectiveStages returns the resolve pipeline after compat rules.
@@ -152,7 +189,6 @@ func normalizeConfigStages(cfg SourcesConfig) ([]Stage, error) {
 		listed[s.Type] = true
 	}
 
-	// All entries disabled (or empty after filter) with a present sources list → default pipeline.
 	if sawEntries && len(user) == 0 {
 		return defaultStages(), nil
 	}
@@ -177,12 +213,6 @@ func normalizeConfigStages(cfg SourcesConfig) ([]Stage, error) {
 		return defaultStages(), nil
 	}
 
-	// Drop builtins the user disabled via flags even if listed? Plan: flags omit auto-prepend;
-	// if listed explicitly, position wins. So if file:false and listed, keep listed.
-	// If file:false and NOT listed, we already skipped prepend. Good.
-
-	// If file:false and somehow we need to filter listed file when flag false?
-	// Plan: `"file": false` → omit that stage entirely.
 	filtered := out[:0]
 	for _, s := range out {
 		switch s.Type {
@@ -233,12 +263,11 @@ func applyOrderOverride(stages []Stage, order []string) ([]Stage, error) {
 			out = append(out, group...)
 			continue
 		}
-		// Synthetic builtin (e.g. order asks for glyph not in config)
 		switch t {
-		case "file", "overrides", "xdg", "svgl", "simple-icons", "dashboard-icons", "github", "glyph":
+		case "file", "overrides", "xdg", "svgl", "simple-icons", "dashboard-icons",
+			"github", "glyph", "logo-dev", "iconify", "noun-project":
 			out = append(out, Stage{Type: t})
 		default:
-			// pack/http-index need config entries
 			return nil, fmt.Errorf("%w: type %q not present in sources config", ErrInvalidConfig, t)
 		}
 	}
@@ -306,6 +335,14 @@ func ValidateStages(stages []Stage) error {
 		if t == "http-index" {
 			if strings.TrimSpace(s.Index) == "" || len(s.Hosts) == 0 {
 				return fmt.Errorf("%w: http-index requires index and hosts", ErrInvalidConfig)
+			}
+		}
+		if t == "logo-dev" && strings.TrimSpace(s.TokenEnv) == "" {
+			return fmt.Errorf("%w: logo-dev requires token_env", ErrInvalidConfig)
+		}
+		if t == "noun-project" {
+			if strings.TrimSpace(s.TokenEnv) == "" || strings.TrimSpace(s.SecretEnv) == "" {
+				return fmt.Errorf("%w: noun-project requires token_env and secret_env", ErrInvalidConfig)
 			}
 		}
 	}

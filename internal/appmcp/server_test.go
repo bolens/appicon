@@ -185,7 +185,7 @@ func TestMCPStatus(t *testing.T) {
 	if !ok {
 		t.Fatalf("structured=%T", res.StructuredContent)
 	}
-	for _, key := range []string{"version", "sources_path", "overrides_path", "cache_dir", "order", "daemon_socket", "tools"} {
+	for _, key := range []string{"version", "sources_path", "overrides_path", "cache_dir", "order", "daemon_socket", "daemon_alive", "tools"} {
 		if sc[key] == nil {
 			t.Fatalf("missing %q in %v", key, sc)
 		}

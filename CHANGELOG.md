@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- BYOK stages: `logo-dev`, `iconify`, `noun-project`; GitHub PAT + private repo Contents API; optional Bearer on `http-index` via `token_env`
+- Sources/overrides as JSON **or** YAML (`sources.yaml` / `overrides.yaml`); `sources set --format`; [docs/sources.schema.json](docs/sources.schema.json)
+- `appicon status` / MCP `status`: `daemon_alive` (socket ping)
+- Home Manager: declarative `sources` / `overrides` / `environment` / `configFormat`
+
 ## [0.2.0] — 2026-07-12
 
 ### Added

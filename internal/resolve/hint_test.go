@@ -55,6 +55,7 @@ func TestKnownStageTypes(t *testing.T) {
 		"file": true, "overrides": true, "xdg": true, "svgl": true,
 		"pack": true, "dir": true, "simple-icons": true, "dashboard-icons": true,
 		"http-index": true, "github": true, "glyph": true,
+		"logo-dev": true, "iconify": true, "noun-project": true,
 	}
 	if len(got) != len(want) {
 		t.Fatalf("len=%d got=%v", len(got), got)

@@ -190,3 +190,52 @@ func TestArrayIndexFormat(t *testing.T) {
 		t.Fatalf("path=%s", res.Path)
 	}
 }
+
+func TestLookupBearerToken(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	var gotAuth string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/index.json", func(w http.ResponseWriter, r *http.Request) {
+		gotAuth = r.Header.Get("Authorization")
+		_, _ = w.Write([]byte(`{"Brand":"https://icons.example/brand.svg"}`))
+	})
+	mux.HandleFunc("/brand.svg", func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer tok" {
+			http.Error(w, "auth", 401)
+			return
+		}
+		_, _ = w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	c := httpindex.New()
+	c.TTL = time.Hour
+	c.HTTP = &http.Client{
+		Timeout: 2 * time.Second,
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			u := *req.URL
+			u.Scheme = "http"
+			u.Host = srv.Listener.Addr().String()
+			req2 := req.Clone(req.Context())
+			req2.URL = &u
+			req2.Host = u.Host
+			return http.DefaultTransport.RoundTrip(req2)
+		}),
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	_, err := c.Lookup(context.Background(), "Brand", httpindex.Options{
+		Name:     "auth",
+		IndexURL: "https://icons.example/index.json",
+		Hosts:    []string{"icons.example"},
+		Token:    "tok",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotAuth != "Bearer tok" {
+		t.Fatalf("auth=%q", gotAuth)
+	}
+}

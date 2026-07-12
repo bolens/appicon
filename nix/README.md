@@ -27,6 +27,30 @@ Optional warm-cache daemon (Linux/systemd):
 programs.appicon.daemon.enable = true;
 ```
 
+Declarative sources / overrides / BYOK env (JSON by default; set `configFormat = "yaml"` for YAML):
+
+```nix
+programs.appicon = {
+  enable = true;
+  configFormat = "yaml";
+  sources = {
+    sources = [
+      { type = "overrides"; }
+      { type = "xdg"; }
+      { type = "logo-dev"; token_env = "LOGO_DEV_TOKEN"; }
+      { type = "svgl"; }
+    ];
+  };
+  overrides = {
+    "my-wm-class" = "firefox";
+  };
+  # Prefer sops-nix / agenix for secret values — do not commit API keys.
+  environment = {
+    LOGO_DEV_TOKEN = "pk_…";
+  };
+};
+```
+
 That installs a user socket at `$XDG_RUNTIME_DIR/appicon.sock` (same as `contrib/systemd/`). Source packages also ship units under `$out/lib/systemd/user/`.
 
 `vendorHash` in [packages.nix](packages.nix) / [flake.nix](../flake.nix) is set from a local `go mod vendor` SRI hash. After `go.sum` changes, refresh with:
