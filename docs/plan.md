@@ -1,6 +1,6 @@
 ---
 name: Standalone appicon CLI
-overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths (XDG → packs/SVGL/http-index). Core resolve is implemented; remaining v1 work is release + waybar-config consumer."
+overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. v0.1.0 shipped; next is waybar-config consumer, then MCP/completions/packaging."
 todos:
   - id: scaffold-repo
     content: Clone bolens/appicon into /home/panda/dev/appicon; scaffold Go module, Makefile, LICENSE, CONTRIBUTING, AGENTS, README; push
@@ -31,6 +31,9 @@ todos:
     status: completed
   - id: waybar-consume
     content: Add install-appicon.sh + make target; dock CSS proof behind settings flag with glyph fallback
+    status: in_progress
+  - id: mcp-server
+    content: "Post-v1: MCP server wrapping resolve/prefetch/cache so agents can call appicon without shelling out"
     status: pending
   - id: nix-flake
     content: "Post-v1: flake.nix (build + apps.appicon) for nix run / nix profile; same packaging tier as AUR"
@@ -71,6 +74,7 @@ isProject: false
 | Overrides (`overrides.json`) + CLI `--json` e2e tests | **Done** |
 | Tag **`v0.1.0`** + checksummed release assets | **Done** — [v0.1.0](https://github.com/bolens/appicon/releases/tag/v0.1.0) |
 | waybar-config install + dock CSS proof | **Next** (other repo) |
+| MCP server for agent tooling | Post-v1 |
 | Completions/man, Nix/AUR/Home Manager, nightly live SVGL | Post-v1 |
 
 **Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/version`.
@@ -266,6 +270,33 @@ path → XDG → dir packs (user) → svgl → miss
 - Rofi / walker examples; notification helper notes — shell-out only
 - Nightly or `workflow_dispatch` live SVGL smoke (1–2 titles); not required to merge
 
+### MCP server (agent tooling)
+
+**Why:** Coding agents (Cursor, Claude Code, etc.) already speak MCP. A thin server lets them resolve icons, prefetch, and inspect cache without inventing shell commands or embedding SVGL URLs.
+
+**Placement:** live in this repo (e.g. `cmd/appicon-mcp` or `appicon mcp` subcommand) so one release ships CLI + MCP; consumers only need the binary on `PATH`.
+
+**Transport:** stdio MCP (default for local agent configs). Optional later: same JSON tools over the deferred unix socket if a daemon exists.
+
+**Tools (map 1:1 to CLI; no new resolve logic):**
+
+| Tool | Mirrors | Notes |
+|------|---------|-------|
+| `resolve` | `appicon resolve --json` | args: `query`, optional `format`, `size`, `theme`, `offline`; returns path/source/cached/error |
+| `prefetch` | `appicon prefetch` | args: `queries[]` |
+| `cache_stats` | `appicon cache stats` | |
+| `cache_clear` / `cache_prune` | matching subcommands | destructive — document clearly |
+| `version` | `appicon version` | |
+
+**Rules:**
+
+- Call into `internal/resolve` (same as CLI) — **never** reimplement download/allowlist in the MCP layer.
+- Still no SVGL URLs in agent prompts or other repos; agents call `resolve` only.
+- Ship example Cursor/Claude MCP config snippet in README (`command`: `appicon`, `args`: `["mcp"]` or path to `appicon-mcp`).
+- Tests: MCP tool unit tests with fixture XDG roots + injected clients (same pattern as CLI e2e); no live network required.
+
+**Out of scope for the MCP:** browsing remote catalogs in-agent, writing `overrides.json` without an explicit tool, or exposing raw HTTP downloads.
+
 ## Execution order
 
 1. ~~Clone + scaffold~~
@@ -276,5 +307,5 @@ path → XDG → dir packs (user) → svgl → miss
 6. ~~`--offline`, prune, packs, http-index, Steam, Snap~~
 7. ~~Cut `v0.1.0` with checksums~~
 8. waybar-config install + dock CSS proof ← current
-9. (post-v1) Completions/man; Nix / Home Manager / AUR; optional release signing
+9. (post-v1) MCP server for agents; completions/man; Nix / Home Manager / AUR; optional release signing
 10. (post-v1) Extra consumers + nightly live SVGL job
