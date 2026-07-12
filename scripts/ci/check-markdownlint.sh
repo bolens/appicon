@@ -1,15 +1,17 @@
 #!/usr/bin/env bash
-# Lint markdown with markdownlint-cli via npx (pinned).
+# Lint markdown with markdownlint-cli (pinned in package.json / package-lock.json).
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT"
 
-MARKDOWNLINT_CLI_VERSION="${MARKDOWNLINT_CLI_VERSION:-0.44.0}"
-
-if ! command -v npx >/dev/null 2>&1; then
-  echo "npx not found; skip markdownlint" >&2
+if ! command -v npm >/dev/null 2>&1; then
+  echo "npm not found; skip markdownlint" >&2
   exit 0
 fi
 
-npx --yes "markdownlint-cli@${MARKDOWNLINT_CLI_VERSION}" \
-  README.md AGENTS.md CONTRIBUTING.md docs/**/*.md
+if [[ ! -d node_modules/markdownlint-cli ]]; then
+  npm ci --ignore-scripts
+fi
+
+./node_modules/.bin/markdownlint \
+  README.md AGENTS.md CONTRIBUTING.md CHANGELOG.md SECURITY.md docs/**/*.md

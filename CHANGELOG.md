@@ -4,6 +4,7 @@
 
 ### Added
 
+- Repo hygiene: Dependabot, `govulncheck`, `SECURITY.md`, CODEOWNERS, issue/PR templates, `.editorconfig` / `.gitattributes`, pinned `markdownlint-cli`, release build provenance attestations
 - Fully reorderable resolve stages (`file`, `overrides`, `xdg`, packs, SVGL, opt-in CDN/github/glyph) via `sources.json` and `resolve --order`
 - `appicon sources` / `appicon pack` (+ MCP `sources_*` / `pack_*`); pack recipes, URL install (git / `.tar.gz`), update, and `--from-bundle`
 - Opt-in `simple-icons`, `dashboard-icons`, `github`, and `glyph` stages

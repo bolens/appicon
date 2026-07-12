@@ -1,0 +1,53 @@
+name: Feature or source request
+description: New stage, pack recipe, packaging, or DX improvement
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Check [docs/deferred.md](https://github.com/bolens/appicon/blob/main/docs/deferred.md) first.
+        Long-tail remaps belong in `appicon override` / MCP `override_*`, not speculative aliases in code.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - resolve / sources
+        - packs
+        - MCP / daemon
+        - packaging (AUR / Nix)
+        - docs / CI
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What consumer need is unmet today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Suggested CLI/MCP surface, source stage, pack recipe, or packaging change.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope checks
+      options:
+        - label: Not already covered by `override` / a local pack
+        - label: Not listed as deferred (or I’m proposing to und defer it with a real consumer)
+        - label: Willing to help with fixtures / docs if accepted
+  - type: textarea
+    id: fixtures
+    attributes:
+      label: Fixtures / examples
+      description: Sample queries, `.desktop` names, or URLs (no secrets).
+      placeholder: |
+        query: "code"
+        desktop: code.desktop

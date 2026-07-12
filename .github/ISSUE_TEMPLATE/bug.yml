@@ -1,0 +1,75 @@
+name: Bug report
+description: Something broken in resolve, cache, packaging, or CI
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Prefer fixtures / `httptest` repros over live network when possible.
+        Security issues → [private advisory](https://github.com/bolens/appicon/security/advisories/new) (see [SECURITY.md](https://github.com/bolens/appicon/blob/main/SECURITY.md)).
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `appicon version`, or a git commit SHA.
+      placeholder: v0.1.2
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: Install method
+      options:
+        - release tarball
+        - AUR (appicon / appicon-bin / appicon-git)
+        - Nix / Home Manager
+        - go install / from source
+        - other
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - resolve / sources
+        - cache / prefetch
+        - packs
+        - MCP / daemon
+        - packaging (AUR / Nix)
+        - CI / docs
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What went wrong in one or two sentences?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduce
+      description: Commands, config (`sources.json` / overrides), expected vs actual.
+      render: shell
+      placeholder: |
+        appicon resolve --json --explain firefox
+        appicon status --json
+    validations:
+      required: true
+  - type: checkboxes
+    id: flags
+    attributes:
+      label: Environment
+      options:
+        - label: Reproduced with `--offline`
+        - label: Daemon / socket in use (`appicon daemon` or systemd user unit)
+        - label: Custom `sources.json` / `--order`
+  - type: textarea
+    id: extras
+    attributes:
+      label: Extra context
+      description: OS, logs, relevant JSON output (no secrets).

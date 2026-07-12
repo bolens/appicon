@@ -12,3 +12,4 @@ Not a backlog — revisit only if a real consumer needs it.
 
 - Publish AUR packages: [packaging/aur/README.md](../packaging/aur/README.md)
 - After releases, refresh AUR/Nix checksums: [nix/README.md](../nix/README.md)
+- Security reporting and release verification: [SECURITY.md](../SECURITY.md)

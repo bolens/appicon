@@ -8,6 +8,8 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
 jobs:
   bundle:
@@ -34,6 +36,10 @@ jobs:
           } > "$ROOT/NOTICE"
           tar -C "$ROOT" -czf appicon-packs-bundle.tar.gz NOTICE simple-icons dashboard-icons
           ls -lh appicon-packs-bundle.tar.gz
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: appicon-packs-bundle.tar.gz
       - uses: actions/upload-artifact@v4
         with:
           name: appicon-packs-bundle

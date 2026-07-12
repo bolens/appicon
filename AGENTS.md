@@ -38,3 +38,5 @@ Short rules for AI coding agents in this repository.
 make check-fast
 make check
 ```
+
+Security / reporting: [SECURITY.md](SECURITY.md).

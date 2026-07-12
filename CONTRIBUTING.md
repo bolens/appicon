@@ -23,10 +23,12 @@ make build
 | Target | What |
 |--------|------|
 | `make check-fast` | `go test`, `go vet`, `gofmt` clean |
-| `make check` | check-fast + golangci-lint + gitleaks + actionlint + markdownlint |
+| `make check` | check-fast + golangci-lint + govulncheck + gitleaks + actionlint + markdownlint |
 | `make build` | `bin/appicon` |
 
-CI runs the same gates on pull requests. Release workflow builds linux amd64/arm64 + `SHA256SUMS` on `v*` tags.
+CI runs the same gates on pull requests (required check: **CI result**). Release workflow builds linux amd64/arm64 + `SHA256SUMS`, keyless cosign, and build provenance attestations on `v*` tags.
+
+Markdown lint uses pinned `markdownlint-cli` from `package.json` / `package-lock.json` (`npm ci` locally if you run `make check-markdownlint`).
 
 ## PRs
 

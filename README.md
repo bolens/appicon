@@ -160,9 +160,14 @@ cosign verify-blob \
   --certificate-identity-regexp '^https://github.com/bolens/appicon/\.github/workflows/release\.yml@refs/tags/v' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   SHA256SUMS
+
+# optional GitHub build provenance attestation
+gh attestation verify "appicon_${ver}_linux_${arch}.tar.gz" --repo bolens/appicon
 ```
 
 Or: `bash scripts/ci/verify-release.sh /path/to/downloaded/assets`.
+
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities and the trust model.
 
 [waybar-config](https://github.com/bolens/waybar-config) pins this via `make install-appicon`.
 

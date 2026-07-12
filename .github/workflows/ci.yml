@@ -54,6 +54,7 @@ jobs:
       workflow: ${{ steps.flags.outputs.workflow }}
       nix: ${{ steps.flags.outputs.nix }}
       packaging: ${{ steps.flags.outputs.packaging }}
+      vuln: ${{ steps.flags.outputs.vuln }}
     steps:
       - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
@@ -86,6 +87,14 @@ jobs:
               - 'Makefile'
               - 'scripts/ci/check-*.sh'
               - '.gitleaks.toml'
+              - 'package.json'
+              - 'package-lock.json'
+            vuln:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - 'scripts/ci/check-govulncheck.sh'
             nix:
               - 'flake.nix'
               - 'flake.lock'
@@ -103,6 +112,7 @@ jobs:
           F_WORKFLOW: ${{ steps.filter.outputs.workflow }}
           F_NIX: ${{ steps.filter.outputs.nix }}
           F_PACKAGING: ${{ steps.filter.outputs.packaging }}
+          F_VULN: ${{ steps.filter.outputs.vuln }}
         run: |
           set -euo pipefail
           if [ "${FORCE_ALL}" = "true" ]; then
@@ -114,6 +124,7 @@ jobs:
               echo "workflow=true"
               echo "nix=true"
               echo "packaging=true"
+              echo "vuln=true"
             } >>"$GITHUB_OUTPUT"
             exit 0
           fi
@@ -126,6 +137,7 @@ jobs:
             echo "workflow=${F_WORKFLOW:-true}"
             echo "nix=${F_NIX:-true}"
             echo "packaging=${F_PACKAGING:-true}"
+            echo "vuln=${F_VULN:-true}"
           } >>"$GITHUB_OUTPUT"
 
   path-filters:
@@ -223,6 +235,19 @@ jobs:
       - name: gitleaks
         run: bash scripts/ci/check-gitleaks.sh
 
+  govulncheck:
+    name: govulncheck
+    needs: changes
+    if: needs.changes.outputs.vuln == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: govulncheck
+        run: bash scripts/ci/check-govulncheck.sh
+
   actionlint:
     name: actionlint
     needs: changes
@@ -240,6 +265,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
       - name: markdownlint
         run: bash scripts/ci/check-markdownlint.sh
 
@@ -343,6 +372,7 @@ jobs:
       - vet-fmt
       - lint
       - gitleaks
+      - govulncheck
       - actionlint
       - markdownlint
       - nix-packages
