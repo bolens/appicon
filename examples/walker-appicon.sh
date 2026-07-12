@@ -5,6 +5,7 @@
 # can plug into a custom walker/rofi/tofi source — no SVGL URLs.
 #
 # Usage: bash examples/walker-appicon.sh [query...]
+# Uses one batch resolve when multiple queries are given.
 
 set -euo pipefail
 
@@ -22,10 +23,20 @@ if [[ ${#queries[@]} -eq 0 ]]; then
   queries=(firefox discord)
 fi
 
-for q in "${queries[@]}"; do
-  if path=$("$APPICON_BIN" resolve --json --format png --size "$SIZE" --theme "$THEME" "$q" 2>/dev/null); then
-    printf '%s\n' "$path"
-  else
-    printf '{"query":%s,"path":null,"error":"not found"}\n' "$(printf '%s' "$q" | sed 's/"/\\"/g; s/^/"/; s/$/"/')"
-  fi
-done
+# Batch may exit 1 on partial miss; JSON still on stdout.
+batch=$("$APPICON_BIN" resolve --json --format png --size "$SIZE" --theme "$THEME" "${queries[@]}" 2>/dev/null || true)
+printf '%s' "$batch" | python3 -c '
+import json, sys
+raw = sys.stdin.read().strip()
+if not raw:
+    raise SystemExit(0)
+data = json.loads(raw)
+items = data.get("results") or [data]
+for it in items:
+    path = it.get("path")
+    if path:
+        print(path)
+    else:
+        q = json.dumps(it.get("query") or "")
+        print("{\"query\":%s,\"path\":null,\"error\":\"not found\"}" % q)
+'

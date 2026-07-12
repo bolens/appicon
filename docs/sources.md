@@ -85,12 +85,18 @@ Custom catalog + host allowlist (do not point at third-party CDNs unless you con
 
 `--offline` / `APPICON_OFFLINE=1`: no network. CDN/github/svgl use cache only; `pack install` / `pack update` refuse.
 
+## Theme (color scheme)
+
+`--theme dark|light`, `APPICON_THEME`, or `GTK_THEME` suffix (`Adwaita:dark`) prefer matching SVGL/CDN variants and XDG names (`name-dark`, `name-symbolic`, `name-light`). FreeDesktop **icon theme name** is separate (`APPICON_ICON_THEME` / `GTK_THEME` basename before `:`).
+
 ## MCP
 
 | Tool | Role |
 |------|------|
 | `sources_list` / `sources_get` / `sources_set` | Effective order / raw config / overwrite |
-| `resolve` / `prefetch` | Optional `order` array |
+| `resolve` | Optional `order`, `theme`, `explain`; `query` or `queries` (batch → `{results:[…]}`) |
+| `prefetch` | Optional `order`, `theme`, `offline`, `from_desktop` |
+| `override_suggest` | Candidate remaps for a miss / `--from-misses` |
 
 Allowlisted CDN hosts (when those stages are enabled): `cdn.jsdelivr.net`; GitHub: `github.com`, `avatars.githubusercontent.com`. Consumers must not embed these URLs — call `appicon` / MCP only.
 
@@ -98,6 +104,6 @@ Allowlisted CDN hosts (when those stages are enabled): `cdn.jsdelivr.net`; GitHu
 
 - [Documentation map](README.md)
 - [packs.md](packs.md) — local packs vs CDN stages
-- [consumer-contract.md](consumer-contract.md) — exit codes / `--json`
+- [consumer-contract.md](consumer-contract.md) — exit codes / `--json` (single + batch)
 - [deferred.md](deferred.md) — not a backlog
 - [../README.md](../README.md) · [../SECURITY.md](../SECURITY.md) · [../AGENTS.md](../AGENTS.md)

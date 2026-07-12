@@ -68,7 +68,7 @@ func TestMCPListTools(t *testing.T) {
 	want := map[string]bool{
 		"resolve": true, "prefetch": true, "status": true, "cache_stats": true,
 		"cache_clear": true, "cache_prune": true, "version": true,
-		"override_list": true, "override_get": true, "override_set": true, "override_rm": true,
+		"override_list": true, "override_get": true, "override_set": true, "override_rm": true, "override_suggest": true,
 		"sources_list": true, "sources_get": true, "sources_set": true,
 		"pack_list": true, "pack_path": true, "pack_add": true,
 		"pack_install": true, "pack_update": true, "pack_install_bundle": true,
@@ -565,13 +565,11 @@ func TestMCPPackUpdateRecipe(t *testing.T) {
 }
 
 func TestMCPPrefetchOrder(t *testing.T) {
-	opts := fixtureXDG(t)
-	opts.ConfigDir = t.TempDir()
-	session := connect(t, opts)
+	session := connect(t, fixtureXDG(t))
 	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
 		Name: "prefetch",
 		Arguments: map[string]any{
-			"queries": []any{"zzzz-prefetch-glyph"},
+			"queries": []any{"zzzz-prefetch-order"},
 			"offline": true,
 			"order":   []any{"glyph"},
 		},
@@ -579,14 +577,130 @@ func TestMCPPrefetchOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sc, _ := res.StructuredContent.(map[string]any)
-	results, _ := sc["results"].([]any)
-	if len(results) != 1 {
-		t.Fatalf("%v", sc)
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("structured=%T", res.StructuredContent)
+	}
+	results, ok := sc["results"].([]any)
+	if !ok || len(results) != 1 {
+		t.Fatalf("results=%v", sc["results"])
 	}
 	item, _ := results[0].(map[string]any)
-	if item["source"] != "glyph" {
+	if item["source"] != "glyph" || item["path"] == nil {
 		t.Fatalf("item=%v", item)
+	}
+}
+
+func TestMCPResolveBatch(t *testing.T) {
+	session := connect(t, fixtureXDG(t))
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "resolve",
+		Arguments: map[string]any{
+			"queries": []any{"org.example.Test", "zzzz-mcp-batch-miss"},
+			"offline": true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("batch miss should not IsError: %+v", res)
+	}
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("structured=%T", res.StructuredContent)
+	}
+	results, ok := sc["results"].([]any)
+	if !ok || len(results) != 2 {
+		t.Fatalf("results=%v", sc)
+	}
+	first, _ := results[0].(map[string]any)
+	second, _ := results[1].(map[string]any)
+	if first["source"] != "xdg" {
+		t.Fatalf("first=%v", first)
+	}
+	if second["error"] == nil {
+		t.Fatalf("second=%v", second)
+	}
+}
+
+func TestMCPOverrideSuggest(t *testing.T) {
+	opts := fixtureXDG(t)
+	opts.ConfigDir = t.TempDir()
+	session := connect(t, opts)
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "override_suggest",
+		Arguments: map[string]any{
+			"query": "org.example.Test",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("%+v", res)
+	}
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("structured=%T", res.StructuredContent)
+	}
+	sug, ok := sc["suggestion"].(map[string]any)
+	if !ok {
+		t.Fatalf("%v", sc)
+	}
+	cands, _ := sug["candidates"].([]any)
+	if len(cands) == 0 {
+		t.Fatalf("%v", sug)
+	}
+}
+
+func TestMCPOverrideSuggestApply(t *testing.T) {
+	opts := fixtureXDG(t)
+	opts.ConfigDir = t.TempDir()
+	session := connect(t, opts)
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "override_suggest",
+		Arguments: map[string]any{
+			"query": "org.example.Test",
+			"apply": true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("%T", res.StructuredContent)
+	}
+	if sc["applied"] == nil {
+		t.Fatalf("%v", sc)
+	}
+	got, err := resolve.GetOverride(opts.ConfigDir, "org.example.Test")
+	if err != nil || got == "" {
+		t.Fatalf("got=%q err=%v", got, err)
+	}
+}
+
+func TestMCPPrefetchFromDesktop(t *testing.T) {
+	session := connect(t, fixtureXDG(t))
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "prefetch",
+		Arguments: map[string]any{
+			"from_desktop": true,
+			"offline":      true,
+			"order":        []any{"xdg", "glyph"},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("%T", res.StructuredContent)
+	}
+	results, ok := sc["results"].([]any)
+	if !ok || len(results) == 0 {
+		t.Fatalf("%v", sc)
 	}
 }
 

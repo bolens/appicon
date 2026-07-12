@@ -7,7 +7,7 @@ Short rules for AI coding agents in this repository.
 - This is a standalone Go CLI: `github.com/bolens/appicon`.
 - Consumers (e.g. [waybar-config](https://github.com/bolens/waybar-config)) shell out to `appicon resolve` and get a local path.
 - Agents can also run `appicon mcp` (stdio MCP) — tools wrap the same resolve path.
-- Prefer MCP tools (`resolve`, `sources_*`, `pack_*`, …) over shelling the CLI when MCP is connected.
+- Prefer MCP tools (`resolve`, `sources_*`, `pack_*`, `override_*`, …) over shelling the CLI when MCP is connected.
 - Do **not** embed SVGL/CDN URLs or download logic in consumer repos — only call this binary / MCP tools.
 
 ## Source of truth
@@ -15,7 +15,7 @@ Short rules for AI coding agents in this repository.
 Documentation map (start here when adding or renaming docs): [docs/README.md](docs/README.md).
 
 - Deferred ideas (not a backlog): [docs/deferred.md](docs/deferred.md).
-- Consumer exit codes / `--json` schema: [docs/consumer-contract.md](docs/consumer-contract.md), [docs/resolve-result.schema.json](docs/resolve-result.schema.json).
+- Consumer exit codes / `--json` schema: [docs/consumer-contract.md](docs/consumer-contract.md), [docs/resolve-result.schema.json](docs/resolve-result.schema.json), [docs/resolve-batch-result.schema.json](docs/resolve-batch-result.schema.json).
 - Resolve stages / packs: [docs/sources.md](docs/sources.md), [docs/packs.md](docs/packs.md).
 - Public CLI: `cmd/appicon` (`resolve`, `prefetch`, `status`, `cache`, `override`, `sources`, `pack`, `daemon`, `mcp`, `completion`, `man`, `version`).
 - Packages: `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/packs`, `internal/simpleicons`, `internal/dashboardicons`, `internal/githubicon`, `internal/glyph`, `internal/slugcdn`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/daemon`.

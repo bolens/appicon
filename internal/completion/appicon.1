@@ -17,15 +17,18 @@ pipeline (including opt-in CDN/github/glyph stages and local packs) via
 sources.json. A miss exits with status 1 unless a glyph stage is reached.
 .SH COMMANDS
 .TP
-.B resolve [\-\-json] [\-\-explain] [\-\-offline] [\-\-local] [\-\-order \fITYPES\fR] [\-\-format svg|png] [\-\-size N] [\-\-theme dark|light] \fIquery\fR
-Resolve \fIquery\fR and print the absolute path (or JSON with \-\-json).
+.B resolve [\-\-json] [\-\-explain] [\-\-offline] [\-\-local] [\-\-order \fITYPES\fR] [\-\-format svg|png] [\-\-size N] [\-\-theme dark|light] \fIquery\fR...
+Resolve one or more queries and print absolute paths (or JSON with \-\-json).
+Multiple queries emit {results:[…]} with \-\-json.
 \-\-order is a comma-separated list of stage types.
 \-\-explain includes tried stages and a miss hint.
-When a daemon socket is present, dial it unless \-\-local, \-\-explain, \-\-order,
-or APPICON_NO_DAEMON is set.
+When a daemon socket is present, dial it unless \-\-local or APPICON_NO_DAEMON is set
+(order, explain, batch, and prefetch are supported over the socket).
 .TP
-.B prefetch [\-\-json] [\-\-offline] [\-\-order \fITYPES\fR] \fIquery\fR...
-Warm the cache for one or more queries (same effective order as resolve).
+.B prefetch [\-\-json] [\-\-offline] [\-\-from\-desktop] [\-\-theme dark|light] [\-\-order \fITYPES\fR] [\fIquery\fR...]
+Warm the cache for queries (same effective order as resolve).
+\-\-from\-desktop derives queries from installed .desktop files.
+Uses the daemon socket when available (same as resolve).
 .TP
 .B status [\-\-json]
 Print config/cache/pack paths, effective order, daemon socket, and helper tools.
@@ -33,8 +36,10 @@ Print config/cache/pack paths, effective order, daemon socket, and helper tools.
 .B cache path|clear|stats|prune
 Inspect or manage the on-disk cache under $XDG_CACHE_HOME/appicon.
 .TP
-.B override list|get|set|rm|path [\-\-json]
+.B override list|get|set|rm|path|suggest [\-\-json]
 Manage $XDG_CONFIG_HOME/appicon/overrides.json query remaps (long-tail aliases).
+.B suggest
+proposes remap targets; \-\-from\-misses uses recent miss queries.
 .TP
 .B sources list|get|set|path [\-\-json] [\-\-file \fIPATH\fR]
 Show effective order, read/write sources.json, or print its path.

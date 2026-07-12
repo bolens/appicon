@@ -55,6 +55,11 @@ func TestBashMentionsSourcesPack(t *testing.T) {
 	if !strings.Contains(s, "get") || !strings.Contains(s, "set") {
 		t.Fatal("bash completion missing sources get/set")
 	}
+	for _, needle := range []string{"__complete queries", "suggest", "--from-desktop", "--from-misses"} {
+		if !strings.Contains(s, needle) {
+			t.Fatalf("bash completion missing %q", needle)
+		}
+	}
 }
 
 func TestZshFishMentionStatusAndStages(t *testing.T) {
@@ -63,7 +68,7 @@ func TestZshFishMentionStatusAndStages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, needle := range []string{"status", "simple-icons", "glyph", "--explain"} {
+	for _, needle := range []string{"status", "simple-icons", "glyph", "--explain", "suggest", "--from-desktop", "__complete queries"} {
 		if !strings.Contains(zsh, needle) {
 			t.Fatalf("zsh missing %q", needle)
 		}
@@ -72,9 +77,19 @@ func TestZshFishMentionStatusAndStages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, needle := range []string{"status", "simple-icons", "glyph", "-l explain"} {
+	for _, needle := range []string{"status", "simple-icons", "glyph", "-l explain", "suggest", "from-desktop", "__appicon_queries"} {
 		if !strings.Contains(fish, needle) {
 			t.Fatalf("fish missing %q", needle)
+		}
+	}
+}
+
+func TestManPageNewSurfaces(t *testing.T) {
+	t.Parallel()
+	man := completion.ManPage()
+	for _, needle := range []string{"suggest", "from\\-desktop", "results", "APPICON_NO_DAEMON"} {
+		if !strings.Contains(man, needle) {
+			t.Fatalf("man missing %q", needle)
 		}
 	}
 }

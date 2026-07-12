@@ -63,6 +63,8 @@ type Result struct {
 	Cached bool
 	// Tried is stage labels that were attempted and missed before the hit or final miss.
 	Tried []string
+	// Hint is an actionable miss suggestion (set on ErrNotFound).
+	Hint string
 }
 
 // Stats summarizes the on-disk cache.
@@ -85,6 +87,22 @@ func CacheDir() string {
 
 // Resolve looks up an icon using the effective ordered stages from sources.json.
 func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
+	original := strings.TrimSpace(query)
+	res, err := resolvePipeline(ctx, query, opts)
+	if err == nil && original != "" {
+		RecordRecent(original)
+	} else if errors.Is(err, ErrNotFound) {
+		if original != "" {
+			RecordMiss(original)
+		}
+		if res.Hint == "" {
+			res.Hint = MissHint(opts.ConfigDir, opts.Order)
+		}
+	}
+	return res, err
+}
+
+func resolvePipeline(ctx context.Context, query string, opts Options) (Result, error) {
 	if opts.Format == "" {
 		opts.Format = "svg"
 	}
@@ -95,9 +113,7 @@ func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
 	if opts.Size <= 0 {
 		opts.Size = 48
 	}
-	if opts.Theme == "" {
-		opts.Theme = os.Getenv("APPICON_THEME")
-	}
+	opts.Theme = EffectiveTheme(opts.Theme)
 
 	if query == "" {
 		return Result{}, ErrNotFound
@@ -166,10 +182,11 @@ func resolveSource(ctx context.Context, src sourceSpec, query string, opts Optio
 	switch src.Type {
 	case "xdg":
 		xdgOpts := xdg.Options{
-			Size:      opts.Size,
-			IconTheme: opts.IconTheme,
-			DataDirs:  opts.DataDirs,
-			IconDirs:  opts.IconDirs,
+			Size:        opts.Size,
+			IconTheme:   opts.IconTheme,
+			ColorScheme: opts.Theme,
+			DataDirs:    opts.DataDirs,
+			IconDirs:    opts.IconDirs,
 		}
 		xdgRes, err := xdg.Resolve(query, xdgOpts)
 		if err != nil {

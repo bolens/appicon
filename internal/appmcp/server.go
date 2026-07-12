@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/bolens/appicon/internal/daemon"
 	"github.com/bolens/appicon/internal/packs"
@@ -42,14 +43,15 @@ func NewServer(opts Options) *mcp.Server {
 
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "resolve",
-		Description: "Resolve a desktop/brand icon query to a local file path (mirrors appicon resolve --json). " +
+		Description: "Resolve desktop/brand icon queries to local file paths (mirrors appicon resolve --json). " +
+			"Pass query for one result, or queries for a batch ({results:[…]}). " +
 			"Miss returns path:null with error set and IsError=false (supported). " +
 			"Set explain=true for tried stages + hint. Prefer override_set for remaps; do not invent CDN/SVGL URLs.",
 	}, h.resolve)
 	mcp.AddTool(s, &mcp.Tool{
 		Name: "prefetch",
 		Description: "Warm the appicon cache for one or more queries (mirrors appicon prefetch). " +
-			"Supports order and offline; use before offline resolve on hot paths.",
+			"Supports order, offline, theme, and from_desktop; use before offline resolve on hot paths.",
 	}, h.prefetch)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "status",
@@ -87,6 +89,10 @@ func NewServer(opts Options) *mcp.Server {
 		Name:        "override_rm",
 		Description: "Remove a query remap from overrides.json (mirrors appicon override rm).",
 	}, h.overrideRm)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "override_suggest",
+		Description: "Suggest override targets for a miss query or recent misses (mirrors appicon override suggest).",
+	}, h.overrideSuggest)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "sources_list",
 		Description: "List effective resolve stage order (mirrors appicon sources list --json).",
@@ -138,7 +144,8 @@ type handlers struct {
 }
 
 type resolveInput struct {
-	Query   string   `json:"query" jsonschema:"icon query: app id, WM class, .desktop id, display name, Steam appid, or file path"`
+	Query   string   `json:"query,omitempty" jsonschema:"single icon query (app id, WM class, .desktop id, display name, Steam appid, or file path)"`
+	Queries []string `json:"queries,omitempty" jsonschema:"multiple icon queries for batch resolve"`
 	Format  string   `json:"format,omitempty" jsonschema:"svg or png (default svg)"`
 	Size    int      `json:"size,omitempty" jsonschema:"pixel size for png / XDG preference (default 48)"`
 	Theme   string   `json:"theme,omitempty" jsonschema:"prefer dark or light variants when available"`
@@ -148,12 +155,25 @@ type resolveInput struct {
 }
 
 type resolveOutput struct {
+	Query   string              `json:"query,omitempty"`
+	Path    *string             `json:"path"`
+	Source  string              `json:"source,omitempty"`
+	Theme   string              `json:"theme,omitempty"`
+	Format  string              `json:"format,omitempty"`
+	Cached  bool                `json:"cached,omitempty"`
+	Error   *string             `json:"error"`
+	Tried   []string            `json:"tried,omitempty"`
+	Hint    string              `json:"hint,omitempty"`
+	Results []resolveResultItem `json:"results,omitempty"`
+}
+
+type resolveResultItem struct {
 	Query  string   `json:"query"`
 	Path   *string  `json:"path"`
-	Source string   `json:"source"`
-	Theme  string   `json:"theme"`
-	Format string   `json:"format"`
-	Cached bool     `json:"cached"`
+	Source string   `json:"source,omitempty"`
+	Theme  string   `json:"theme,omitempty"`
+	Format string   `json:"format,omitempty"`
+	Cached bool     `json:"cached,omitempty"`
 	Error  *string  `json:"error"`
 	Tried  []string `json:"tried,omitempty"`
 	Hint   string   `json:"hint,omitempty"`
@@ -175,30 +195,72 @@ func (h *handlers) resolve(ctx context.Context, _ *mcp.CallToolRequest, in resol
 		opts.Order = in.Order
 	}
 
-	out := resolveOutput{
-		Query:  in.Query,
+	queries := append([]string(nil), in.Queries...)
+	if in.Query != "" {
+		queries = append([]string{in.Query}, queries...)
+	}
+	if len(queries) == 0 {
+		msg := "resolve requires query or queries"
+		return &mcp.CallToolResult{IsError: true}, resolveOutput{Error: &msg}, nil
+	}
+
+	if len(queries) == 1 {
+		item, hard := h.resolveOne(ctx, queries[0], opts, in.Explain)
+		out := resolveOutput{
+			Query:  item.Query,
+			Path:   item.Path,
+			Source: item.Source,
+			Theme:  item.Theme,
+			Format: item.Format,
+			Cached: item.Cached,
+			Error:  item.Error,
+			Tried:  item.Tried,
+			Hint:   item.Hint,
+		}
+		if hard {
+			return &mcp.CallToolResult{IsError: true}, out, nil
+		}
+		return nil, out, nil
+	}
+
+	out := resolveOutput{Results: make([]resolveResultItem, 0, len(queries)), Path: nil, Error: nil}
+	hardErr := false
+	for _, q := range queries {
+		item, hard := h.resolveOne(ctx, q, opts, in.Explain)
+		out.Results = append(out.Results, item)
+		if hard {
+			hardErr = true
+		}
+	}
+	if hardErr {
+		return &mcp.CallToolResult{IsError: true}, out, nil
+	}
+	return nil, out, nil
+}
+
+func (h *handlers) resolveOne(ctx context.Context, query string, opts resolve.Options, explain bool) (resolveResultItem, bool) {
+	out := resolveResultItem{
+		Query:  query,
 		Theme:  opts.Theme,
 		Format: opts.Format,
 	}
 	if out.Format == "" {
 		out.Format = "svg"
 	}
-
-	res, err := resolve.Resolve(ctx, in.Query, opts)
+	res, err := resolve.Resolve(ctx, query, opts)
 	if err != nil {
 		msg := err.Error()
 		out.Error = &msg
-		if in.Explain {
+		if explain {
 			out.Tried = res.Tried
 			if errors.Is(err, resolve.ErrNotFound) {
-				out.Hint = resolve.MissHint(opts.ConfigDir, opts.Order)
+				out.Hint = res.Hint
+				if out.Hint == "" {
+					out.Hint = resolve.MissHint(opts.ConfigDir, opts.Order)
+				}
 			}
 		}
-		// Misses are expected outcomes for callers (glyph fallback); other errors too.
-		if !errors.Is(err, resolve.ErrNotFound) {
-			return &mcp.CallToolResult{IsError: true}, out, nil
-		}
-		return nil, out, nil
+		return out, !errors.Is(err, resolve.ErrNotFound)
 	}
 	path := res.Path
 	out.Path = &path
@@ -206,19 +268,20 @@ func (h *handlers) resolve(ctx context.Context, _ *mcp.CallToolRequest, in resol
 	out.Theme = res.Theme
 	out.Format = res.Format
 	out.Cached = res.Cached
-	if in.Explain {
+	if explain {
 		out.Tried = res.Tried
 	}
-	return nil, out, nil
+	return out, false
 }
 
 type prefetchInput struct {
-	Queries []string `json:"queries" jsonschema:"one or more icon queries to warm in the cache"`
-	Format  string   `json:"format,omitempty" jsonschema:"svg or png (default svg)"`
-	Size    int      `json:"size,omitempty" jsonschema:"pixel size preference (default 48)"`
-	Theme   string   `json:"theme,omitempty" jsonschema:"prefer dark or light variants when available"`
-	Offline bool     `json:"offline,omitempty" jsonschema:"skip network while prefetching"`
-	Order   []string `json:"order,omitempty" jsonschema:"optional stage type order override (same as resolve --order)"`
+	Queries     []string `json:"queries,omitempty" jsonschema:"one or more icon queries to warm in the cache"`
+	FromDesktop bool     `json:"from_desktop,omitempty" jsonschema:"include queries derived from installed .desktop files"`
+	Format      string   `json:"format,omitempty" jsonschema:"svg or png (default svg)"`
+	Size        int      `json:"size,omitempty" jsonschema:"pixel size preference (default 48)"`
+	Theme       string   `json:"theme,omitempty" jsonschema:"prefer dark or light variants when available"`
+	Offline     bool     `json:"offline,omitempty" jsonschema:"skip network while prefetching"`
+	Order       []string `json:"order,omitempty" jsonschema:"optional stage type order override (same as resolve --order)"`
 }
 
 type prefetchItem struct {
@@ -248,8 +311,26 @@ func (h *handlers) prefetch(ctx context.Context, _ *mcp.CallToolRequest, in pref
 		opts.Order = in.Order
 	}
 
-	out := prefetchOutput{Results: make([]prefetchItem, 0, len(in.Queries))}
-	for _, q := range in.Queries {
+	queries := append([]string(nil), in.Queries...)
+	if in.FromDesktop {
+		queries = append(queries, resolve.DesktopPrefetchQueries(opts)...)
+	}
+	seen := map[string]struct{}{}
+	uniq := make([]string, 0, len(queries))
+	for _, q := range queries {
+		k := strings.ToLower(strings.TrimSpace(q))
+		if k == "" {
+			continue
+		}
+		if _, ok := seen[k]; ok {
+			continue
+		}
+		seen[k] = struct{}{}
+		uniq = append(uniq, strings.TrimSpace(q))
+	}
+
+	out := prefetchOutput{Results: make([]prefetchItem, 0, len(uniq))}
+	for _, q := range uniq {
 		item := prefetchItem{Query: q}
 		res, err := resolve.Resolve(ctx, q, opts)
 		if err != nil {
@@ -443,4 +524,49 @@ func (h *handlers) overrideRm(_ context.Context, _ *mcp.CallToolRequest, in over
 		return &mcp.CallToolResult{IsError: true}, overrideRmOutput{Query: in.Query}, err
 	}
 	return nil, overrideRmOutput{Query: in.Query, OK: true}, nil
+}
+
+type overrideSuggestInput struct {
+	Query      string `json:"query,omitempty" jsonschema:"query to suggest remaps for"`
+	FromMisses bool   `json:"from_misses,omitempty" jsonschema:"suggest for recent miss queries instead of a single query"`
+	Apply      bool   `json:"apply,omitempty" jsonschema:"apply the first candidate via override_set"`
+}
+
+type overrideSuggestOutput struct {
+	Suggestions []resolve.Suggestion `json:"suggestions,omitempty"`
+	Suggestion  *resolve.Suggestion  `json:"suggestion,omitempty"`
+	Applied     *string              `json:"applied,omitempty"`
+}
+
+func (h *handlers) overrideSuggest(_ context.Context, _ *mcp.CallToolRequest, in overrideSuggestInput) (*mcp.CallToolResult, overrideSuggestOutput, error) {
+	opts := h.opts
+	if opts.Format == "" {
+		opts.Format = "svg"
+	}
+	if opts.Size <= 0 {
+		opts.Size = 48
+	}
+	if in.FromMisses {
+		list, err := resolve.SuggestFromMisses(h.opts.ConfigDir, opts, 20)
+		if err != nil {
+			return &mcp.CallToolResult{IsError: true}, overrideSuggestOutput{}, err
+		}
+		return nil, overrideSuggestOutput{Suggestions: list}, nil
+	}
+	if strings.TrimSpace(in.Query) == "" {
+		msg := "override_suggest requires query or from_misses"
+		return &mcp.CallToolResult{IsError: true}, overrideSuggestOutput{}, errors.New(msg)
+	}
+	s, err := resolve.SuggestOverride(h.opts.ConfigDir, in.Query, opts)
+	if err != nil {
+		return &mcp.CallToolResult{IsError: true}, overrideSuggestOutput{}, err
+	}
+	out := overrideSuggestOutput{Suggestion: &s}
+	if in.Apply && len(s.Candidates) > 0 {
+		if err := resolve.SetOverride(h.opts.ConfigDir, s.Query, s.Candidates[0]); err != nil {
+			return &mcp.CallToolResult{IsError: true}, out, err
+		}
+		out.Applied = &s.Candidates[0]
+	}
+	return nil, out, nil
 }

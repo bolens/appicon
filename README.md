@@ -5,11 +5,14 @@ Resolve desktop and brand icons to **local file paths** — for Waybar, Rofi, sc
 ```bash
 appicon resolve firefox
 appicon resolve --json --format png --size 24 "VS Code"
+appicon resolve --json firefox discord
 appicon resolve --offline some-cached-app
 appicon resolve --explain missing-app
 appicon prefetch firefox discord
+appicon prefetch --from-desktop
 appicon prefetch --json --offline firefox
 appicon override set my-browser firefox
+appicon override suggest my-browser
 appicon override list
 appicon sources get --json
 appicon sources set --file ./sources.json
@@ -26,9 +29,11 @@ appicon man | man -l -    # view man page
 
 XDG, SVGL (cache-first), local packs, opt-in CDN/github/glyph stages, PNG rasterization, `--offline`, `cache prune`, MCP, optional socket daemon, and shell completions are implemented. Deferred ideas: [docs/deferred.md](docs/deferred.md).
 
-**Consumer contract:** exit `0` / `1` (miss) / `2` (error); stable `resolve --json` fields — [docs/consumer-contract.md](docs/consumer-contract.md), schema [docs/resolve-result.schema.json](docs/resolve-result.schema.json). Misses are supported (callers keep glyphs). Treat appicon like optional peers such as `zscroll` / `cava`: never require the binary for a working bar.
+**Consumer contract:** exit `0` / `1` (miss) / `2` (error); stable `resolve --json` fields (single object or `{results:[…]}` batch) — [docs/consumer-contract.md](docs/consumer-contract.md), schemas [docs/resolve-result.schema.json](docs/resolve-result.schema.json) / [docs/resolve-batch-result.schema.json](docs/resolve-batch-result.schema.json). Misses are supported (callers keep glyphs). Treat appicon like optional peers such as `zscroll` / `cava`: never require the binary for a working bar.
 
 **PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`.
+
+**Theme note:** `--theme dark|light`, `APPICON_THEME`, or `GTK_THEME` suffix (`Adwaita:dark`) prefer matching SVGL/CDN and XDG variants (`name-dark` / `name-symbolic` / `name-light`). Icon **theme name** is separate (`APPICON_ICON_THEME`).
 
 **Sources:** `$XDG_CONFIG_HOME/appicon/sources.json` — every stage is an ordered entry. Default without a file is `file → overrides → xdg → svgl`. Opt-in remotes are never enabled by default.
 
@@ -77,13 +82,13 @@ appicon mcp
 
 | Tool | Mirrors |
 |------|---------|
-| `resolve` | `appicon resolve --json` (optional `order`, `explain`; miss → `path:null`, not IsError) |
-| `prefetch` | `appicon prefetch` (optional `order`, `offline`, `json`) |
+| `resolve` | `appicon resolve --json` (optional `order`, `explain`, `queries` batch; miss → `path:null`, not IsError) |
+| `prefetch` | `appicon prefetch` (optional `order`, `offline`, `theme`, `from_desktop`, `json`) |
 | `status` | `appicon status --json` |
 | `sources_list` / `sources_get` / `sources_set` | `appicon sources list\|get\|set` |
 | `pack_list` / `pack_path` / `pack_add` / `pack_install` / `pack_update` / `pack_install_bundle` | `appicon pack …` (`pack_install`: `recipe` or `url`, plus `name`/`subdir`/`ref`) |
 | `cache_stats` / `cache_clear` / `cache_prune` | matching `cache` subcommands |
-| `override_list` / `override_get` / `override_set` / `override_rm` | `appicon override …` |
+| `override_list` / `override_get` / `override_set` / `override_rm` / `override_suggest` | `appicon override …` |
 | `version` | `appicon version` |
 
 Example Cursor / Claude Desktop snippet:
@@ -103,7 +108,7 @@ Agents should prefer MCP tools over shelling `appicon` when MCP is connected. Ca
 
 ## Daemon (optional)
 
-Long-lived resolve over `$XDG_RUNTIME_DIR/appicon.sock` (mode `0600`). Same allowlists/cache as the CLI. `resolve` dials the socket when present and falls back in-process (`--local` / `APPICON_NO_DAEMON=1` skips dial).
+Long-lived resolve over `$XDG_RUNTIME_DIR/appicon.sock` (mode `0600`). Same allowlists/cache as the CLI, including order, explain, and batch. `resolve` / `prefetch` dial the socket when present and fall back in-process (`--local` / `APPICON_NO_DAEMON=1` skips dial).
 
 ```bash
 appicon daemon                          # foreground

@@ -14,7 +14,7 @@ ACTIONLINT_VERSION ?= 1.7.7
 
 .PHONY: help build test vet fmt check check-fast lint \
 	check-gitleaks check-actionlint check-markdownlint check-govulncheck \
-	check-docs-crosslinks \
+	check-docs-crosslinks check-consumer-smoke check-aur-publish \
 	check-ci-path-filters check-nix-packages check-packaging-versions \
 	build-packaging clean
 
@@ -30,6 +30,8 @@ help:
 		'make lint               - golangci-lint run' \
 		'make check-govulncheck  - govulncheck ./...' \
 		'make check-docs-crosslinks - docs hub / sibling link contract' \
+		'make check-consumer-smoke - resolve JSON contract + examples syntax' \
+		'make check-aur-publish  - AUR PKGBUILD publish readiness' \
 		'make clean              - remove bin/ and coverage artifacts'
 
 build:
@@ -74,6 +76,12 @@ check-govulncheck:
 check-docs-crosslinks:
 	bash scripts/ci/check-docs-crosslinks.sh
 
+check-consumer-smoke:
+	bash scripts/ci/consumer-smoke.sh
+
+check-aur-publish:
+	bash scripts/ci/aur-publish-check.sh
+
 check-ci-path-filters:
 	bash scripts/ci/check-ci-path-filters.sh
 
@@ -93,6 +101,8 @@ check: check-fast
 	@$(MAKE) check-actionlint
 	@$(MAKE) check-markdownlint
 	@$(MAKE) check-docs-crosslinks
+	@$(MAKE) check-consumer-smoke
+	@$(MAKE) check-aur-publish
 	@$(MAKE) check-ci-path-filters
 	@$(MAKE) check-nix-packages
 	@$(MAKE) check-packaging-versions

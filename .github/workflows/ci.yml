@@ -14,6 +14,8 @@ on:
       - ".github/workflows/**"
       - "**/*.md"
       - "docs/**"
+      - "testdata/**"
+      - "examples/**"
       - "flake.nix"
       - "flake.lock"
       - "nix/**"
@@ -70,6 +72,8 @@ jobs:
               - 'Makefile'
               - 'internal/completion/**'
               - 'contrib/**'
+              - 'testdata/**'
+              - 'examples/**'
             lint:
               - '**/*.go'
               - 'go.mod'
@@ -83,12 +87,15 @@ jobs:
               - 'package-lock.json'
               - 'docs/**'
               - 'scripts/ci/check-docs-crosslinks.sh'
+              - 'scripts/ci/consumer-smoke.sh'
             scripts_ci:
               - 'scripts/ci/**'
             workflow:
               - '.github/workflows/**'
               - 'Makefile'
               - 'scripts/ci/check-*.sh'
+              - 'scripts/ci/consumer-smoke.sh'
+              - 'scripts/ci/aur-publish-check.sh'
               - '.gitleaks.toml'
               - 'package.json'
               - 'package-lock.json'
@@ -104,6 +111,9 @@ jobs:
               - 'nix/**'
             packaging:
               - 'packaging/**'
+              - 'scripts/ci/aur-publish-check.sh'
+              - 'scripts/ci/check-packaging-versions.sh'
+              - 'scripts/ci/build-packaging.sh'
       - name: Resolve suite flags
         id: flags
         env:
@@ -285,6 +295,29 @@ jobs:
       - name: check-docs-crosslinks
         run: bash scripts/ci/check-docs-crosslinks.sh
 
+  consumer-smoke:
+    name: Consumer smoke
+    needs: changes
+    if: needs.changes.outputs.go == 'true' || needs.changes.outputs.docs == 'true' || needs.changes.outputs.workflow == 'true' || needs.changes.outputs.scripts_ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: consumer-smoke
+        run: bash scripts/ci/consumer-smoke.sh
+
+  aur-publish-check:
+    name: AUR publish readiness
+    needs: changes
+    if: needs.changes.outputs.packaging == 'true' || needs.changes.outputs.workflow == 'true' || needs.changes.outputs.scripts_ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: aur-publish-check
+        run: bash scripts/ci/aur-publish-check.sh
+
   nix-packages:
     name: Nix package contract
     needs: changes
@@ -389,6 +422,8 @@ jobs:
       - actionlint
       - markdownlint
       - docs-crosslinks
+      - consumer-smoke
+      - aur-publish-check
       - nix-packages
       - packaging-versions
       - packaging-aur-build

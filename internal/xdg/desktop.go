@@ -164,6 +164,80 @@ func (f *Finder) findDesktop(query string) (DesktopEntry, bool) {
 	}
 }
 
+// FindDesktop looks up a .desktop entry for query (exported for suggest / prefetch).
+func FindDesktop(query string, opts Options) (DesktopEntry, bool) {
+	return NewFinder(opts).findDesktop(query)
+}
+
+// ListDesktopEntries returns all parseable .desktop entries under DataDirs.
+func ListDesktopEntries(opts Options) []DesktopEntry {
+	return NewFinder(opts).ListDesktopEntries()
+}
+
+// ListDesktopEntries returns all parseable .desktop entries.
+func (f *Finder) ListDesktopEntries() []DesktopEntry {
+	var out []DesktopEntry
+	seen := map[string]struct{}{}
+	for _, dir := range f.applicationDirs() {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, ent := range entries {
+			if ent.IsDir() || !strings.HasSuffix(ent.Name(), ".desktop") {
+				continue
+			}
+			path := filepath.Join(dir, ent.Name())
+			desk, err := parseDesktopFile(path)
+			if err != nil {
+				continue
+			}
+			key := strings.ToLower(desk.ID)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			out = append(out, desk)
+		}
+	}
+	return out
+}
+
+// PrefetchQueriesFromDesktop derives unique resolve queries from installed .desktop files.
+func PrefetchQueriesFromDesktop(opts Options) []string {
+	entries := ListDesktopEntries(opts)
+	seen := map[string]struct{}{}
+	var out []string
+	add := func(s string) {
+		s = strings.TrimSpace(s)
+		if s == "" || strings.EqualFold(s, "null") {
+			return
+		}
+		// Skip absolute icon paths — resolve prefers names / ids.
+		if strings.Contains(s, string(filepath.Separator)) || strings.HasPrefix(s, "/") {
+			return
+		}
+		key := strings.ToLower(s)
+		if _, ok := seen[key]; ok {
+			return
+		}
+		seen[key] = struct{}{}
+		out = append(out, s)
+	}
+	for _, e := range entries {
+		if e.StartupWMClass != "" {
+			add(e.StartupWMClass)
+			continue
+		}
+		if e.ID != "" {
+			add(e.ID)
+			continue
+		}
+		add(e.Icon)
+	}
+	return out
+}
+
 func (f *Finder) applicationDirs() []string {
 	dirs := make([]string, 0, len(f.DataDirs)*2)
 	seen := make(map[string]struct{})
