@@ -4,7 +4,11 @@ package appmcp
 import (
 	"context"
 	"errors"
+	"os"
+	"os/exec"
 
+	"github.com/bolens/appicon/internal/daemon"
+	"github.com/bolens/appicon/internal/packs"
 	"github.com/bolens/appicon/internal/resolve"
 	"github.com/bolens/appicon/internal/version"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -15,22 +19,42 @@ type Options struct {
 	Resolve resolve.Options
 }
 
+const serverInstructions = `appicon resolves desktop/brand icon queries to local file paths.
+
+Rules for agents:
+- Prefer these MCP tools over shelling the CLI when connected.
+- A resolve miss (path null, error set, IsError false) is a supported outcome — callers keep glyphs. Do not treat miss as a hard failure.
+- Prefer override_set for long-tail remaps; do not invent speculative aliases or embed SVGL/CDN URLs in other repos.
+- CDN stages (simple-icons, dashboard-icons) are opt-in network lookups; pack_install clones local trees — they are not the same.
+- Hot paths should prefetch then resolve with offline=true.
+- Use sources_* / pack_* / status to inspect and configure; never download icons yourself.
+`
+
 // NewServer builds an MCP server whose tools call internal/resolve.
 func NewServer(opts Options) *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{
 		Name:    "appicon",
 		Version: version.Version,
-	}, nil)
+	}, &mcp.ServerOptions{
+		Instructions: serverInstructions,
+	})
 	h := &handlers{opts: opts.Resolve}
 
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "resolve",
-		Description: "Resolve a desktop/brand icon query to a local file path (mirrors appicon resolve --json).",
+		Name: "resolve",
+		Description: "Resolve a desktop/brand icon query to a local file path (mirrors appicon resolve --json). " +
+			"Miss returns path:null with error set and IsError=false (supported). " +
+			"Set explain=true for tried stages + hint. Prefer override_set for remaps; do not invent CDN/SVGL URLs.",
 	}, h.resolve)
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "prefetch",
-		Description: "Warm the appicon cache for one or more queries (mirrors appicon prefetch).",
+		Name: "prefetch",
+		Description: "Warm the appicon cache for one or more queries (mirrors appicon prefetch). " +
+			"Supports order and offline; use before offline resolve on hot paths.",
 	}, h.prefetch)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "status",
+		Description: "Report config/cache/pack paths, effective order, daemon socket, and helper tools (mirrors appicon status --json).",
+	}, h.status)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "cache_stats",
 		Description: "Report appicon cache directory size and file count (mirrors appicon cache stats).",
@@ -53,11 +77,11 @@ func NewServer(opts Options) *mcp.Server {
 	}, h.overrideList)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "override_get",
-		Description: "Get one override remap (mirrors appicon override get).",
+		Description: "Get one override remap (mirrors appicon override get). Missing key returns target:null without IsError.",
 	}, h.overrideGet)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "override_set",
-		Description: "Set a query remap in overrides.json (mirrors appicon override set).",
+		Description: "Set a query remap in overrides.json (mirrors appicon override set). Prefer this for long-tail WM classes / broken .desktop ids.",
 	}, h.overrideSet)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "override_rm",
@@ -69,11 +93,11 @@ func NewServer(opts Options) *mcp.Server {
 	}, h.sourcesList)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "sources_get",
-		Description: "Read sources.json (or describe defaults when missing).",
+		Description: "Read sources.json (or describe defaults when missing). Mirrors appicon sources get --json.",
 	}, h.sourcesGet)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "sources_set",
-		Description: "Overwrite sources.json (destructive; validates stage types).",
+		Description: "Overwrite sources.json (destructive; validates stage types). Mirrors appicon sources set.",
 	}, h.sourcesSet)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "pack_list",
@@ -88,8 +112,9 @@ func NewServer(opts Options) *mcp.Server {
 		Description: "Register a local pack directory in sources.json (mirrors appicon pack add).",
 	}, h.packAdd)
 	mcp.AddTool(s, &mcp.Tool{
-		Name:        "pack_install",
-		Description: "Clone a recipe or URL into packs and register it (destructive/network; mirrors appicon pack install). Pass recipe (simple-icons|dashboard-icons) or url (git / .tar.gz).",
+		Name: "pack_install",
+		Description: "Clone a recipe or URL into packs and register it (network; mirrors appicon pack install). " +
+			"Pass recipe (simple-icons|dashboard-icons) or url (git / .tar.gz). Local packs ≠ CDN stages.",
 	}, h.packInstall)
 	mcp.AddTool(s, &mcp.Tool{
 		Name:        "pack_update",
@@ -119,16 +144,19 @@ type resolveInput struct {
 	Theme   string   `json:"theme,omitempty" jsonschema:"prefer dark or light variants when available"`
 	Offline bool     `json:"offline,omitempty" jsonschema:"skip network; use cache, XDG, and local packs only"`
 	Order   []string `json:"order,omitempty" jsonschema:"optional stage type order override (same as resolve --order)"`
+	Explain bool     `json:"explain,omitempty" jsonschema:"include tried stages and miss hint"`
 }
 
 type resolveOutput struct {
-	Query  string  `json:"query"`
-	Path   *string `json:"path"`
-	Source string  `json:"source"`
-	Theme  string  `json:"theme"`
-	Format string  `json:"format"`
-	Cached bool    `json:"cached"`
-	Error  *string `json:"error"`
+	Query  string   `json:"query"`
+	Path   *string  `json:"path"`
+	Source string   `json:"source"`
+	Theme  string   `json:"theme"`
+	Format string   `json:"format"`
+	Cached bool     `json:"cached"`
+	Error  *string  `json:"error"`
+	Tried  []string `json:"tried,omitempty"`
+	Hint   string   `json:"hint,omitempty"`
 }
 
 func (h *handlers) resolve(ctx context.Context, _ *mcp.CallToolRequest, in resolveInput) (*mcp.CallToolResult, resolveOutput, error) {
@@ -160,6 +188,12 @@ func (h *handlers) resolve(ctx context.Context, _ *mcp.CallToolRequest, in resol
 	if err != nil {
 		msg := err.Error()
 		out.Error = &msg
+		if in.Explain {
+			out.Tried = res.Tried
+			if errors.Is(err, resolve.ErrNotFound) {
+				out.Hint = resolve.MissHint(opts.ConfigDir, opts.Order)
+			}
+		}
 		// Misses are expected outcomes for callers (glyph fallback); other errors too.
 		if !errors.Is(err, resolve.ErrNotFound) {
 			return &mcp.CallToolResult{IsError: true}, out, nil
@@ -172,6 +206,9 @@ func (h *handlers) resolve(ctx context.Context, _ *mcp.CallToolRequest, in resol
 	out.Theme = res.Theme
 	out.Format = res.Format
 	out.Cached = res.Cached
+	if in.Explain {
+		out.Tried = res.Tried
+	}
 	return nil, out, nil
 }
 
@@ -229,6 +266,66 @@ func (h *handlers) prefetch(ctx context.Context, _ *mcp.CallToolRequest, in pref
 }
 
 type emptyInput struct{}
+
+type statusToolInfo struct {
+	Name string `json:"name"`
+	Path string `json:"path,omitempty"`
+	OK   bool   `json:"ok"`
+}
+
+type statusOutput struct {
+	Version            string           `json:"version"`
+	ConfigDir          string           `json:"config_dir"`
+	SourcesPath        string           `json:"sources_path"`
+	OverridesPath      string           `json:"overrides_path"`
+	CacheDir           string           `json:"cache_dir"`
+	CacheFiles         int              `json:"cache_files"`
+	CacheBytes         int64            `json:"cache_bytes"`
+	PacksRoot          string           `json:"packs_root"`
+	Packs              int              `json:"packs"`
+	Order              []string         `json:"order"`
+	DaemonSocket       string           `json:"daemon_socket"`
+	DaemonSocketExists bool             `json:"daemon_socket_exists"`
+	Tools              []statusToolInfo `json:"tools"`
+}
+
+func (h *handlers) status(_ context.Context, _ *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, statusOutput, error) {
+	cfg := h.opts.ConfigDir
+	stages, _, err := resolve.LoadEffectiveStages(cfg, nil)
+	if err != nil {
+		return &mcp.CallToolResult{IsError: true}, statusOutput{}, err
+	}
+	cache, err := resolve.CacheStats()
+	if err != nil {
+		return &mcp.CallToolResult{IsError: true}, statusOutput{}, err
+	}
+	packList, err := packs.List(cfg)
+	if err != nil {
+		return &mcp.CallToolResult{IsError: true}, statusOutput{}, err
+	}
+	sock := daemon.SocketPath()
+	_, sockErr := os.Stat(sock)
+	tools := make([]statusToolInfo, 0, 3)
+	for _, name := range []string{"resvg", "rsvg-convert", "git"} {
+		p, lookErr := exec.LookPath(name)
+		tools = append(tools, statusToolInfo{Name: name, Path: p, OK: lookErr == nil})
+	}
+	return nil, statusOutput{
+		Version:            version.Version,
+		ConfigDir:          resolve.ConfigDir(),
+		SourcesPath:        resolve.SourcesPath(cfg),
+		OverridesPath:      resolve.OverridesPath(cfg),
+		CacheDir:           cache.Dir,
+		CacheFiles:         cache.Files,
+		CacheBytes:         cache.Bytes,
+		PacksRoot:          packs.Root(),
+		Packs:              len(packList),
+		Order:              resolve.FormatStages(stages),
+		DaemonSocket:       sock,
+		DaemonSocketExists: sockErr == nil,
+		Tools:              tools,
+	}, nil
+}
 
 type cacheStatsOutput struct {
 	Dir   string `json:"dir"`

@@ -50,11 +50,34 @@ When `sources.json` is missing:
 
 ```bash
 appicon sources list [--json]
+appicon sources get [--json]
+appicon sources set [--file PATH]   # or JSON on stdin
 appicon sources path
 appicon resolve --order glyph,svgl,xdg firefox
+appicon status
 ```
 
 `--order` reorders by **type**. Multiple `pack` entries keep their relative config order when `pack` appears once.
+
+### `http-index` example
+
+Custom catalog + host allowlist (do not point at third-party CDNs unless you control them):
+
+```json
+{
+  "sources": [
+    { "type": "overrides" },
+    { "type": "xdg" },
+    {
+      "type": "http-index",
+      "name": "homelab",
+      "index": "https://icons.example.com/index.json",
+      "hosts": ["icons.example.com"]
+    },
+    { "type": "svgl" }
+  ]
+}
+```
 
 ## Offline
 

@@ -1,14 +1,15 @@
 #compdef appicon
 
 _appicon() {
-  local -a cmds cache_cmds override_cmds shells formats themes
+  local -a cmds cache_cmds override_cmds shells formats themes stages
 
   cmds=(
     'resolve:Resolve an icon query to a local path'
     'prefetch:Warm the icon cache for queries'
+    'status:Show paths, order, cache, daemon, tools'
     'cache:Cache path/clear/stats/prune'
     'override:Manage overrides.json remaps'
-    'sources:List effective resolve stage order'
+    'sources:Manage sources.json / effective order'
     'pack:Manage local icon packs'
     'daemon:Run optional unix-socket resolve daemon'
     'mcp:Run stdio MCP server for agents'
@@ -19,11 +20,12 @@ _appicon() {
   )
   cache_cmds=(path clear stats prune)
   override_cmds=(list get set rm path)
-  sources_cmds=(list path)
+  sources_cmds=(list get set path)
   pack_cmds=(list path add install update)
   shells=(bash zsh fish)
   formats=(svg png)
   themes=(dark light)
+  stages=(file overrides xdg svgl pack dir simple-icons dashboard-icons http-index github glyph)
 
   _arguments -C \
     '1:command:->cmd' \
@@ -38,17 +40,19 @@ _appicon() {
         resolve)
           _arguments \
             '--json[Emit JSON result]' \
+            '--explain[Include tried stages / miss hint]' \
             '--offline[Skip network]' \
             '--local[Skip daemon; resolve in-process]' \
             '--format[Output format]:format:(svg png)' \
             '--size[Pixel size]:size:' \
             '--theme[Prefer theme]:theme:(dark light)' \
-            '--order[Stage type order override]:order:' \
+            "--order[Stage type order override]:order:(${stages[*]})" \
             '1:query:_files'
           ;;
         sources)
           _arguments \
             '--json[Emit JSON]' \
+            '--file[Read sources JSON from path]:file:_files' \
             "1:subcommand:(${sources_cmds[*]})"
           ;;
         pack)
@@ -67,7 +71,14 @@ _appicon() {
           _arguments '--socket[Unix socket path]:path:_files'
           ;;
         prefetch)
-          _arguments '*:query:'
+          _arguments \
+            '--json[Emit JSON results]' \
+            '--offline[Skip network]' \
+            "--order[Stage type order override]:order:(${stages[*]})" \
+            '*:query:'
+          ;;
+        status)
+          _arguments '--json[Emit JSON]'
           ;;
         cache)
           _arguments "1:subcommand:(${cache_cmds[*]})"

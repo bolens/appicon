@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bolens/appicon/docs/resolve-result.schema.json",
+  "title": "appicon resolve --json result",
+  "description": "Stable consumer contract for appicon resolve --json. See docs/consumer-contract.md.",
+  "type": "object",
+  "required": ["query", "path", "source", "theme", "format", "cached", "error"],
+  "additionalProperties": true,
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Echo of the request query"
+    },
+    "path": {
+      "type": ["string", "null"],
+      "description": "Absolute local file path on success"
+    },
+    "source": {
+      "type": "string",
+      "description": "Stage that produced the hit, or empty on miss",
+      "enum": [
+        "",
+        "file",
+        "xdg",
+        "svgl",
+        "pack",
+        "http-index",
+        "simple-icons",
+        "dashboard-icons",
+        "github",
+        "glyph"
+      ]
+    },
+    "theme": {
+      "type": "string",
+      "description": "Effective theme hint"
+    },
+    "format": {
+      "type": "string",
+      "enum": ["svg", "png"]
+    },
+    "cached": {
+      "type": "boolean",
+      "description": "Whether the hit came from appicon durable cache"
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "Set when path is null"
+    },
+    "tried": {
+      "type": "array",
+      "description": "Present with --explain / explain=true: stage labels that missed before the hit or final miss",
+      "items": { "type": "string" }
+    },
+    "hint": {
+      "type": "string",
+      "description": "Present with --explain on miss: actionable next steps"
+    }
+  }
+}

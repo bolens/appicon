@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -143,9 +144,41 @@ func TestResolveMissingReturnsNotFound(t *testing.T) {
 	t.Parallel()
 	opts := xdgFixtureOpts(t)
 	opts.Offline = true
-	_, err := resolve.Resolve(context.Background(), "definitely-missing-appicon-query", opts)
+	res, err := resolve.Resolve(context.Background(), "definitely-missing-appicon-query", opts)
 	if !errors.Is(err, resolve.ErrNotFound) {
 		t.Fatalf("err=%v want ErrNotFound", err)
+	}
+	if len(res.Tried) == 0 {
+		t.Fatal("expected Tried stages on miss")
+	}
+	found := false
+	for _, s := range res.Tried {
+		if s == "xdg" || s == "svgl" || s == "file" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("tried=%v", res.Tried)
+	}
+}
+
+func TestResolveTriedBeforeHit(t *testing.T) {
+	t.Parallel()
+	opts := xdgFixtureOpts(t)
+	opts.Offline = true
+	opts.Order = []string{"file", "svgl", "xdg"}
+	res, err := resolve.Resolve(context.Background(), "org.example.Test", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Source != "xdg" {
+		t.Fatalf("source=%q", res.Source)
+	}
+	// file + svgl should have missed first
+	joined := strings.Join(res.Tried, ",")
+	if !strings.Contains(joined, "file") || !strings.Contains(joined, "svgl") {
+		t.Fatalf("tried=%v", res.Tried)
 	}
 }
 

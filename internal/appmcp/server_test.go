@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/bolens/appicon/internal/appmcp"
@@ -65,7 +66,7 @@ func TestMCPListTools(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]bool{
-		"resolve": true, "prefetch": true, "cache_stats": true,
+		"resolve": true, "prefetch": true, "status": true, "cache_stats": true,
 		"cache_clear": true, "cache_prune": true, "version": true,
 		"override_list": true, "override_get": true, "override_set": true, "override_rm": true,
 		"sources_list": true, "sources_get": true, "sources_set": true,
@@ -132,6 +133,80 @@ func TestMCPResolveMiss(t *testing.T) {
 	}
 	if sc["error"] == nil {
 		t.Fatal("expected error field")
+	}
+	if _, ok := sc["tried"]; ok {
+		t.Fatalf("tried should be absent without explain: %v", sc)
+	}
+	if hint, ok := sc["hint"].(string); ok && hint != "" {
+		t.Fatalf("hint should be absent without explain: %v", sc)
+	}
+}
+
+func TestMCPResolveExplainMiss(t *testing.T) {
+	session := connect(t, fixtureXDG(t))
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "resolve",
+		Arguments: map[string]any{
+			"query":   "zzzz-missing-mcp-explain",
+			"offline": true,
+			"explain": true,
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatal("miss should not set IsError")
+	}
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("structured=%T", res.StructuredContent)
+	}
+	tried, _ := sc["tried"].([]any)
+	if len(tried) == 0 {
+		t.Fatalf("tried=%v", sc["tried"])
+	}
+	hint, _ := sc["hint"].(string)
+	if !strings.Contains(hint, "try:") {
+		t.Fatalf("hint=%q", hint)
+	}
+}
+
+func TestMCPStatus(t *testing.T) {
+	session := connect(t, fixtureXDG(t))
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "status"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("%+v", res)
+	}
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("structured=%T", res.StructuredContent)
+	}
+	for _, key := range []string{"version", "sources_path", "overrides_path", "cache_dir", "order", "daemon_socket", "tools"} {
+		if sc[key] == nil {
+			t.Fatalf("missing %q in %v", key, sc)
+		}
+	}
+	order, _ := sc["order"].([]any)
+	if len(order) == 0 {
+		t.Fatalf("empty order: %v", sc)
+	}
+}
+
+func TestMCPInstructions(t *testing.T) {
+	session := connect(t, fixtureXDG(t))
+	init := session.InitializeResult()
+	if init == nil {
+		t.Fatal("nil InitializeResult")
+	}
+	if !strings.Contains(init.Instructions, "override_set") {
+		t.Fatalf("instructions missing override guidance: %q", init.Instructions)
+	}
+	if !strings.Contains(init.Instructions, "path null") && !strings.Contains(init.Instructions, "supported outcome") {
+		t.Fatalf("instructions missing miss guidance: %q", init.Instructions)
 	}
 }
 

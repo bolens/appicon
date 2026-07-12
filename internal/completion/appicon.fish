@@ -6,9 +6,10 @@ complete -c appicon -f
 
 complete -c appicon -n __fish_use_subcommand -a resolve -d 'Resolve an icon query to a local path'
 complete -c appicon -n __fish_use_subcommand -a prefetch -d 'Warm the icon cache for queries'
+complete -c appicon -n __fish_use_subcommand -a status -d 'Show paths, order, cache, daemon, tools'
 complete -c appicon -n __fish_use_subcommand -a cache -d 'Cache path/clear/stats/prune'
 complete -c appicon -n __fish_use_subcommand -a override -d 'Manage overrides.json remaps'
-complete -c appicon -n __fish_use_subcommand -a sources -d 'List effective resolve stage order'
+complete -c appicon -n __fish_use_subcommand -a sources -d 'Manage sources.json / effective order'
 complete -c appicon -n __fish_use_subcommand -a pack -d 'Manage local icon packs'
 complete -c appicon -n __fish_use_subcommand -a daemon -d 'Run optional unix-socket resolve daemon'
 complete -c appicon -n __fish_use_subcommand -a mcp -d 'Run stdio MCP server for agents'
@@ -17,17 +18,23 @@ complete -c appicon -n __fish_use_subcommand -a man -d 'Print man page (troff) t
 complete -c appicon -n __fish_use_subcommand -a version -d 'Print version'
 complete -c appicon -n __fish_use_subcommand -a help -d 'Show usage'
 
+set -l __appicon_stages file overrides xdg svgl pack dir simple-icons dashboard-icons http-index github glyph
+
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l json -d 'Emit JSON result'
+complete -c appicon -n '__fish_seen_subcommand_from resolve' -l explain -d 'Include tried stages / miss hint'
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l offline -d 'Skip network'
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l local -d 'Skip daemon; resolve in-process'
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l format -xa 'svg png'
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l size -r -d 'Pixel size'
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l theme -xa 'dark light'
-complete -c appicon -n '__fish_seen_subcommand_from resolve' -l order -r -d 'Stage type order override'
+complete -c appicon -n '__fish_seen_subcommand_from resolve' -l order -xa "$__appicon_stages" -d 'Stage type order override'
 
-complete -c appicon -n '__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list path' -a list -d 'List effective order'
-complete -c appicon -n '__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list path' -a path -d 'Print sources.json path'
+complete -c appicon -n '__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list get set path' -a list -d 'List effective order'
+complete -c appicon -n '__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list get set path' -a get -d 'Read sources.json'
+complete -c appicon -n '__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list get set path' -a set -d 'Overwrite sources.json'
+complete -c appicon -n '__fish_seen_subcommand_from sources; and not __fish_seen_subcommand_from list get set path' -a path -d 'Print sources.json path'
 complete -c appicon -n '__fish_seen_subcommand_from sources' -l json -d 'Emit JSON'
+complete -c appicon -n '__fish_seen_subcommand_from sources' -l file -r -F -d 'Read sources JSON from path'
 
 complete -c appicon -n '__fish_seen_subcommand_from pack; and not __fish_seen_subcommand_from list path add install update' -a list -d 'List packs'
 complete -c appicon -n '__fish_seen_subcommand_from pack; and not __fish_seen_subcommand_from list path add install update' -a path -d 'Print packs root'
@@ -43,6 +50,12 @@ complete -c appicon -n '__fish_seen_subcommand_from pack' -l from-bundle -r -d '
 complete -c appicon -n '__fish_seen_subcommand_from pack' -l offline -d 'Refuse network'
 
 complete -c appicon -n '__fish_seen_subcommand_from daemon' -l socket -r -d 'Unix socket path'
+
+complete -c appicon -n '__fish_seen_subcommand_from prefetch' -l json -d 'Emit JSON results'
+complete -c appicon -n '__fish_seen_subcommand_from prefetch' -l offline -d 'Skip network'
+complete -c appicon -n '__fish_seen_subcommand_from prefetch' -l order -xa "$__appicon_stages" -d 'Stage type order override'
+
+complete -c appicon -n '__fish_seen_subcommand_from status' -l json -d 'Emit JSON'
 
 complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_subcommand_from path clear stats prune' -a path -d 'Print cache directory'
 complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_subcommand_from path clear stats prune' -a clear -d 'Delete cache'

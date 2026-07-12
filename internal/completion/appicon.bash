@@ -13,7 +13,8 @@ _appicon() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
   fi
 
-  local cmds="resolve prefetch cache override sources pack daemon mcp completion man version help"
+  local cmds="resolve prefetch cache override sources pack status daemon mcp completion man version help"
+  local stages="file overrides xdg svgl pack dir simple-icons dashboard-icons http-index github glyph"
 
   if [[ ${COMP_CWORD} -eq 1 ]]; then
     COMPREPLY=($(compgen -W "${cmds}" -- "${cur}"))
@@ -26,17 +27,37 @@ _appicon() {
       case "${prev}" in
         --format) COMPREPLY=($(compgen -W "svg png" -- "${cur}")); return ;;
         --theme) COMPREPLY=($(compgen -W "dark light" -- "${cur}")); return ;;
-        --size|--order) return ;;
+        --order)
+          local partial="${cur##*,}"
+          local prefix=""
+          if [[ "${cur}" == *,* ]]; then
+            prefix="${cur%,*},"
+          fi
+          COMPREPLY=($(compgen -W "${stages}" -- "${partial}"))
+          if [[ -n "${prefix}" ]]; then
+            local i
+            for i in "${!COMPREPLY[@]}"; do
+              COMPREPLY[$i]="${prefix}${COMPREPLY[$i]}"
+            done
+          fi
+          return
+          ;;
+        --size) return ;;
       esac
       if [[ ${cur} == -* ]]; then
-        COMPREPLY=($(compgen -W "--json --offline --local --format --size --theme --order --help" -- "${cur}"))
+        COMPREPLY=($(compgen -W "--json --explain --offline --local --format --size --theme --order --help" -- "${cur}"))
       fi
       ;;
     sources)
       if [[ ${COMP_CWORD} -eq 2 ]]; then
-        COMPREPLY=($(compgen -W "list path" -- "${cur}"))
-      elif [[ ${cur} == -* ]]; then
-        COMPREPLY=($(compgen -W "--json --help" -- "${cur}"))
+        COMPREPLY=($(compgen -W "list get set path" -- "${cur}"))
+      else
+        case "${prev}" in
+          --file) COMPREPLY=($(compgen -f -- "${cur}")); return ;;
+        esac
+        if [[ ${cur} == -* ]]; then
+          COMPREPLY=($(compgen -W "--json --file --help" -- "${cur}"))
+        fi
       fi
       ;;
     pack)
@@ -69,8 +90,30 @@ _appicon() {
       fi
       ;;
     prefetch)
+      case "${prev}" in
+        --order)
+          local partial="${cur##*,}"
+          local prefix=""
+          if [[ "${cur}" == *,* ]]; then
+            prefix="${cur%,*},"
+          fi
+          COMPREPLY=($(compgen -W "${stages}" -- "${partial}"))
+          if [[ -n "${prefix}" ]]; then
+            local i
+            for i in "${!COMPREPLY[@]}"; do
+              COMPREPLY[$i]="${prefix}${COMPREPLY[$i]}"
+            done
+          fi
+          return
+          ;;
+      esac
       if [[ ${cur} == -* ]]; then
-        COMPREPLY=($(compgen -W "--help" -- "${cur}"))
+        COMPREPLY=($(compgen -W "--json --offline --order --help" -- "${cur}"))
+      fi
+      ;;
+    status)
+      if [[ ${cur} == -* ]]; then
+        COMPREPLY=($(compgen -W "--json --help" -- "${cur}"))
       fi
       ;;
     cache)
@@ -92,7 +135,7 @@ _appicon() {
         COMPREPLY=($(compgen -W "bash zsh fish" -- "${cur}"))
       fi
       ;;
-    mcp|version|help)
+    mcp|version|help|man)
       ;;
   esac
 }

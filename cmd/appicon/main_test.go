@@ -46,6 +46,9 @@ func TestCLIHelpMentionsMCP(t *testing.T) {
 	if !strings.Contains(errOut, "completion") {
 		t.Fatalf("usage missing completion: %s", errOut)
 	}
+	if !strings.Contains(errOut, "status") || !strings.Contains(errOut, "--explain") {
+		t.Fatalf("usage missing status/explain: %s", errOut)
+	}
 }
 
 func TestCLIMCPRejectsArgs(t *testing.T) {
@@ -315,6 +318,277 @@ func TestCLIResolveOrder(t *testing.T) {
 	}
 	if !strings.Contains(out, `"source":"glyph"`) {
 		t.Fatalf("out=%q", out)
+	}
+}
+
+func TestCLIResolveMissHint(t *testing.T) {
+	xdgEnv(t)
+	_, errOut, err := captureRun("resolve", "--offline", "zzzz-missing-cli-icon")
+	if !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("err=%v", err)
+	}
+	if !strings.Contains(errOut, "try:") || !strings.Contains(errOut, "override set") {
+		t.Fatalf("stderr=%q", errOut)
+	}
+}
+
+func TestCLIResolveExplainJSON(t *testing.T) {
+	xdgEnv(t)
+	out, _, err := captureRun("resolve", "--json", "--explain", "--offline", "zzzz-missing-cli-icon")
+	if !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("err=%v", err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatal(err)
+	}
+	tried, ok := payload["tried"].([]any)
+	if !ok || len(tried) == 0 {
+		t.Fatalf("tried=%v", payload["tried"])
+	}
+	hint, _ := payload["hint"].(string)
+	if !strings.Contains(hint, "try:") {
+		t.Fatalf("hint=%q", hint)
+	}
+}
+
+func TestCLISourcesGetSet(t *testing.T) {
+	xdgEnv(t)
+	cfgPath := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon", "sources.json")
+	body := `{
+  "sources": [
+    {"type": "overrides"},
+    {"type": "xdg"},
+    {"type": "glyph"}
+  ]
+}
+`
+	if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	tmp := filepath.Join(t.TempDir(), "sources.json")
+	if err := os.WriteFile(tmp, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := captureRun("sources", "set", "--file", tmp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "wrote ") {
+		t.Fatalf("out=%q", out)
+	}
+	out, _, err = captureRun("sources", "list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "glyph") {
+		t.Fatalf("list=%q", out)
+	}
+	out, _, err = captureRun("sources", "get", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, `"exists":true`) {
+		t.Fatalf("get=%q", out)
+	}
+}
+
+func TestCLIStatus(t *testing.T) {
+	xdgEnv(t)
+	out, _, err := captureRun("status")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []string{"version=", "order=", "cache=", "daemon_socket="} {
+		if !strings.Contains(out, key) {
+			t.Fatalf("missing %q in %q", key, out)
+		}
+	}
+	out, _, err = captureRun("status", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["sources_path"] == nil || payload["order"] == nil {
+		t.Fatalf("%v", payload)
+	}
+}
+
+func TestCLIPrefetchJSON(t *testing.T) {
+	xdgEnv(t)
+	out, _, err := captureRun("prefetch", "--json", "--offline", "--order", "glyph", "zzzz-prefetch")
+	if err != nil {
+		t.Fatalf("err=%v out=%s", err, out)
+	}
+	if !strings.Contains(out, `"results"`) || !strings.Contains(out, "glyph") {
+		t.Fatalf("out=%q", out)
+	}
+}
+
+func TestCLIOverrideSetConfirms(t *testing.T) {
+	cfg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", cfg)
+	t.Setenv("APPICON_NO_DAEMON", "1")
+	out, _, err := captureRun("override", "set", "Foo", "firefox")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "set foo -> firefox") {
+		t.Fatalf("out=%q", out)
+	}
+}
+
+func TestCLIPackListEmptyHint(t *testing.T) {
+	xdgEnv(t)
+	out, _, err := captureRun("pack", "list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "pack install simple-icons") {
+		t.Fatalf("out=%q", out)
+	}
+}
+
+func TestCLISourcesGetDefaults(t *testing.T) {
+	xdgEnv(t)
+	out, _, err := captureRun("sources", "get")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "missing; using defaults") {
+		t.Fatalf("out=%q", out)
+	}
+	out, _, err = captureRun("sources", "get", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal([]byte(out), &payload); err != nil {
+		t.Fatal(err)
+	}
+	if payload["exists"] != false || payload["defaults"] != true {
+		t.Fatalf("%v", payload)
+	}
+}
+
+func TestCLISourcesSetInvalid(t *testing.T) {
+	xdgEnv(t)
+	tmp := filepath.Join(t.TempDir(), "bad.json")
+	if err := os.WriteFile(tmp, []byte(`{"sources":[{"type":"nope"}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, _, err := captureRun("sources", "set", "--file", tmp)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if exitCode(err) != 2 {
+		t.Fatalf("exit=%d", exitCode(err))
+	}
+}
+
+func TestCLIResolveExplainPlain(t *testing.T) {
+	xdgEnv(t)
+	_, errOut, err := captureRun("resolve", "--explain", "--offline", "zzzz-missing-cli-icon")
+	if !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("err=%v", err)
+	}
+	if !strings.Contains(errOut, "tried ") {
+		t.Fatalf("stderr=%q", errOut)
+	}
+	if !strings.Contains(errOut, "try:") {
+		t.Fatalf("stderr=%q", errOut)
+	}
+}
+
+func TestCLIResolveHelpExamples(t *testing.T) {
+	_, errOut, err := captureRun("resolve", "--help")
+	// flag.ContinueOnError returns err for --help
+	if err == nil {
+		t.Fatal("expected help error")
+	}
+	if !strings.Contains(errOut, "Examples:") || !strings.Contains(errOut, "--explain") {
+		t.Fatalf("stderr=%q", errOut)
+	}
+}
+
+func TestCLIPrefetchHelp(t *testing.T) {
+	_, errOut, err := captureRun("prefetch", "--help")
+	if err == nil {
+		t.Fatal("expected help error")
+	}
+	if !strings.Contains(errOut, "--order") || !strings.Contains(errOut, "--offline") {
+		t.Fatalf("stderr=%q", errOut)
+	}
+}
+
+func TestCLIPackAddConfirms(t *testing.T) {
+	xdgEnv(t)
+	dir := t.TempDir()
+	out, _, err := captureRun("pack", "add", "local", dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "added pack=local") {
+		t.Fatalf("out=%q", out)
+	}
+	list, _, err := captureRun("pack", "list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(list, "local") {
+		t.Fatalf("list=%q", list)
+	}
+}
+
+func TestCLICacheClearConfirms(t *testing.T) {
+	xdgEnv(t)
+	out, _, err := captureRun("cache", "clear")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "cleared cache") {
+		t.Fatalf("out=%q", out)
+	}
+}
+
+func TestCLIPackInstallConfirms(t *testing.T) {
+	xdgEnv(t)
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+
+	archivePath := filepath.Join(t.TempDir(), "pack.tar.gz")
+	if err := writeCLITarGZ(archivePath, "icons/cli.svg", `<svg xmlns="http://www.w3.org/2000/svg"/>`); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, err := os.ReadFile(archivePath)
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		_, _ = w.Write(b)
+	}))
+	t.Cleanup(srv.Close)
+
+	out, _, err := captureRun("pack", "install", "--name", "confirm-pack", "--subdir", "icons", srv.URL+"/pack.tar.gz")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "installed pack=confirm-pack") {
+		t.Fatalf("out=%q", out)
+	}
+}
+
+func TestCLIStatusRejectsArgs(t *testing.T) {
+	xdgEnv(t)
+	_, _, err := captureRun("status", "nope")
+	if err == nil {
+		t.Fatal("expected error")
+	}
+	if exitCode(err) != 2 {
+		t.Fatalf("exit=%d", exitCode(err))
 	}
 }
 

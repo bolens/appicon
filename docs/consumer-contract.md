@@ -25,14 +25,31 @@ Stable keys (do not rename):
 | `format` | string | `svg` \| `png` |
 | `cached` | bool | Whether the hit came from appicon’s durable cache |
 | `error` | string \| `null` | Set when `path` is `null` |
+| `tried` | string[] (optional) | With `--explain`: stage labels that missed before the hit or final miss |
+| `hint` | string (optional) | With `--explain` on miss: actionable next steps |
 
-Plain (non-JSON) mode: success prints one path line; miss prints nothing on stdout and exits `1`.
+Machine-readable schema: [resolve-result.schema.json](resolve-result.schema.json).
+
+Plain (non-JSON) mode: success prints one path line; miss prints nothing on stdout and exits `1`. Misses also print a short hint on stderr (and `tried` with `--explain`).
 
 ## Offline / daemon
 
 - `--offline` — XDG + local packs + on-disk cache only; never opens the network.
 - Hot paths (e.g. Waybar dock ticks) should use `--offline` after a one-shot online `prefetch`.
-- `resolve` dials `$XDG_RUNTIME_DIR/appicon.sock` when present; falls back in-process. `--local` / `APPICON_NO_DAEMON=1` skips the dial.
+- `resolve` dials `$XDG_RUNTIME_DIR/appicon.sock` when present; falls back in-process. `--local` / `--explain` / `--order` / `APPICON_NO_DAEMON=1` skip the dial (daemon protocol does not carry order/explain yet).
+
+## Consumer quickstart (Waybar-style)
+
+```bash
+# One-shot warm (online)
+appicon prefetch firefox discord code
+
+# Hot path (no network)
+path=$(appicon resolve --offline firefox) || true
+# miss → exit 1; keep glyph / omit module
+```
+
+Inspect install health: `appicon status`.
 
 ## Optional peer (Waybar-style)
 

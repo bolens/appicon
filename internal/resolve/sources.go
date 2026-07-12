@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -257,17 +258,32 @@ func LoadEffectiveStages(configDir string, orderOverride []string) ([]Stage, Sou
 	return stages, cfg, err
 }
 
+// KnownStageTypes returns sorted known stage type names (for completions / docs).
+func KnownStageTypes() []string {
+	out := make([]string, 0, len(knownTypes))
+	for t := range knownTypes {
+		out = append(out, t)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// FormatStage returns a human-readable label for one stage.
+func FormatStage(s Stage) string {
+	label := s.Type
+	if s.Type == "pack" && s.Name != "" {
+		label = "pack:" + s.Name
+	} else if s.Type == "http-index" && s.Name != "" {
+		label = "http-index:" + s.Name
+	}
+	return label
+}
+
 // FormatStages returns a human-readable type list.
 func FormatStages(stages []Stage) []string {
 	out := make([]string, 0, len(stages))
 	for _, s := range stages {
-		label := s.Type
-		if s.Type == "pack" && s.Name != "" {
-			label = "pack:" + s.Name
-		} else if s.Type == "http-index" && s.Name != "" {
-			label = "http-index:" + s.Name
-		}
-		out = append(out, label)
+		out = append(out, FormatStage(s))
 	}
 	return out
 }

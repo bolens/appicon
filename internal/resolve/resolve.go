@@ -54,13 +54,15 @@ type Options struct {
 	HTTPIndex *httpindex.Client
 }
 
-// Result is a successful resolve.
+// Result is a resolve outcome. On ErrNotFound, Tried lists stages that missed.
 type Result struct {
 	Path   string
-	Source string // file|xdg|svgl|pack
+	Source string // file|xdg|svgl|pack|…
 	Theme  string
 	Format string
 	Cached bool
+	// Tried is stage labels that were attempted and missed before the hit or final miss.
+	Tried []string
 }
 
 // Stats summarizes the on-disk cache.
@@ -114,7 +116,9 @@ func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
 		return Result{}, err
 	}
 
+	tried := make([]string, 0, len(stages))
 	for _, src := range stages {
+		label := FormatStage(src)
 		switch src.Type {
 		case "overrides":
 			query = applyOverrides(query, opts.ConfigDir)
@@ -123,7 +127,7 @@ func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
 			if st, err := os.Stat(query); err == nil && !st.IsDir() {
 				abs, err := filepath.Abs(query)
 				if err != nil {
-					return Result{}, err
+					return Result{Tried: tried}, err
 				}
 				res := Result{
 					Path:   abs,
@@ -131,23 +135,27 @@ func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
 					Theme:  opts.Theme,
 					Format: opts.Format,
 					Cached: false,
+					Tried:  tried,
 				}
 				return ensureFormat(res, opts)
 			}
+			tried = append(tried, label)
 			continue
 		}
 
 		res, err := resolveSource(ctx, src, query, opts)
 		if err == nil {
+			res.Tried = tried
 			return ensureFormat(res, opts)
 		}
 		if isBenignMiss(err) {
+			tried = append(tried, label)
 			continue
 		}
-		return Result{}, err
+		return Result{Tried: tried}, err
 	}
 
-	return Result{}, ErrNotFound
+	return Result{Tried: tried}, ErrNotFound
 }
 
 func isBenignMiss(err error) bool {

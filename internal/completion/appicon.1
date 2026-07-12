@@ -14,17 +14,21 @@ remote download logic.
 Default resolve order: file, overrides.json, FreeDesktop icon theme / .desktop
 (including Flatpak, Snap, and Steam heuristics), then SVGL. Customize the full
 pipeline (including opt-in CDN/github/glyph stages and local packs) via
-sources.json. See docs/sources.md and docs/packs.md. A miss exits with status 1
-unless a glyph stage is reached.
+sources.json. A miss exits with status 1 unless a glyph stage is reached.
 .SH COMMANDS
 .TP
-.B resolve [\-\-json] [\-\-offline] [\-\-local] [\-\-order \fITYPES\fR] [\-\-format svg|png] [\-\-size N] [\-\-theme dark|light] \fIquery\fR
+.B resolve [\-\-json] [\-\-explain] [\-\-offline] [\-\-local] [\-\-order \fITYPES\fR] [\-\-format svg|png] [\-\-size N] [\-\-theme dark|light] \fIquery\fR
 Resolve \fIquery\fR and print the absolute path (or JSON with \-\-json).
-\-\-order is a comma-separated list of stage types (same semantics as sources.json).
-When a daemon socket is present, dial it unless \-\-local or APPICON_NO_DAEMON is set.
+\-\-order is a comma-separated list of stage types.
+\-\-explain includes tried stages and a miss hint.
+When a daemon socket is present, dial it unless \-\-local, \-\-explain, \-\-order,
+or APPICON_NO_DAEMON is set.
 .TP
-.B prefetch \fIquery\fR...
+.B prefetch [\-\-json] [\-\-offline] [\-\-order \fITYPES\fR] \fIquery\fR...
 Warm the cache for one or more queries (same effective order as resolve).
+.TP
+.B status [\-\-json]
+Print config/cache/pack paths, effective order, daemon socket, and helper tools.
 .TP
 .B cache path|clear|stats|prune
 Inspect or manage the on-disk cache under $XDG_CACHE_HOME/appicon.
@@ -32,8 +36,10 @@ Inspect or manage the on-disk cache under $XDG_CACHE_HOME/appicon.
 .B override list|get|set|rm|path [\-\-json]
 Manage $XDG_CONFIG_HOME/appicon/overrides.json query remaps (long-tail aliases).
 .TP
-.B sources list|path [\-\-json]
-Show effective resolve stage order or the sources.json path.
+.B sources list|get|set|path [\-\-json] [\-\-file \fIPATH\fR]
+Show effective order, read/write sources.json, or print its path.
+.B set
+reads JSON from stdin or \-\-file.
 .TP
 .B pack list|path|add|install|update [\-\-json] ...
 Manage local icon packs (add directory, install recipes or git/.tar.gz URLs,
@@ -43,8 +49,9 @@ update clones, or install from \-\-from-bundle).
 Run the optional unix-socket resolve daemon (or under systemd socket activation).
 .TP
 .B mcp
-Run a stdio MCP server for coding agents (tools: resolve, prefetch, sources_*,
-pack_*, override_*, cache_*, version). Prefer MCP tools over shelling the CLI when connected.
+Run a stdio MCP server for coding agents (tools: resolve, prefetch, status,
+sources_*, pack_*, override_*, cache_*, version). Prefer MCP tools over shelling
+the CLI when connected.
 .TP
 .B completion bash|zsh|fish
 Print a shell completion script to stdout.
@@ -54,6 +61,26 @@ Print this man page (troff) to stdout.
 .TP
 .B version
 Print the version string.
+.SH EXAMPLES
+.TP
+Resolve an app icon:
+.B appicon resolve firefox
+.TP
+JSON PNG for a panel:
+.B appicon resolve \-\-json \-\-format png \-\-size 24 "VS Code"
+.TP
+Warm cache then offline resolve:
+.B appicon prefetch firefox discord
+.br
+.B appicon resolve \-\-offline firefox
+.TP
+Install a local pack and remap a WM class:
+.B appicon pack install simple-icons
+.br
+.B appicon override set my\-wm\-class firefox
+.TP
+Inspect environment:
+.B appicon status
 .SH ENVIRONMENT
 .TP
 .B XDG_CACHE_HOME
@@ -103,4 +130,6 @@ Not found (supported miss for consumers).
 .B 2
 Usage or configuration error.
 .SH SEE ALSO
-docs/sources.md, docs/packs.md, docs/consumer-contract.md
+Project docs (when installing from source): docs/sources.md, docs/packs.md,
+docs/consumer-contract.md, docs/resolve-result.schema.json.
+Homepage: https://github.com/bolens/appicon

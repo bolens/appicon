@@ -33,7 +33,7 @@ func TestManPage(t *testing.T) {
 	if !strings.Contains(man, ".TH APPICON") {
 		t.Fatal("missing .TH")
 	}
-	for _, cmd := range []string{"resolve", "mcp", "sources", "pack"} {
+	for _, cmd := range []string{"resolve", "mcp", "sources", "pack", "status", "EXAMPLES"} {
 		if !strings.Contains(man, cmd) {
 			t.Fatalf("man page missing %q", cmd)
 		}
@@ -48,5 +48,33 @@ func TestBashMentionsSourcesPack(t *testing.T) {
 	}
 	if !strings.Contains(s, "sources") || !strings.Contains(s, "pack") || !strings.Contains(s, "--order") {
 		t.Fatal("bash completion missing sources/pack/--order")
+	}
+	if !strings.Contains(s, "simple-icons") || !strings.Contains(s, "status") || !strings.Contains(s, "--explain") {
+		t.Fatal("bash completion missing stage names/status/--explain")
+	}
+	if !strings.Contains(s, "get") || !strings.Contains(s, "set") {
+		t.Fatal("bash completion missing sources get/set")
+	}
+}
+
+func TestZshFishMentionStatusAndStages(t *testing.T) {
+	t.Parallel()
+	zsh, err := completion.Script("zsh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, needle := range []string{"status", "simple-icons", "glyph", "--explain"} {
+		if !strings.Contains(zsh, needle) {
+			t.Fatalf("zsh missing %q", needle)
+		}
+	}
+	fish, err := completion.Script("fish")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, needle := range []string{"status", "simple-icons", "glyph", "-l explain"} {
+		if !strings.Contains(fish, needle) {
+			t.Fatalf("fish missing %q", needle)
+		}
 	}
 }

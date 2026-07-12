@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strings"
 
 	"github.com/bolens/appicon/internal/packs"
@@ -19,20 +20,47 @@ func cmdSources(args []string, stdout, stderr io.Writer) error {
 	fs := flag.NewFlagSet("sources", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	asJSON := fs.Bool("json", false, "emit JSON")
+	filePath := fs.String("file", "", "for set: read config from PATH instead of stdin")
+	fs.Usage = func() {
+		_, _ = fmt.Fprintf(stderr, `Usage:
+  appicon sources list [--json]
+  appicon sources get [--json]
+  appicon sources set [--file PATH]
+  appicon sources path
+
+list   — effective resolve order
+get    — raw sources.json (or defaults when missing)
+set    — overwrite sources.json from stdin or --file (validates stage types)
+path   — print sources.json path
+
+Examples:
+  appicon sources list
+  appicon sources get --json
+  appicon sources set --file ./sources.json
+  echo '{"sources":[{"type":"overrides"},{"type":"xdg"},{"type":"svgl"},{"type":"glyph"}]}' | appicon sources set
+`)
+	}
 	sub := args[0]
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
 	switch sub {
-	case "list", "path":
+	case "list", "path", "get", "set":
 		// ok
 	default:
-		return fmt.Errorf("unknown sources subcommand %q (want list|path)", sub)
+		return fmt.Errorf("unknown sources subcommand %q (want list|get|set|path)", sub)
 	}
 	if sub == "path" {
 		_, _ = fmt.Fprintln(stdout, resolve.SourcesPath(""))
 		return nil
 	}
+	if sub == "get" {
+		return sourcesGet(stdout, *asJSON)
+	}
+	if sub == "set" {
+		return sourcesSet(stdout, *filePath)
+	}
+
 	stages, cfg, err := resolve.LoadEffectiveStages("", nil)
 	if err != nil {
 		return err
@@ -55,6 +83,70 @@ func cmdSources(args []string, stdout, stderr io.Writer) error {
 	return nil
 }
 
+func sourcesGet(stdout io.Writer, asJSON bool) error {
+	cfg, err := resolve.LoadSourcesConfig("")
+	if err != nil {
+		return err
+	}
+	path := resolve.SourcesPath("")
+	_, statErr := os.Stat(path)
+	exists := statErr == nil
+	defaults := !exists || len(cfg.Sources) == 0
+	if asJSON {
+		enc := json.NewEncoder(stdout)
+		enc.SetEscapeHTML(false)
+		return enc.Encode(map[string]any{
+			"path":     path,
+			"exists":   exists,
+			"defaults": defaults,
+			"config":   cfg,
+		})
+	}
+	if !exists {
+		_, _ = fmt.Fprintf(stdout, "path=%s (missing; using defaults)\n", path)
+		_, _ = fmt.Fprintf(stdout, "defaults=%s\n", strings.Join(resolve.FormatStages([]resolve.Stage{
+			{Type: "file"}, {Type: "overrides"}, {Type: "xdg"}, {Type: "svgl"},
+		}), ","))
+		return nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	_, err = stdout.Write(data)
+	return err
+}
+
+func sourcesSet(stdout io.Writer, filePath string) error {
+	var data []byte
+	var err error
+	if filePath != "" {
+		data, err = os.ReadFile(filePath)
+	} else {
+		data, err = io.ReadAll(os.Stdin)
+	}
+	if err != nil {
+		return err
+	}
+	data = []byte(strings.TrimSpace(string(data)))
+	if len(data) == 0 {
+		return errors.New("sources set requires JSON on stdin or --file PATH")
+	}
+	var cfg resolve.SourcesConfig
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return fmt.Errorf("invalid sources JSON: %w", err)
+	}
+	if err := resolve.ValidateStages(cfg.Sources); err != nil {
+		return err
+	}
+	if err := resolve.WriteSourcesConfig("", cfg); err != nil {
+		return err
+	}
+	path := resolve.SourcesPath("")
+	_, _ = fmt.Fprintf(stdout, "wrote %s\n", path)
+	return nil
+}
+
 func cmdPack(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
 		return errors.New("pack requires list|path|add|install|update")
@@ -68,6 +160,23 @@ func cmdPack(args []string, stdout, stderr io.Writer) error {
 	subdir := fs.String("subdir", "", "subdir inside clone used as pack root")
 	ref := fs.String("ref", "", "git branch or tag (recipes use their pin when omitted)")
 	bundle := fs.String("from-bundle", "", "install packs from a .tar.gz bundle")
+	fs.Usage = func() {
+		_, _ = fmt.Fprintf(stderr, `Usage:
+  appicon pack list [--json]
+  appicon pack path
+  appicon pack add <name> <dir>
+  appicon pack install [--name N] [--subdir S] [--ref R] [--path DEST] [--offline] <recipe|url>
+  appicon pack install --from-bundle PATH
+  appicon pack update [recipe] [--offline]
+
+Recipes: simple-icons, dashboard-icons
+
+Examples:
+  appicon pack install simple-icons
+  appicon pack install --name mine --subdir icons https://github.com/org/my-icons.git
+  appicon pack add local ~/icons/custom
+`)
+	}
 	sub := args[0]
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
@@ -89,6 +198,7 @@ func cmdPack(args []string, stdout, stderr io.Writer) error {
 		}
 		if len(list) == 0 {
 			_, _ = fmt.Fprintln(stdout, "(no pack stages in effective sources)")
+			_, _ = fmt.Fprintln(stdout, "try: appicon pack install simple-icons")
 			return nil
 		}
 		for _, p := range list {
@@ -107,22 +217,38 @@ func cmdPack(args []string, stdout, stderr io.Writer) error {
 		if len(pos) != 2 {
 			return errors.New("pack add requires <name> <dir>")
 		}
-		return packs.Add("", pos[0], pos[1])
+		if err := packs.Add("", pos[0], pos[1]); err != nil {
+			return err
+		}
+		_, _ = fmt.Fprintf(stdout, "added pack=%s path=%s\n", pos[0], pos[1])
+		return nil
 	case "install":
 		if *bundle != "" {
-			return packs.InstallBundle("", *bundle)
+			if err := packs.InstallBundle("", *bundle); err != nil {
+				return err
+			}
+			_, _ = fmt.Fprintf(stdout, "installed bundle=%s\n", *bundle)
+			return nil
 		}
 		if len(pos) != 1 {
 			return errors.New("pack install requires <recipe|url> or --from-bundle PATH")
 		}
-		return packs.Install("", packs.InstallOpts{
+		if err := packs.Install("", packs.InstallOpts{
 			Target:  pos[0],
 			Dest:    *dest,
 			Name:    *name,
 			Subdir:  *subdir,
 			Ref:     *ref,
 			Offline: *offline,
-		})
+		}); err != nil {
+			return err
+		}
+		label := *name
+		if label == "" {
+			label = pos[0]
+		}
+		_, _ = fmt.Fprintf(stdout, "installed pack=%s\n", label)
+		return nil
 	case "update":
 		recipe := ""
 		if len(pos) == 1 {
@@ -130,7 +256,15 @@ func cmdPack(args []string, stdout, stderr io.Writer) error {
 		} else if len(pos) > 1 {
 			return errors.New("pack update takes at most one recipe")
 		}
-		return packs.Update("", recipe, *offline)
+		if err := packs.Update("", recipe, *offline); err != nil {
+			return err
+		}
+		if recipe == "" {
+			_, _ = fmt.Fprintln(stdout, "updated packs")
+		} else {
+			_, _ = fmt.Fprintf(stdout, "updated pack=%s\n", recipe)
+		}
+		return nil
 	default:
 		return fmt.Errorf("unknown pack subcommand %q", sub)
 	}

@@ -15,7 +15,7 @@ Short rules for AI coding agents in this repository.
 - Deferred ideas (not a backlog): [docs/deferred.md](docs/deferred.md).
 - Consumer exit codes / `--json` schema: [docs/consumer-contract.md](docs/consumer-contract.md).
 - Resolve stages / packs: [docs/sources.md](docs/sources.md), [docs/packs.md](docs/packs.md).
-- Public CLI: `cmd/appicon` (`resolve`, `prefetch`, `cache`, `override`, `sources`, `pack`, `daemon`, `mcp`, `completion`, `man`, `version`).
+- Public CLI: `cmd/appicon` (`resolve`, `prefetch`, `status`, `cache`, `override`, `sources`, `pack`, `daemon`, `mcp`, `completion`, `man`, `version`).
 - Packages: `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/packs`, `internal/simpleicons`, `internal/dashboardicons`, `internal/githubicon`, `internal/glyph`, `internal/slugcdn`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/daemon`.
 - Optional daemon: unix socket under `$XDG_RUNTIME_DIR`; never required — CLI falls back in-process.
 
