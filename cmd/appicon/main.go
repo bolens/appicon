@@ -17,7 +17,7 @@ import (
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
-		fmt.Fprintf(os.Stderr, "appicon: %v\n", err)
+		_, _ = fmt.Fprintf(os.Stderr, "appicon: %v\n", err)
 		os.Exit(exitCode(err))
 	}
 }
@@ -37,7 +37,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 
 	switch args[0] {
 	case "version", "--version", "-V":
-		fmt.Fprintln(stdout, version.Version)
+		_, _ = fmt.Fprintln(stdout, version.Version)
 		return nil
 	case "help", "--help", "-h":
 		printUsage(stderr)
@@ -55,7 +55,7 @@ func run(args []string, stdout, stderr io.Writer) error {
 }
 
 func printUsage(w io.Writer) {
-	fmt.Fprintf(w, `appicon — resolve desktop / brand icons to local file paths
+	_, _ = fmt.Fprintf(w, `appicon — resolve desktop / brand icons to local file paths
 
 Usage:
   appicon resolve [--json] [--offline] [--format png|svg] [--size N] [--theme dark|light] <query>
@@ -118,7 +118,7 @@ func cmdResolve(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(stdout, res.Path)
+	_, _ = fmt.Fprintln(stdout, res.Path)
 	return nil
 }
 
@@ -130,7 +130,7 @@ func cmdPrefetch(args []string, stderr io.Writer) error {
 	for _, q := range args {
 		_, err := resolve.Resolve(context.Background(), q, resolve.Options{Format: "svg", Size: 48})
 		if err != nil {
-			fmt.Fprintf(stderr, "appicon: prefetch %q: %v\n", q, err)
+			_, _ = fmt.Fprintf(stderr, "appicon: prefetch %q: %v\n", q, err)
 			if first == nil {
 				first = err
 			}
@@ -145,7 +145,7 @@ func cmdCache(args []string, stdout io.Writer) error {
 	}
 	switch args[0] {
 	case "path":
-		fmt.Fprintln(stdout, resolve.CacheDir())
+		_, _ = fmt.Fprintln(stdout, resolve.CacheDir())
 		return nil
 	case "clear":
 		return resolve.ClearCache()
@@ -154,14 +154,14 @@ func cmdCache(args []string, stdout io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "removed_files=%d removed_bytes=%d\n", st.RemovedFiles, st.RemovedBytes)
+		_, _ = fmt.Fprintf(stdout, "removed_files=%d removed_bytes=%d\n", st.RemovedFiles, st.RemovedBytes)
 		return nil
 	case "stats":
 		s, err := resolve.CacheStats()
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(stdout, "dir=%s files=%d bytes=%d\n", s.Dir, s.Files, s.Bytes)
+		_, _ = fmt.Fprintf(stdout, "dir=%s files=%d bytes=%d\n", s.Dir, s.Files, s.Bytes)
 		return nil
 	default:
 		return fmt.Errorf("unknown cache subcommand %q", args[0])
