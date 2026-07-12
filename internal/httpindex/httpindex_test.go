@@ -201,7 +201,7 @@ func TestLookupBearerToken(t *testing.T) {
 	})
 	mux.HandleFunc("/brand.svg", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer tok" {
-			http.Error(w, "auth", 401)
+			http.Error(w, "auth", http.StatusUnauthorized)
 			return
 		}
 		_, _ = w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`))

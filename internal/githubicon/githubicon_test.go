@@ -19,7 +19,7 @@ func TestAvatarWithPAT(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/users/bolens", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer ghp_test" {
-			http.Error(w, "auth", 401)
+			http.Error(w, "auth", http.StatusUnauthorized)
 			return
 		}
 		_, _ = w.Write([]byte(`{"avatar_url":"` + srv.URL + `/avatar.png"}`))
@@ -60,11 +60,11 @@ func TestContentsWithPAT(t *testing.T) {
 
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "Bearer ghp_x" {
-			http.Error(w, "auth", 401)
+			http.Error(w, "auth", http.StatusUnauthorized)
 			return
 		}
 		if r.Header.Get("Accept") != "application/vnd.github.raw" {
-			http.Error(w, "accept", 400)
+			http.Error(w, "accept", http.StatusBadRequest)
 			return
 		}
 		if r.URL.Path != "/repos/org/icons/contents/firefox.svg" {
