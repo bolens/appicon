@@ -197,12 +197,3 @@ func builtinAlias(query string) string {
 		return query
 	}
 }
-
-// loadOverrides keeps the previous resolve hot-path signature (ignore parse errors).
-func loadOverrides(configDir string) map[string]string {
-	m, err := readOverridesFile(configDir)
-	if err != nil || m == nil {
-		return nil
-	}
-	return m
-}
