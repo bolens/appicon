@@ -1,6 +1,6 @@
 ---
 name: Standalone appicon CLI
-overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. v0.1.0 shipped; next is waybar-config consumer, then MCP/completions/packaging."
+overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. v0.1.0 shipped; waybar-config consumer done; next is MCP/completions/packaging."
 todos:
   - id: scaffold-repo
     content: Clone bolens/appicon into /home/panda/dev/appicon; scaffold Go module, Makefile, LICENSE, CONTRIBUTING, AGENTS, README; push
@@ -31,7 +31,7 @@ todos:
     status: completed
   - id: waybar-consume
     content: Add install-appicon.sh + make target; dock CSS proof behind settings flag with glyph fallback
-    status: in_progress
+    status: completed
   - id: mcp-server
     content: "Post-v1: MCP server wrapping resolve/prefetch/cache so agents can call appicon without shelling out"
     status: pending
@@ -73,7 +73,7 @@ isProject: false
 | `--offline`, `cache prune`/`clear`/`stats`/`path` | **Done** |
 | Overrides (`overrides.json`) + CLI `--json` e2e tests | **Done** |
 | Tag **`v0.1.0`** + checksummed release assets | **Done** — [v0.1.0](https://github.com/bolens/appicon/releases/tag/v0.1.0) |
-| waybar-config install + dock CSS proof | **Next** (other repo) |
+| waybar-config install + dock CSS proof | **Done** — `make install-appicon` + `icons.appicon` in waybar-config |
 | MCP server for agent tooling | Post-v1 |
 | Completions/man, Nix/AUR/Home Manager, nightly live SVGL | Post-v1 |
 
