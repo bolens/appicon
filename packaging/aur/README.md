@@ -25,4 +25,6 @@ All three `provides=('appicon')` and conflict with each other — install only o
 3. `makepkg -o` once so `pkgver()` refreshes, then `makepkg --printsrcinfo > .SRCINFO`
 4. Push; AUR helpers rebuild from tip of upstream `main` on each update
 
+Checked-in `.SRCINFO` files match the PKGBUILDs for copy-paste into AUR clones. For `appicon-git`, refresh `pkgver` / `.SRCINFO` with `makepkg -o` right before pushing (VCS `pkgver()` needs a checkout).
+
 These trees are **reference copies** in this repo — the AUR git repos are canonical once published.
