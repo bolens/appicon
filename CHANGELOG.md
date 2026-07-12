@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-12
+
 ### Added
 
 - CLI↔daemon integration tests; prefetch uses daemon `resolve-batch` when available; `Result.Hint` plumbed end-to-end
