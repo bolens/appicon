@@ -8,6 +8,10 @@ on:
     - cron: "17 6 * * *" # 06:17 UTC daily
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

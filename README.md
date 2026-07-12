@@ -149,10 +149,12 @@ Fill checksums (except `-git`) and push to aur.archlinux.org when ready.
 ```bash
 nix flake lock    # once
 nix run github:bolens/appicon -- version
-# local: fix vendorHash in flake.nix after first `nix build` (see nix/README.md)
+nix build github:bolens/appicon#appicon-bin   # linux prebuilt (like AUR appicon-bin)
+nix build github:bolens/appicon#appicon-git   # source + unstable version (like AUR appicon-git)
+# local: see nix/README.md for vendorHash + appicon / appicon-bin / appicon-git
 ```
 
-Home Manager: `programs.appicon.enable = true` via `homeManagerModules.default` (add the flake overlay or set `package`).
+Home Manager: `programs.appicon.enable = true` via `homeManagerModules.default` (overlay or set `package` to `appicon` / `appicon-bin` / `appicon-git`).
 
 From source:
 

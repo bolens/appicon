@@ -3,34 +3,271 @@ name: CI
 on:
   push:
     branches: [main]
+    # Must cover the union of all dorny filters (or filtered pushes never start CI).
+    paths:
+      - "**/*.go"
+      - "go.mod"
+      - "go.sum"
+      - "Makefile"
+      - ".golangci.yml"
+      - "scripts/ci/**"
+      - ".github/workflows/**"
+      - "**/*.md"
+      - "flake.nix"
+      - "nix/**"
+      - "packaging/**"
+      - "contrib/**"
+      - "internal/completion/**"
+      - ".gitleaks.toml"
+      - ".markdownlint*"
+      - "package.json"
+      - "package-lock.json"
+  # No path filters on PRs so branch protection / ci-result always receive a status.
   pull_request:
+  workflow_dispatch:
+  # Weekly full run catches filter blind spots.
+  schedule:
+    - cron: "17 6 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
+  pull-requests: read
+
+env:
+  FORCE_ALL: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
+  GO_VERSION: "1.25.x"
 
 jobs:
-  check:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.flags.outputs.go }}
+      lint: ${{ steps.flags.outputs.lint }}
+      docs: ${{ steps.flags.outputs.docs }}
+      scripts_ci: ${{ steps.flags.outputs.scripts_ci }}
+      workflow: ${{ steps.flags.outputs.workflow }}
+      nix: ${{ steps.flags.outputs.nix }}
+      packaging: ${{ steps.flags.outputs.packaging }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v4
+        id: filter
+        if: env.FORCE_ALL != 'true'
+        with:
+          filters: |
+            go:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - 'Makefile'
+              - 'internal/completion/**'
+              - 'contrib/**'
+            lint:
+              - '**/*.go'
+              - 'go.mod'
+              - 'go.sum'
+              - '.golangci.yml'
+              - 'Makefile'
+            docs:
+              - '**/*.md'
+              - '.markdownlint*'
+              - 'package.json'
+              - 'package-lock.json'
+            scripts_ci:
+              - 'scripts/ci/**'
+            workflow:
+              - '.github/workflows/**'
+              - 'Makefile'
+              - 'scripts/ci/check-*.sh'
+              - '.gitleaks.toml'
+            nix:
+              - 'flake.nix'
+              - 'nix/**'
+            packaging:
+              - 'packaging/**'
+      - name: Resolve suite flags
+        id: flags
+        env:
+          FORCE_ALL: ${{ env.FORCE_ALL }}
+          F_GO: ${{ steps.filter.outputs.go }}
+          F_LINT: ${{ steps.filter.outputs.lint }}
+          F_DOCS: ${{ steps.filter.outputs.docs }}
+          F_SCRIPTS_CI: ${{ steps.filter.outputs.scripts_ci }}
+          F_WORKFLOW: ${{ steps.filter.outputs.workflow }}
+          F_NIX: ${{ steps.filter.outputs.nix }}
+          F_PACKAGING: ${{ steps.filter.outputs.packaging }}
+        run: |
+          set -euo pipefail
+          if [ "${FORCE_ALL}" = "true" ]; then
+            {
+              echo "go=true"
+              echo "lint=true"
+              echo "docs=true"
+              echo "scripts_ci=true"
+              echo "workflow=true"
+              echo "nix=true"
+              echo "packaging=true"
+            } >>"$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # paths-filter skipped → treat as all true (fail open).
+          {
+            echo "go=${F_GO:-true}"
+            echo "lint=${F_LINT:-true}"
+            echo "docs=${F_DOCS:-true}"
+            echo "scripts_ci=${F_SCRIPTS_CI:-true}"
+            echo "workflow=${F_WORKFLOW:-true}"
+            echo "nix=${F_NIX:-true}"
+            echo "packaging=${F_PACKAGING:-true}"
+          } >>"$GITHUB_OUTPUT"
+
+  path-filters:
+    name: Path filter contract
+    needs: changes
+    if: needs.changes.outputs.workflow == 'true' || needs.changes.outputs.scripts_ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: check-ci-path-filters
+        run: bash scripts/ci/check-ci-path-filters.sh
 
+  unit-tests:
+    name: Test / ${{ matrix.package }}
+    needs: changes
+    if: needs.changes.outputs.go == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - ./cmd/appicon
+          - ./internal/appmcp
+          - ./internal/cache
+          - ./internal/completion
+          - ./internal/daemon
+          - ./internal/httpindex
+          - ./internal/pack
+          - ./internal/raster
+          - ./internal/resolve
+          - ./internal/svgl
+          - ./internal/xdg
+    steps:
+      - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.25.x"
+          go-version: ${{ env.GO_VERSION }}
+      - name: go test ${{ matrix.package }}
+        run: go test ${{ matrix.package }}
 
-      - name: check-fast
-        run: make check-fast
+  vet-fmt:
+    name: Vet + gofmt
+    needs: changes
+    if: needs.changes.outputs.go == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: go vet
+        run: go vet ./...
+      - name: gofmt
+        run: |
+          set -euo pipefail
+          out="$(find . \( -path './.gopath' -o -path './.tools' -o -path './vendor' -o -path './.git' \) -prune -o -name '*.go' -print0 | xargs -0 -r gofmt -l)"
+          if [ -n "$out" ]; then
+            printf 'gofmt needed:\n%s\n' "$out" >&2
+            exit 1
+          fi
 
-      - name: golangci-lint
-        uses: golangci/golangci-lint-action@v8
+  lint:
+    name: golangci-lint
+    needs: changes
+    if: needs.changes.outputs.lint == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - uses: golangci/golangci-lint-action@v8
         with:
           version: v2.12.2
 
+  gitleaks:
+    name: gitleaks
+    needs: changes
+    # Cheap; run whenever CI starts (any filtered path or PR).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: gitleaks
         run: bash scripts/ci/check-gitleaks.sh
 
+  actionlint:
+    name: actionlint
+    needs: changes
+    if: needs.changes.outputs.workflow == 'true' || needs.changes.outputs.scripts_ci == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: actionlint
         run: bash scripts/ci/check-actionlint.sh
 
+  markdownlint:
+    name: markdownlint
+    needs: changes
+    if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
       - name: markdownlint
         run: bash scripts/ci/check-markdownlint.sh
+
+  nix-packages:
+    name: Nix package contract
+    needs: changes
+    if: needs.changes.outputs.nix == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: check-nix-packages
+        run: bash scripts/ci/check-nix-packages.sh
+
+  ci-result:
+    name: CI result
+    if: always()
+    needs:
+      - changes
+      - path-filters
+      - unit-tests
+      - vet-fmt
+      - lint
+      - gitleaks
+      - actionlint
+      - markdownlint
+      - nix-packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Aggregate job results
+        env:
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, sys
+          needs = json.loads(os.environ["NEEDS_JSON"])
+          bad = {k: v.get("result") for k, v in needs.items()
+                 if v.get("result") in ("failure", "cancelled")}
+          if bad:
+              print("FAIL: required jobs did not succeed:", bad, file=sys.stderr)
+              sys.exit(1)
+          print("ok: all jobs succeeded or were skipped")
+          PY

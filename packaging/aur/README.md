@@ -28,3 +28,5 @@ All three `provides=('appicon')` and conflict with each other — install only o
 Checked-in `.SRCINFO` files match the PKGBUILDs for copy-paste into AUR clones. For `appicon-git`, refresh `pkgver` / `.SRCINFO` with `makepkg -o` right before pushing (VCS `pkgver()` needs a checkout).
 
 These trees are **reference copies** in this repo — the AUR git repos are canonical once published.
+
+Nix mirrors the same three styles as flake attrs `appicon`, `appicon-bin`, and `appicon-git` — see [nix/README.md](../../nix/README.md).

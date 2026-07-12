@@ -5,7 +5,8 @@
 #     imports = [ inputs.appicon.homeManagerModules.default ];
 #     programs.appicon.enable = true;
 #     # optional if not using the flake overlay:
-#     # programs.appicon.package = inputs.appicon.packages.${pkgs.system}.default;
+#     # programs.appicon.package = inputs.appicon.packages.${pkgs.system}.appicon-bin;
+#     # programs.appicon.package = inputs.appicon.packages.${pkgs.system}.appicon-git;
 #   };
 #
 # Completions: eval "$(appicon completion bash)" (or zsh/fish) — see README.

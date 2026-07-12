@@ -16,36 +16,26 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
       version = "0.1.1";
-    in
-    {
-      packages = forAllSystems (
+      vendorHash = "sha256-USrxmmu8moHcfqZvtb/kS6rbcW4RaleCp0x6lkXfymY=";
+      packagesFor =
         system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          appicon = pkgs.buildGoModule {
-            pname = "appicon";
-            inherit version;
-            src = self;
-            vendorHash = "sha256-USrxmmu8moHcfqZvtb/kS6rbcW4RaleCp0x6lkXfymY=";
-            ldflags = [
-              "-s"
-              "-w"
-              "-X github.com/bolens/appicon/internal/version.Version=v${version}"
-            ];
-            meta = with pkgs.lib; {
-              description = "Resolve desktop and brand icons to local file paths";
-              homepage = "https://github.com/bolens/appicon";
-              license = licenses.mit;
-              mainProgram = "appicon";
-              platforms = platforms.linux ++ platforms.darwin;
-            };
+          pack = import ./nix/packages.nix {
+            inherit pkgs self version vendorHash;
           };
         in
         {
-          default = appicon;
-          appicon = appicon;
+          default = pack.appicon;
+          appicon = pack.appicon;
+          appicon-git = pack.appicon-git;
         }
-      );
+        // nixpkgs.lib.optionalAttrs (pack.appicon-bin != null) {
+          appicon-bin = pack.appicon-bin;
+        };
+    in
+    {
+      packages = forAllSystems packagesFor;
 
       apps = forAllSystems (system: {
         default = {
@@ -72,8 +62,15 @@
       );
 
       homeManagerModules.default = import ./nix/home-manager.nix;
-      overlays.default = final: prev: {
-        appicon = self.packages.${final.system}.appicon;
-      };
+
+      overlays.default =
+        final: prev:
+        {
+          appicon = self.packages.${final.system}.appicon;
+          appicon-git = self.packages.${final.system}.appicon-git;
+        }
+        // nixpkgs.lib.optionalAttrs (builtins.hasAttr "appicon-bin" self.packages.${final.system}) {
+          appicon-bin = self.packages.${final.system}.appicon-bin;
+        };
     };
 }
