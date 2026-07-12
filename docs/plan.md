@@ -28,7 +28,7 @@ todos:
     status: completed
   - id: release-v0
     content: Tag v0.1.0 with checksums; verify install script against release assets
-    status: pending
+    status: in_progress
   - id: waybar-consume
     content: Add install-appicon.sh + make target; dock CSS proof behind settings flag with glyph fallback
     status: pending
@@ -69,7 +69,7 @@ isProject: false
 | PNG raster (`resvg`/`rsvg-convert`/oksvg) + raster cache | **Done** |
 | `--offline`, `cache prune`/`clear`/`stats`/`path` | **Done** |
 | Overrides (`overrides.json`) + CLI `--json` e2e tests | **Done** |
-| Tag **`v0.1.0`** + checksummed release assets | **Next** |
+| Tag **`v0.1.0`** + checksummed release assets | **In progress** |
 | waybar-config install + dock CSS proof | **Next** (other repo) |
 | Completions/man, Nix/AUR/Home Manager, nightly live SVGL | Post-v1 |
 
