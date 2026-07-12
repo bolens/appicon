@@ -30,3 +30,5 @@ Checked-in `.SRCINFO` files match the PKGBUILDs for copy-paste into AUR clones. 
 These trees are **reference copies** in this repo — the AUR git repos are canonical once published.
 
 Nix mirrors the same three styles as flake attrs `appicon`, `appicon-bin`, and `appicon-git` — see [nix/README.md](../../nix/README.md).
+
+CI: `make check-packaging-versions` keeps flake / AUR / Nix versions + binary checksums aligned; `make build-packaging` (and CI matrix jobs) smoke-build all three styles.

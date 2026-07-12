@@ -55,7 +55,7 @@ jobs:
       nix: ${{ steps.flags.outputs.nix }}
       packaging: ${{ steps.flags.outputs.packaging }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dorny/paths-filter@v4
         id: filter
         if: env.FORCE_ALL != 'true'
@@ -134,7 +134,7 @@ jobs:
     if: needs.changes.outputs.workflow == 'true' || needs.changes.outputs.scripts_ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: check-ci-path-filters
         run: bash scripts/ci/check-ci-path-filters.sh
 
@@ -159,8 +159,8 @@ jobs:
           - ./internal/svgl
           - ./internal/xdg
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: go test ${{ matrix.package }}
@@ -172,8 +172,8 @@ jobs:
     if: needs.changes.outputs.go == 'true' || needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: go vet
@@ -193,11 +193,11 @@ jobs:
     if: needs.changes.outputs.lint == 'true' || needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
         with:
           go-version: ${{ env.GO_VERSION }}
-      - uses: golangci/golangci-lint-action@v8
+      - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.12.2
 
@@ -207,7 +207,7 @@ jobs:
     # Cheap; run whenever CI starts (any filtered path or PR).
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: gitleaks
@@ -219,7 +219,7 @@ jobs:
     if: needs.changes.outputs.workflow == 'true' || needs.changes.outputs.scripts_ci == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: actionlint
         run: bash scripts/ci/check-actionlint.sh
 
@@ -229,19 +229,99 @@ jobs:
     if: needs.changes.outputs.docs == 'true' || needs.changes.outputs.workflow == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: markdownlint
         run: bash scripts/ci/check-markdownlint.sh
 
   nix-packages:
     name: Nix package contract
     needs: changes
-    if: needs.changes.outputs.nix == 'true' || needs.changes.outputs.workflow == 'true'
+    if: needs.changes.outputs.nix == 'true' || needs.changes.outputs.workflow == 'true' || needs.changes.outputs.packaging == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: check-nix-packages
         run: bash scripts/ci/check-nix-packages.sh
+
+  packaging-versions:
+    name: Packaging versions
+    needs: changes
+    if: needs.changes.outputs.nix == 'true' || needs.changes.outputs.packaging == 'true' || needs.changes.outputs.workflow == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: check-packaging-versions
+        run: bash scripts/ci/check-packaging-versions.sh
+
+  packaging-aur-build:
+    name: AUR build / ${{ matrix.package }}
+    needs: [changes, packaging-versions]
+    if: |
+      always()
+      && needs.changes.result == 'success'
+      && (needs.packaging-versions.result == 'success' || needs.packaging-versions.result == 'skipped')
+      && (needs.changes.outputs.packaging == 'true' || needs.changes.outputs.workflow == 'true' || needs.changes.outputs.nix == 'true')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - appicon
+          - appicon-bin
+          - appicon-git
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build ${{ matrix.package }}
+        env:
+          APPICON_SMOKE_PACKAGE: ${{ matrix.package }}
+        run: bash scripts/ci/build-packaging.sh
+
+  packaging-nix-build:
+    name: Nix build / ${{ matrix.attr }}
+    needs: [changes, packaging-versions]
+    if: |
+      always()
+      && needs.changes.result == 'success'
+      && (needs.packaging-versions.result == 'success' || needs.packaging-versions.result == 'skipped')
+      && (needs.changes.outputs.nix == 'true' || needs.changes.outputs.packaging == 'true' || needs.changes.outputs.workflow == 'true')
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        attr:
+          - appicon
+          - appicon-git
+          - appicon-bin
+    steps:
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v22
+      - name: nix build .#${{ matrix.attr }}
+        env:
+          NIX_ATTR: ${{ matrix.attr }}
+        run: |
+          set -euo pipefail
+          ver="$(python3 -c 'import re; print(re.search(r"(?m)^\s*version\s*=\s*\"([^\"]+)\";", open("flake.nix",encoding="utf-8").read()).group(1))')"
+          if [ "${NIX_ATTR}" = "appicon-bin" ]; then
+            arch="$(uname -m)"
+            case "$arch" in
+              x86_64|amd64) goarch=amd64 ;;
+              aarch64|arm64) goarch=arm64 ;;
+              *) echo "FAIL: unsupported arch $arch" >&2; exit 1 ;;
+            esac
+            url="https://github.com/bolens/appicon/releases/download/v${ver}/appicon_v${ver}_linux_${goarch}.tar.gz"
+            if ! curl -fsI "$url" >/dev/null; then
+              echo "WARN: ${url} not published yet; skipping nix appicon-bin"
+              exit 0
+            fi
+          fi
+          nix build ".#${NIX_ATTR}" -L --print-build-logs
+          test -x result/bin/appicon
+          echo "version=$("./result/bin/appicon" version)"
 
   ci-result:
     name: CI result
@@ -256,6 +336,9 @@ jobs:
       - actionlint
       - markdownlint
       - nix-packages
+      - packaging-versions
+      - packaging-aur-build
+      - packaging-nix-build
     runs-on: ubuntu-latest
     steps:
       - name: Aggregate job results

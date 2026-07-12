@@ -333,3 +333,4 @@ path → XDG → dir packs (user) → svgl → miss
 17. ~~CI: parallel test matrix, path filters, concurrency cancel; Nix attrs matching AUR~~
 18. ~~Home Manager daemon.enable + package/AUR systemd ExecStart absolute path~~
 19. ~~`appicon override` CLI + MCP tools; flake.lock~~
+20. ~~CI: AUR/Nix version sync + build matrix for all package styles~~

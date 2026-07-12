@@ -12,14 +12,46 @@ concurrency:
 permissions:
   contents: write
   id-token: write # cosign keyless OIDC
+  actions: read # await CI runs for this commit
+  checks: read
 
 jobs:
-  release:
+  await-ci:
+    name: Await CI
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+      - name: Require successful CI on this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Waiting for workflow CI to succeed on ${{ github.sha }}"
+          # Up to ~45 minutes (90 * 30s). Prefer a green run; fail fast on red.
+          for _ in $(seq 1 90); do
+            set +e
+            bash scripts/ci/await-ci-success.sh "${{ github.repository }}" "${{ github.sha }}"
+            rc=$?
+            set -e
+            if [ "$rc" -eq 0 ]; then
+              exit 0
+            fi
+            if [ "$rc" -eq 1 ]; then
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "FAIL: timed out waiting for CI success on ${{ github.sha }}" >&2
+          exit 1
 
-      - uses: actions/setup-go@v5
+  release:
+    name: Build and publish
+    needs: await-ci
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v6
         with:
           go-version: "1.25.x"
 
@@ -47,7 +79,7 @@ jobs:
           (cd dist && sha256sum ./*.tar.gz > SHA256SUMS)
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        uses: sigstore/cosign-installer@v4
 
       - name: Sign SHA256SUMS (keyless)
         run: |
@@ -57,7 +89,7 @@ jobs:
             dist/SHA256SUMS
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/*.tar.gz

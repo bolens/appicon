@@ -14,7 +14,8 @@ ACTIONLINT_VERSION ?= 1.7.7
 
 .PHONY: help build test vet fmt check check-fast lint \
 	check-gitleaks check-actionlint check-markdownlint \
-	check-ci-path-filters check-nix-packages clean
+	check-ci-path-filters check-nix-packages check-packaging-versions \
+	build-packaging clean
 
 help:
 	@printf '%s\n' \
@@ -23,7 +24,8 @@ help:
 		'make vet                - go vet ./...' \
 		'make fmt                - gofmt -w .' \
 		'make check-fast         - test + vet + gofmt clean' \
-		'make check              - check-fast + lint + gitleaks + actionlint + markdownlint + path filters + nix pkgs' \
+		'make check              - full local gate (lint + scripts + packaging versions)' \
+		'make build-packaging    - AUR-style smoke builds (set APPICON_BUILD_NIX=1 for nix)' \
 		'make lint               - golangci-lint run' \
 		'make clean              - remove bin/ and coverage artifacts'
 
@@ -69,6 +71,12 @@ check-ci-path-filters:
 check-nix-packages:
 	bash scripts/ci/check-nix-packages.sh
 
+check-packaging-versions:
+	bash scripts/ci/check-packaging-versions.sh
+
+build-packaging:
+	bash scripts/ci/build-packaging.sh
+
 check: check-fast
 	@if command -v golangci-lint >/dev/null 2>&1; then $(MAKE) lint; else echo 'skip lint (golangci-lint missing)'; fi
 	@$(MAKE) check-gitleaks
@@ -76,6 +84,7 @@ check: check-fast
 	@$(MAKE) check-markdownlint
 	@$(MAKE) check-ci-path-filters
 	@$(MAKE) check-nix-packages
+	@$(MAKE) check-packaging-versions
 
 clean:
 	rm -rf bin/ dist/ coverage.out coverage.html

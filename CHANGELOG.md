@@ -2,16 +2,21 @@
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-07-12
+
 ### Added
 
 - Home Manager `programs.appicon.daemon.enable` (user systemd socket)
 - Nix packages install `lib/systemd/user/` units with absolute `ExecStart`
 - `appicon override list|get|set|rm|path` (+ MCP `override_*` tools)
 - `flake.lock` for reproducible Nix inputs
+- CI packaging gates: version sync + AUR/Nix build matrix for `appicon` / `appicon-bin` / `appicon-git`
+- Release workflow waits for a successful CI run on the tagged commit before publishing
 
 ### Changed
 
 - AUR PKGBUILDs pin systemd `ExecStart` to `/usr/bin/appicon daemon`
+- GitHub Actions: checkout v7, setup-go v6, golangci-lint-action v9, cosign-installer v4, action-gh-release v3, nix-installer v22
 
 ## [0.1.1] — 2026-07-12
 
