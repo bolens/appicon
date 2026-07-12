@@ -24,7 +24,7 @@ Stable keys (do not rename):
 |-------|------|-------|
 | `query` | string | Echo of the request |
 | `path` | string \| `null` | Absolute local file path on success |
-| `source` | string | `file` \| `xdg` \| `svgl` \| `pack` \| `http-index` \| `simple-icons` \| `dashboard-icons` \| `github` \| `glyph` \| `""` on miss |
+| `source` | string | `file` \| `xdg` \| `svgl` \| `pack` \| `http-index` \| `simple-icons` \| `dashboard-icons` \| `github` \| `logo-dev` \| `iconify` \| `noun-project` \| `glyph` \| `""` on miss |
 | `theme` | string | Effective theme hint (`dark`/`light`/`""`; from `--theme`, `APPICON_THEME`, or `GTK_THEME` `:dark`/`:light`) |
 | `format` | string | `svg` \| `png` |
 | `cached` | bool | Whether the hit came from appicon’s durable cache |

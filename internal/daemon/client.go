@@ -186,3 +186,34 @@ func TryResolveBatch(ctx context.Context, queries []string, opts resolve.Options
 	}
 	return items, err, true
 }
+
+// Ping dials the daemon and returns true when the ping op succeeds.
+func (c *Client) Ping(ctx context.Context) (bool, error) {
+	conn, err := c.dial(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer func() { _ = conn.Close() }()
+	if err := WriteFrame(conn, Request{Op: "ping"}); err != nil {
+		return false, err
+	}
+	var resp Response
+	if err := ReadFrame(conn, &resp); err != nil {
+		return false, err
+	}
+	return resp.OK && resp.Op == "ping", nil
+}
+
+// Alive reports whether the default daemon socket responds to ping.
+func Alive(ctx context.Context) bool {
+	if os.Getenv("APPICON_NO_DAEMON") != "" {
+		return false
+	}
+	path := SocketPath()
+	if _, err := os.Stat(path); err != nil {
+		return false
+	}
+	c := &Client{Timeout: 500 * time.Millisecond}
+	ok, err := c.Ping(ctx)
+	return err == nil && ok
+}

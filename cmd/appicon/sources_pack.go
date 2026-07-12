@@ -21,22 +21,24 @@ func cmdSources(args []string, stdout, stderr io.Writer) error {
 	fs.SetOutput(stderr)
 	asJSON := fs.Bool("json", false, "emit JSON")
 	filePath := fs.String("file", "", "for set: read config from PATH instead of stdin")
+	format := fs.String("format", "", "for set: json|yaml when no sources file exists yet (default json)")
 	fs.Usage = func() {
 		_, _ = fmt.Fprintf(stderr, `Usage:
   appicon sources list [--json]
   appicon sources get [--json]
-  appicon sources set [--file PATH]
+  appicon sources set [--file PATH] [--format json|yaml]
   appicon sources path
 
 list   — effective resolve order
-get    — raw sources.json (or defaults when missing)
-set    — overwrite sources.json from stdin or --file (validates stage types)
-path   — print sources.json path
+get    — raw sources.json/yaml (or defaults when missing)
+set    — overwrite sources config from stdin or --file (JSON or YAML)
+path   — print active sources config path
 
 Examples:
   appicon sources list
   appicon sources get --json
   appicon sources set --file ./sources.json
+  appicon sources set --format yaml --file ./sources.yaml
   echo '{"sources":[{"type":"overrides"},{"type":"xdg"},{"type":"svgl"},{"type":"glyph"}]}' | appicon sources set
 `)
 	}
@@ -58,7 +60,7 @@ Examples:
 		return sourcesGet(stdout, *asJSON)
 	}
 	if sub == "set" {
-		return sourcesSet(stdout, *filePath)
+		return sourcesSet(stdout, *filePath, *format)
 	}
 
 	stages, cfg, err := resolve.LoadEffectiveStages("", nil)
@@ -117,7 +119,7 @@ func sourcesGet(stdout io.Writer, asJSON bool) error {
 	return err
 }
 
-func sourcesSet(stdout io.Writer, filePath string) error {
+func sourcesSet(stdout io.Writer, filePath, format string) error {
 	var data []byte
 	var err error
 	if filePath != "" {
@@ -130,16 +132,16 @@ func sourcesSet(stdout io.Writer, filePath string) error {
 	}
 	data = []byte(strings.TrimSpace(string(data)))
 	if len(data) == 0 {
-		return errors.New("sources set requires JSON on stdin or --file PATH")
+		return errors.New("sources set requires JSON or YAML on stdin or --file PATH")
 	}
 	var cfg resolve.SourcesConfig
-	if err := json.Unmarshal(data, &cfg); err != nil {
-		return fmt.Errorf("invalid sources JSON: %w", err)
+	if err := resolve.DecodeConfigData(data, &cfg); err != nil {
+		return fmt.Errorf("invalid sources config: %w", err)
 	}
 	if err := resolve.ValidateStages(cfg.Sources); err != nil {
 		return err
 	}
-	if err := resolve.WriteSourcesConfig("", cfg); err != nil {
+	if err := resolve.WriteSourcesConfigFormat("", cfg, format); err != nil {
 		return err
 	}
 	path := resolve.SourcesPath("")

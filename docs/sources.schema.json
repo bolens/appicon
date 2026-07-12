@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bolens/appicon/docs/sources.schema.json",
+  "title": "appicon sources config",
+  "description": "Shape of sources.json / sources.yaml. Secrets must use token_env/secret_env (env var names), never inline keys. See docs/sources.md.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sources": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/stage" }
+    },
+    "file": {
+      "type": "boolean",
+      "description": "false omits the file stage entirely"
+    },
+    "overrides": {
+      "type": "boolean",
+      "description": "false omits the overrides stage entirely"
+    },
+    "xdg": {
+      "type": "boolean",
+      "description": "false omits the xdg stage entirely"
+    }
+  },
+  "$defs": {
+    "stage": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "file",
+            "overrides",
+            "xdg",
+            "pack",
+            "dir",
+            "svgl",
+            "simple-icons",
+            "dashboard-icons",
+            "http-index",
+            "github",
+            "glyph",
+            "logo-dev",
+            "iconify",
+            "noun-project"
+          ]
+        },
+        "path": {
+          "type": "string",
+          "description": "pack directory, or github default owner/repo root"
+        },
+        "name": { "type": "string" },
+        "index": {
+          "type": "string",
+          "description": "http-index JSON URL"
+        },
+        "hosts": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "http-index host allowlist"
+        },
+        "enabled": { "type": "boolean" },
+        "token_env": {
+          "type": "string",
+          "description": "Environment variable name holding API token/key (never the secret itself)"
+        },
+        "secret_env": {
+          "type": "string",
+          "description": "Environment variable name holding OAuth1 consumer secret (noun-project)"
+        },
+        "base": {
+          "type": "string",
+          "description": "Optional HTTPS API base (iconify self-host)"
+        }
+      }
+    }
+  }
+}

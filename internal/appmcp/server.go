@@ -367,10 +367,11 @@ type statusOutput struct {
 	Order              []string         `json:"order"`
 	DaemonSocket       string           `json:"daemon_socket"`
 	DaemonSocketExists bool             `json:"daemon_socket_exists"`
+	DaemonAlive        bool             `json:"daemon_alive"`
 	Tools              []statusToolInfo `json:"tools"`
 }
 
-func (h *handlers) status(_ context.Context, _ *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, statusOutput, error) {
+func (h *handlers) status(ctx context.Context, _ *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, statusOutput, error) {
 	cfg := h.opts.ConfigDir
 	stages, _, err := resolve.LoadEffectiveStages(cfg, nil)
 	if err != nil {
@@ -404,6 +405,7 @@ func (h *handlers) status(_ context.Context, _ *mcp.CallToolRequest, _ emptyInpu
 		Order:              resolve.FormatStages(stages),
 		DaemonSocket:       sock,
 		DaemonSocketExists: sockErr == nil,
+		DaemonAlive:        daemon.Alive(ctx),
 		Tools:              tools,
 	}, nil
 }

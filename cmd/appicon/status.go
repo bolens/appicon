@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"github.com/bolens/appicon/internal/daemon"
 	"github.com/bolens/appicon/internal/packs"
@@ -51,6 +53,9 @@ Examples:
 	}
 	sock := daemon.SocketPath()
 	_, sockErr := os.Stat(sock)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	alive := daemon.Alive(ctx)
 
 	type toolInfo struct {
 		Name string `json:"name"`
@@ -76,6 +81,7 @@ Examples:
 		"order":                labels,
 		"daemon_socket":        sock,
 		"daemon_socket_exists": sockErr == nil,
+		"daemon_alive":         alive,
 		"tools":                tools,
 	}
 
@@ -97,7 +103,11 @@ Examples:
 	if sockErr == nil {
 		exists = "ok"
 	}
-	_, _ = fmt.Fprintf(stdout, "daemon_socket=%s (%s)\n", sock, exists)
+	aliveStr := "dead"
+	if alive {
+		aliveStr = "alive"
+	}
+	_, _ = fmt.Fprintf(stdout, "daemon_socket=%s (%s, %s)\n", sock, exists, aliveStr)
 	for _, t := range tools {
 		if t.OK {
 			_, _ = fmt.Fprintf(stdout, "tool_%s=%s\n", t.Name, t.Path)

@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// ErrOverrideNotFound means the key is absent from overrides.json.
+// ErrOverrideNotFound means the key is absent from overrides config.
 var ErrOverrideNotFound = errors.New("override not found")
 
 // ConfigDir returns the appicon config root ($XDG_CONFIG_HOME/appicon).
@@ -26,13 +26,14 @@ func ConfigDir() string {
 	return filepath.Join(base, "appicon")
 }
 
-// OverridesPath returns the path to overrides.json for configDir (empty = ConfigDir()).
+// OverridesPath returns the active overrides config path (existing file, else overrides.json).
 func OverridesPath(configDir string) string {
-	dir := configDir
-	if dir == "" {
-		dir = ConfigDir()
+	dir := configDirOr(configDir)
+	path, err := findConfigBasename(dir, "overrides")
+	if err != nil || path == "" {
+		return filepath.Join(dir, "overrides.json")
 	}
-	return filepath.Join(dir, "overrides.json")
+	return path
 }
 
 // ListOverrides returns a sorted copy of query→target remaps (keys lowercased).
@@ -67,7 +68,7 @@ func GetOverride(configDir, query string) (string, error) {
 	return v, nil
 }
 
-// SetOverride writes query→target into overrides.json (creates file/dir as needed).
+// SetOverride writes query→target into overrides config (creates file/dir as needed).
 func SetOverride(configDir, query, target string) error {
 	key := strings.ToLower(strings.TrimSpace(query))
 	target = strings.TrimSpace(target)
@@ -85,7 +86,7 @@ func SetOverride(configDir, query, target string) error {
 	return writeOverridesFile(configDir, m)
 }
 
-// RemoveOverride deletes a key from overrides.json.
+// RemoveOverride deletes a key from overrides config.
 func RemoveOverride(configDir, query string) error {
 	key := strings.ToLower(strings.TrimSpace(query))
 	if key == "" {
@@ -116,7 +117,14 @@ func SortedOverrideKeys(m map[string]string) []string {
 }
 
 func readOverridesFile(configDir string) (map[string]string, error) {
-	path := OverridesPath(configDir)
+	dir := configDirOr(configDir)
+	path, err := findConfigBasename(dir, "overrides")
+	if err != nil {
+		return nil, err
+	}
+	if path == "" {
+		return nil, nil
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -128,8 +136,8 @@ func readOverridesFile(configDir string) (map[string]string, error) {
 		return map[string]string{}, nil
 	}
 	var raw map[string]string
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return nil, fmt.Errorf("overrides.json: %w", err)
+	if err := DecodeConfigData(data, &raw); err != nil {
+		return nil, fmt.Errorf("overrides: %w", err)
 	}
 	out := make(map[string]string, len(raw))
 	for k, v := range raw {
@@ -139,41 +147,54 @@ func readOverridesFile(configDir string) (map[string]string, error) {
 }
 
 func writeOverridesFile(configDir string, m map[string]string) error {
-	path := OverridesPath(configDir)
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dir := configDirOr(configDir)
+	existing, err := findConfigBasename(dir, "overrides")
+	if err != nil {
 		return err
+	}
+	path := existing
+	fmtKind := ConfigFormatJSON
+	if path == "" {
+		path = filepath.Join(dir, "overrides.json")
+	} else {
+		fmtKind = formatFromPath(path)
 	}
 	if m == nil {
 		m = map[string]string{}
 	}
-	// Stable key order for nicer diffs.
-	var b strings.Builder
-	b.WriteString("{\n")
-	keys := SortedOverrideKeys(m)
-	for i, k := range keys {
-		kj, err := json.Marshal(k)
+	var data []byte
+	if fmtKind == ConfigFormatYAML {
+		data, err = EncodeConfigData(m, ConfigFormatYAML)
 		if err != nil {
 			return err
 		}
-		vj, err := json.Marshal(m[k])
-		if err != nil {
-			return err
+	} else {
+		// Stable key order for nicer diffs (JSON).
+		var b strings.Builder
+		b.WriteString("{\n")
+		keys := SortedOverrideKeys(m)
+		for i, k := range keys {
+			kj, err := json.Marshal(k)
+			if err != nil {
+				return err
+			}
+			vj, err := json.Marshal(m[k])
+			if err != nil {
+				return err
+			}
+			b.WriteString("  ")
+			b.Write(kj)
+			b.WriteString(": ")
+			b.Write(vj)
+			if i < len(keys)-1 {
+				b.WriteByte(',')
+			}
+			b.WriteByte('\n')
 		}
-		b.WriteString("  ")
-		b.Write(kj)
-		b.WriteString(": ")
-		b.Write(vj)
-		if i < len(keys)-1 {
-			b.WriteByte(',')
-		}
-		b.WriteByte('\n')
+		b.WriteString("}\n")
+		data = []byte(b.String())
 	}
-	b.WriteString("}\n")
-	tmp := path + ".tmp"
-	if err := os.WriteFile(tmp, []byte(b.String()), 0o644); err != nil {
-		return err
-	}
-	return os.Rename(tmp, path)
+	return writeAtomic(path, data)
 }
 
 func applyOverrides(query, configDir string) string {
