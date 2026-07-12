@@ -6,6 +6,8 @@
 
 - Home Manager `programs.appicon.daemon.enable` (user systemd socket)
 - Nix packages install `lib/systemd/user/` units with absolute `ExecStart`
+- `appicon override list|get|set|rm|path` (+ MCP `override_*` tools)
+- `flake.lock` for reproducible Nix inputs
 
 ### Changed
 

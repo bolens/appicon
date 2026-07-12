@@ -13,7 +13,7 @@ _appicon() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
   fi
 
-  local cmds="resolve prefetch cache daemon mcp completion man version help"
+  local cmds="resolve prefetch cache override daemon mcp completion man version help"
 
   if [[ ${COMP_CWORD} -eq 1 ]]; then
     COMPREPLY=($(compgen -W "${cmds}" -- "${cur}"))
@@ -48,6 +48,15 @@ _appicon() {
     cache)
       if [[ ${COMP_CWORD} -eq 2 ]]; then
         COMPREPLY=($(compgen -W "path clear stats prune" -- "${cur}"))
+      fi
+      ;;
+    override)
+      if [[ ${COMP_CWORD} -eq 2 ]]; then
+        COMPREPLY=($(compgen -W "list get set rm path" -- "${cur}"))
+        return
+      fi
+      if [[ ${cur} == -* ]]; then
+        COMPREPLY=($(compgen -W "--json --help" -- "${cur}"))
       fi
       ;;
     completion)

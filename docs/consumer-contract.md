@@ -42,4 +42,4 @@ Like `zscroll` / `cava`: install is optional. Consumers must:
 2. Avoid restart-spam or PATH probes every signal when the binary is missing (negative-cache until bar reload).
 3. Never embed SVGL (or other) URLs — only shell out to `appicon`.
 
-See [waybar-config](https://github.com/bolens/waybar-config) `make install-appicon` + `icons.appicon.enabled`.
+- Optional remaps: `$XDG_CONFIG_HOME/appicon/overrides.json` via `appicon override` / MCP `override_*`.

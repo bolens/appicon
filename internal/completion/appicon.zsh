@@ -1,12 +1,13 @@
 #compdef appicon
 
 _appicon() {
-  local -a cmds cache_cmds shells formats themes
+  local -a cmds cache_cmds override_cmds shells formats themes
 
   cmds=(
     'resolve:Resolve an icon query to a local path'
     'prefetch:Warm the icon cache for queries'
     'cache:Cache path/clear/stats/prune'
+    'override:Manage overrides.json remaps'
     'daemon:Run optional unix-socket resolve daemon'
     'mcp:Run stdio MCP server for agents'
     'completion:Print shell completion script'
@@ -15,6 +16,7 @@ _appicon() {
     'help:Show usage'
   )
   cache_cmds=(path clear stats prune)
+  override_cmds=(list get set rm path)
   shells=(bash zsh fish)
   formats=(svg png)
   themes=(dark light)
@@ -47,6 +49,12 @@ _appicon() {
           ;;
         cache)
           _arguments "1:subcommand:(${cache_cmds[*]})"
+          ;;
+        override)
+          _arguments \
+            '--json[Emit JSON]' \
+            "1:subcommand:(${override_cmds[*]})" \
+            '*:arg:'
           ;;
         completion)
           _arguments "1:shell:(${shells[*]})"

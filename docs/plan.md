@@ -300,6 +300,7 @@ path → XDG → dir packs (user) → svgl → miss
 | `prefetch` | `appicon prefetch` | args: `queries[]` |
 | `cache_stats` | `appicon cache stats` | |
 | `cache_clear` / `cache_prune` | matching subcommands | destructive — documented in tool descriptions |
+| `override_list` / `override_get` / `override_set` / `override_rm` | `appicon override …` | remaps in `overrides.json` |
 | `version` | `appicon version` | |
 
 **Rules:**
@@ -309,7 +310,7 @@ path → XDG → dir packs (user) → svgl → miss
 - Example Cursor/Claude config in README (`command`: `appicon`, `args`: `["mcp"]`).
 - Tests: in-memory MCP session tests with fixture XDG roots (`internal/appmcp`); no live network required.
 
-**Out of scope for the MCP:** browsing remote catalogs in-agent, writing `overrides.json` without an explicit tool, or exposing raw HTTP downloads.
+**Out of scope for the MCP:** browsing remote catalogs in-agent, or exposing raw HTTP downloads. Writing `overrides.json` is in scope via the explicit `override_*` tools / `appicon override` CLI.
 
 ## Execution order
 
@@ -331,3 +332,4 @@ path → XDG → dir packs (user) → svgl → miss
 16. ~~Consumer hygiene (zscroll/cava peers): stable contract doc, binary-miss negative cache, launch prefetch~~
 17. ~~CI: parallel test matrix, path filters, concurrency cancel; Nix attrs matching AUR~~
 18. ~~Home Manager daemon.enable + package/AUR systemd ExecStart absolute path~~
+19. ~~`appicon override` CLI + MCP tools; flake.lock~~

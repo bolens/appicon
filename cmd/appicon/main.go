@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/bolens/appicon/internal/appmcp"
@@ -28,7 +29,7 @@ func main() {
 }
 
 func exitCode(err error) int {
-	if errors.Is(err, resolve.ErrNotFound) {
+	if errors.Is(err, resolve.ErrNotFound) || errors.Is(err, resolve.ErrOverrideNotFound) {
 		return 1
 	}
 	return 2
@@ -53,6 +54,8 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return cmdPrefetch(args[1:], stderr)
 	case "cache":
 		return cmdCache(args[1:], stdout)
+	case "override":
+		return cmdOverride(args[1:], stdout, stderr)
 	case "mcp":
 		return cmdMCP(args[1:], stderr)
 	case "completion":
@@ -74,21 +77,22 @@ Usage:
   appicon resolve [--json] [--offline] [--local] [--format png|svg] [--size N] [--theme dark|light] <query>
   appicon prefetch <query>...
   appicon cache path|clear|stats|prune
+  appicon override list|get|set|rm|path [--json] ...
   appicon daemon [--socket PATH]
   appicon mcp
   appicon completion bash|zsh|fish
   appicon man
   appicon version
 
-Resolve order: existing path → XDG icon theme / .desktop → sources (SVGL / local packs) → miss.
+Resolve order: existing path → overrides.json → XDG icon theme / .desktop → sources (SVGL / local packs) → miss.
 
-Exit codes (resolve): 0=found, 1=not found (supported miss), 2=usage/error.
+Exit codes (resolve/override get|rm): 0=ok, 1=not found (supported miss), 2=usage/error.
 --json always emits one object (path null + error on miss) before a non-zero exit.
 
 Daemon: optional user socket at $XDG_RUNTIME_DIR/appicon.sock; resolve dials it when present
 (unless --local or APPICON_NO_DAEMON=1) and falls back to in-process resolve.
 
-MCP: run "appicon mcp" over stdio for agent tooling (resolve, prefetch, cache_*, version).
+MCP: run "appicon mcp" over stdio for agent tooling (resolve, prefetch, cache_*, override_*, version).
 
 Completions: eval "$(appicon completion bash)"  # or zsh/fish; see README.
 
@@ -264,6 +268,67 @@ func cmdCache(args []string, stdout io.Writer) error {
 		return nil
 	default:
 		return fmt.Errorf("unknown cache subcommand %q", args[0])
+	}
+}
+
+func cmdOverride(args []string, stdout, stderr io.Writer) error {
+	if len(args) == 0 {
+		return errors.New("override requires list|get|set|rm|path")
+	}
+	fs := flag.NewFlagSet("override", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	asJSON := fs.Bool("json", false, "emit JSON")
+	// Allow flags after subcommand: override list --json
+	sub := args[0]
+	rest := args[1:]
+	if err := fs.Parse(rest); err != nil {
+		return err
+	}
+	pos := fs.Args()
+
+	switch sub {
+	case "path":
+		_, _ = fmt.Fprintln(stdout, resolve.OverridesPath(""))
+		return nil
+	case "list":
+		m, err := resolve.ListOverrides("")
+		if err != nil {
+			return err
+		}
+		if *asJSON {
+			enc := json.NewEncoder(stdout)
+			enc.SetEscapeHTML(false)
+			return enc.Encode(m)
+		}
+		for _, k := range resolve.SortedOverrideKeys(m) {
+			_, _ = fmt.Fprintf(stdout, "%s\t%s\n", k, m[k])
+		}
+		return nil
+	case "get":
+		if len(pos) != 1 {
+			return errors.New("override get requires <query>")
+		}
+		v, err := resolve.GetOverride("", pos[0])
+		if err != nil {
+			return err
+		}
+		if *asJSON {
+			return json.NewEncoder(stdout).Encode(map[string]string{"query": strings.ToLower(pos[0]), "target": v})
+		}
+		_, _ = fmt.Fprintln(stdout, v)
+		return nil
+	case "set":
+		if len(pos) != 2 {
+			return errors.New("override set requires <query> <target>")
+		}
+		return resolve.SetOverride("", pos[0], pos[1])
+	case "rm", "remove", "delete":
+		if len(pos) != 1 {
+			return errors.New("override rm requires <query>")
+		}
+		return resolve.RemoveOverride("", pos[0])
+	default:
+		return fmt.Errorf("unknown override subcommand %q", sub)
 	}
 }
 

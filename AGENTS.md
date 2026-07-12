@@ -25,6 +25,7 @@ Short rules for AI coding agents in this repository.
 - **Do** run `make check-fast` before committing.
 - **Do** keep MCP tools thin wrappers over `internal/resolve` — no second download path.
 - **Do** treat resolve miss (exit `1`) as a supported outcome for consumers.
+- **Do** use `appicon override` / MCP `override_*` for long-tail remaps — not speculative aliases in code.
 - **Don’t** vendor SVGL’s full catalog into releases.
 - **Don’t** commit secrets or live API tokens (none are required today).
 - **Don’t** require appicon in consumer bars — optional peer like zscroll/cava (glyph fallback).

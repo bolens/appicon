@@ -47,6 +47,22 @@ func NewServer(opts Options) *mcp.Server {
 		Name:        "version",
 		Description: "Return the appicon version string (mirrors appicon version).",
 	}, h.version)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "override_list",
+		Description: "List query remaps from overrides.json (mirrors appicon override list --json).",
+	}, h.overrideList)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "override_get",
+		Description: "Get one override remap (mirrors appicon override get).",
+	}, h.overrideGet)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "override_set",
+		Description: "Set a query remap in overrides.json (mirrors appicon override set).",
+	}, h.overrideSet)
+	mcp.AddTool(s, &mcp.Tool{
+		Name:        "override_rm",
+		Description: "Remove a query remap from overrides.json (mirrors appicon override rm).",
+	}, h.overrideRm)
 
 	return s
 }
@@ -210,4 +226,76 @@ type versionOutput struct {
 
 func (h *handlers) version(_ context.Context, _ *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, versionOutput, error) {
 	return nil, versionOutput{Version: version.Version}, nil
+}
+
+type overrideListOutput struct {
+	Overrides map[string]string `json:"overrides"`
+	Path      string            `json:"path"`
+}
+
+func (h *handlers) overrideList(_ context.Context, _ *mcp.CallToolRequest, _ emptyInput) (*mcp.CallToolResult, overrideListOutput, error) {
+	cfg := h.opts.ConfigDir
+	m, err := resolve.ListOverrides(cfg)
+	if err != nil {
+		return nil, overrideListOutput{}, err
+	}
+	return nil, overrideListOutput{Overrides: m, Path: resolve.OverridesPath(cfg)}, nil
+}
+
+type overrideKeyInput struct {
+	Query string `json:"query" jsonschema:"override key (app id / query to remap)"`
+}
+
+type overrideGetOutput struct {
+	Query  string  `json:"query"`
+	Target *string `json:"target"`
+	Error  *string `json:"error"`
+}
+
+func (h *handlers) overrideGet(_ context.Context, _ *mcp.CallToolRequest, in overrideKeyInput) (*mcp.CallToolResult, overrideGetOutput, error) {
+	out := overrideGetOutput{Query: in.Query}
+	v, err := resolve.GetOverride(h.opts.ConfigDir, in.Query)
+	if err != nil {
+		msg := err.Error()
+		out.Error = &msg
+		if !errors.Is(err, resolve.ErrOverrideNotFound) {
+			return &mcp.CallToolResult{IsError: true}, out, nil
+		}
+		return nil, out, nil
+	}
+	out.Target = &v
+	return nil, out, nil
+}
+
+type overrideSetInput struct {
+	Query  string `json:"query" jsonschema:"override key (app id / query to remap)"`
+	Target string `json:"target" jsonschema:"canonical query or icon id to resolve instead"`
+}
+
+type overrideSetOutput struct {
+	Query  string `json:"query"`
+	Target string `json:"target"`
+	OK     bool   `json:"ok"`
+}
+
+func (h *handlers) overrideSet(_ context.Context, _ *mcp.CallToolRequest, in overrideSetInput) (*mcp.CallToolResult, overrideSetOutput, error) {
+	if err := resolve.SetOverride(h.opts.ConfigDir, in.Query, in.Target); err != nil {
+		return &mcp.CallToolResult{IsError: true}, overrideSetOutput{}, err
+	}
+	return nil, overrideSetOutput{Query: in.Query, Target: in.Target, OK: true}, nil
+}
+
+type overrideRmOutput struct {
+	Query string `json:"query"`
+	OK    bool   `json:"ok"`
+}
+
+func (h *handlers) overrideRm(_ context.Context, _ *mcp.CallToolRequest, in overrideKeyInput) (*mcp.CallToolResult, overrideRmOutput, error) {
+	if err := resolve.RemoveOverride(h.opts.ConfigDir, in.Query); err != nil {
+		if errors.Is(err, resolve.ErrOverrideNotFound) {
+			return nil, overrideRmOutput{Query: in.Query, OK: false}, nil
+		}
+		return &mcp.CallToolResult{IsError: true}, overrideRmOutput{Query: in.Query}, err
+	}
+	return nil, overrideRmOutput{Query: in.Query, OK: true}, nil
 }

@@ -10,7 +10,7 @@ AUR-parity attrs (same three install styles as [packaging/aur/](../packaging/aur
 
 ```bash
 # After installing Nix:
-nix flake lock          # writes flake.lock (once; needs network)
+nix flake lock          # writes flake.lock (committed for reproducible inputs)
 nix build               # → appicon (source)
 nix build .#appicon-bin # linux; needs network to fetch release
 nix build .#appicon-git

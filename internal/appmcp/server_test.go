@@ -59,6 +59,7 @@ func TestMCPListTools(t *testing.T) {
 	want := map[string]bool{
 		"resolve": true, "prefetch": true, "cache_stats": true,
 		"cache_clear": true, "cache_prune": true, "version": true,
+		"override_list": true, "override_get": true, "override_set": true, "override_rm": true,
 	}
 	for _, tool := range tools.Tools {
 		delete(want, tool.Name)
@@ -163,5 +164,43 @@ func TestMCPPrefetch(t *testing.T) {
 	results, ok := sc["results"].([]any)
 	if !ok || len(results) != 2 {
 		t.Fatalf("results=%v", sc["results"])
+	}
+}
+
+func TestMCPOverrideCRUD(t *testing.T) {
+	opts := fixtureXDG(t)
+	opts.ConfigDir = t.TempDir()
+	session := connect(t, opts)
+
+	_, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name: "override_set",
+		Arguments: map[string]any{
+			"query":  "my-browser",
+			"target": "firefox",
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "override_get",
+		Arguments: map[string]any{"query": "my-browser"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("structured=%T", res.StructuredContent)
+	}
+	if sc["target"] != "firefox" {
+		t.Fatalf("%v", sc)
+	}
+	_, err = session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "override_rm",
+		Arguments: map[string]any{"query": "my-browser"},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }

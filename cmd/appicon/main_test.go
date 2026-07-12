@@ -125,6 +125,44 @@ func TestCLIResolveMissingExitSemantics(t *testing.T) {
 	}
 }
 
+func TestCLIOverrideCRUD(t *testing.T) {
+	cfg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", cfg)
+	t.Setenv("APPICON_NO_DAEMON", "1")
+
+	if _, _, err := captureRun("override", "set", "My-Browser", "firefox"); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := captureRun("override", "get", "my-browser")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.TrimSpace(out) != "firefox" {
+		t.Fatalf("get=%q", out)
+	}
+	out, _, err = captureRun("override", "list", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]string
+	if err := json.Unmarshal([]byte(out), &m); err != nil {
+		t.Fatal(err)
+	}
+	if m["my-browser"] != "firefox" {
+		t.Fatalf("%v", m)
+	}
+	if _, _, err := captureRun("override", "rm", "my-browser"); err != nil {
+		t.Fatal(err)
+	}
+	_, _, err = captureRun("override", "get", "my-browser")
+	if !errors.Is(err, resolve.ErrOverrideNotFound) {
+		t.Fatalf("err=%v", err)
+	}
+	if exitCode(err) != 1 {
+		t.Fatalf("exit=%d", exitCode(err))
+	}
+}
+
 func TestCLIResolveUsageExitIsTwo(t *testing.T) {
 	xdgEnv(t)
 	_, _, err := captureRun("resolve", "--json")

@@ -14,6 +14,7 @@ on:
       - ".github/workflows/**"
       - "**/*.md"
       - "flake.nix"
+      - "flake.lock"
       - "nix/**"
       - "packaging/**"
       - "contrib/**"
@@ -87,6 +88,7 @@ jobs:
               - '.gitleaks.toml'
             nix:
               - 'flake.nix'
+              - 'flake.lock'
               - 'nix/**'
             packaging:
               - 'packaging/**'

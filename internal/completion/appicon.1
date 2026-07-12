@@ -11,7 +11,7 @@ looks up an application or brand icon and prints a local filesystem path.
 Consumers such as Waybar, Rofi, and scripts can use the path without embedding
 remote download logic.
 .PP
-Resolve order: existing path, FreeDesktop icon theme / .desktop (including
+Resolve order: existing path, overrides.json, FreeDesktop icon theme / .desktop (including
 Flatpak, Snap, and Steam heuristics), then configured logo sources (SVGL and/or
 local packs via sources.json). A miss exits with status 1.
 .SH COMMANDS
@@ -26,11 +26,14 @@ Warm the cache for one or more queries.
 .B cache path|clear|stats|prune
 Inspect or manage the on-disk cache under $XDG_CACHE_HOME/appicon.
 .TP
+.B override list|get|set|rm|path [\-\-json]
+Manage $XDG_CONFIG_HOME/appicon/overrides.json query remaps (long-tail aliases).
+.TP
 .B daemon [\-\-socket \fIpath\fR]
 Run the optional unix-socket resolve daemon (or under systemd socket activation).
 .TP
 .B mcp
-Run a stdio MCP server for coding agents (tools: resolve, prefetch, cache_*, version).
+Run a stdio MCP server for coding agents (tools: resolve, prefetch, cache_*, override_*, version).
 .TP
 .B completion bash|zsh|fish
 Print a shell completion script to stdout.

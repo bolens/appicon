@@ -7,6 +7,8 @@ appicon resolve firefox
 appicon resolve --json --format png --size 24 "VS Code"
 appicon resolve --offline some-cached-app
 appicon prefetch firefox discord
+appicon override set my-browser firefox
+appicon override list
 appicon cache stats
 appicon cache prune
 appicon mcp   # stdio MCP for agents
@@ -39,6 +41,15 @@ Example — local [Simple Icons](https://github.com/simple-icons/simple-icons) /
 
 Do not point `http-index` at third-party CDNs unless you control the allowlist and accept their terms; prefer cloning packs locally.
 
+## Overrides
+
+Long-tail query remaps live in `$XDG_CONFIG_HOME/appicon/overrides.json`:
+
+```bash
+appicon override set my-wm-class firefox
+appicon override list --json
+```
+
 ## MCP (agents)
 
 Run the same binary as a stdio MCP server — tools call `internal/resolve` (no extra download logic):
@@ -52,6 +63,7 @@ appicon mcp
 | `resolve` | `appicon resolve --json` |
 | `prefetch` | `appicon prefetch` |
 | `cache_stats` / `cache_clear` / `cache_prune` | matching `cache` subcommands |
+| `override_list` / `override_get` / `override_set` / `override_rm` | `appicon override …` |
 | `version` | `appicon version` |
 
 Example Cursor / Claude Desktop snippet:
@@ -169,7 +181,17 @@ make build
 
 ## Cache
 
-Remote assets live under `$XDG_CACHE_HOME/appicon` (default `~/.cache/appicon`). XDG hits return theme paths directly and are not copied. Optional overrides: `$XDG_CONFIG_HOME/appicon/overrides.json`.
+Remote assets live under `$XDG_CACHE_HOME/appicon` (default `~/.cache/appicon`). XDG hits return theme paths directly and are not copied.
+
+Optional query remaps: `$XDG_CONFIG_HOME/appicon/overrides.json` — manage with:
+
+```bash
+appicon override set steam_app_12345 "Some Game"
+appicon override get steam_app_12345
+appicon override list --json
+appicon override rm steam_app_12345
+appicon override path
+```
 
 Brand logos from SVGL are third-party marks — cached for personal use; this project does not redistribute a logo pack.
 

@@ -265,56 +265,6 @@ func rasterCached(svgPath string, size int) (path string, cached bool, err error
 	return p, false, nil
 }
 
-func applyOverrides(query, configDir string) string {
-	overrides := loadOverrides(configDir)
-	if len(overrides) == 0 {
-		return builtinAlias(query)
-	}
-	if v, ok := overrides[strings.ToLower(query)]; ok {
-		return v
-	}
-	return builtinAlias(query)
-}
-
-func builtinAlias(query string) string {
-	switch strings.ToLower(query) {
-	case "code", "vscode", "visual studio code":
-		return "code"
-	case "zen", "zen-browser":
-		return "zen-browser"
-	default:
-		return query
-	}
-}
-
-func loadOverrides(configDir string) map[string]string {
-	dir := configDir
-	if dir == "" {
-		base := os.Getenv("XDG_CONFIG_HOME")
-		if base == "" {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return nil
-			}
-			base = filepath.Join(home, ".config")
-		}
-		dir = filepath.Join(base, "appicon")
-	}
-	data, err := os.ReadFile(filepath.Join(dir, "overrides.json"))
-	if err != nil {
-		return nil
-	}
-	var raw map[string]string
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return nil
-	}
-	out := make(map[string]string, len(raw))
-	for k, v := range raw {
-		out[strings.ToLower(k)] = v
-	}
-	return out
-}
-
 // ClearCache removes the entire cache directory.
 func ClearCache() error {
 	dir := CacheDir()
