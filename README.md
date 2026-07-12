@@ -17,7 +17,7 @@ XDG, SVGL (cache-first), local logo packs (`sources.json`), PNG rasterization, `
 
 **PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`.
 
-**Sources:** optional `$XDG_CONFIG_HOME/appicon/sources.json` — ordered list of `svgl` and `dir` packs (see plan). Default is SVGL only.
+**Sources:** optional `$XDG_CONFIG_HOME/appicon/sources.json` — ordered `svgl`, local `dir` packs, and `http-index` remotes (explicit host allowlist required). Default is SVGL only.
 
 ## Install (after first release)
 

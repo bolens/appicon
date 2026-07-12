@@ -33,7 +33,7 @@ todos:
     content: "Post-v1: shell completions (bash/zsh/fish), man page (--offline + cache prune done)"
     status: pending
   - id: pluggable-sources
-    content: "Post-v1: http-index remote sources (dir packs + sources.json + SVGL ordering done)"
+    content: "Post-v1: http-index + docs for Simple Icons / dashboard-icons dir packs (dir + sources.json done)"
     status: pending
   - id: nightly-svgl
     content: "Post-v1: nightly/workflow_dispatch live SVGL smoke (1–2 titles); not required to merge"
@@ -184,15 +184,44 @@ Follow-ups after a tagged release + Waybar proof. Same packaging tier as each ot
 
 **Done so far:** ordered `sources.json` with `svgl` + local `dir` packs; default remains SVGL-only.
 
-**Still open:** `http-index` remote providers with per-source host allowlists (see sketch below).
+**Still open:** `http-index` remote providers with per-source host allowlists (see sketch below). Document recommended packs; no new built-in logo APIs.
+
+**Recommended supplements (priority):**
+
+| Priority | Option | Notes |
+|----------|--------|-------|
+| **1** | **`http-index`** | Generic allowlisted remotes (self-hosted indexes, pinned CDNs, private brand packs). Same timeout + stale-index behavior as SVGL. Primary post-v1 implementation work. |
+| **2** | **[Simple Icons](https://github.com/simple-icons/simple-icons) as a documented `dir` pack** | Largest monochrome brand set; clean license story. User clones locally — do **not** bake `cdn.simpleicons.org` / jsDelivr into the binary. |
+| **3** | **[dashboard-icons](https://github.com/homarr-labs/dashboard-icons) as a documented `dir` pack** | Strong for docks / self-hosted apps where SVGL + XDG often miss. Same clone → `type: dir` pattern. |
+
+**Lower priority / later:**
+
+- Optional first-class `simple-icons` source type — only if plain `dir` + slug lookup feels awkward; prefer keeping the surface small.
+- Other packs (e.g. Devicon) — same `dir` recipe; no new source types until needed.
+
+**Do not add / do not promote:**
+
+- Built-in Logo.dev / Brandfetch / Clearbit (API keys, ToS).
+- Built-in Iconify (huge host/license surface).
+- Shipping any third-party pack in GitHub releases.
+- A second hard-coded remote like SVGL unless license + allowlist are as clean as SVGL — preference stays **user-configured** sources.
+
+**Suggested dock-oriented order** (document as an example; default stays SVGL-only until the user edits config):
+
+```text
+path → XDG → dir packs (user) → svgl → miss
+```
+
+Local packs often beat SVGL for Waybar docks; brand-first users can put `svgl` before `dir`.
 
 **Config sketch** (`$XDG_CONFIG_HOME/appicon/sources.json`):
 
 ```json
 {
   "sources": [
-    { "type": "svgl", "enabled": true },
+    { "type": "dir", "path": "~/.local/share/appicon/packs/dashboard-icons" },
     { "type": "dir", "path": "~/.local/share/appicon/packs/simple-icons" },
+    { "type": "svgl", "enabled": true },
     {
       "type": "http-index",
       "name": "my-cdn",
@@ -208,9 +237,9 @@ Follow-ups after a tagged release + Waybar proof. Same packaging tier as each ot
 - Resolve still runs **path → XDG → sources (in order) → miss**.
 - **Local `dir` packs:** tree or flat folder of `.svg`/`.png` plus optional `index.json` (`{"Firefox":"firefox.svg"}`); no network.
 - **Remote providers:** must declare an **explicit host allowlist** (extend today’s `api.svgl.app` / `svgl.app` gate). Reject redirects off-allowlist. Same short timeout + stale-index behavior as SVGL.
-- **Do not** ship third-party logo packs inside GitHub releases; document how to point at a pack the user already has (Simple Icons clone, custom brand folder, etc.).
+- **Do not** ship third-party logo packs inside GitHub releases; document how to clone Simple Icons, dashboard-icons, or a custom brand folder and point `sources.json` at them.
 - Brand/trademark disclaimer stays: cache for personal use; appicon distributes code only.
-- Built-in second remote (e.g. another public logo API) only if license + allowlist story is clean; preference is **user-configured** sources.
+- Built-in second remote only if license + allowlist story is clean; preference is **user-configured** sources.
 
 ### Extra consumers
 
@@ -232,5 +261,5 @@ Follow-ups after a tagged release + Waybar proof. Same packaging tier as each ot
 7. waybar-config install + dock CSS proof behind settings flag
 8. (post-v1) Packaging: Nix flake, Home Manager, AUR; optional release signing
 9. (post-v1) CLI polish: completions, man, `--offline`, `cache prune`
-10. (post-v1) Pluggable sources (local packs + allowlisted remotes) + Steam/Snap resolve quality
+10. (post-v1) Pluggable sources: `http-index` + docs for Simple Icons / dashboard-icons `dir` packs; Steam/Snap resolve quality
 11. (post-v1) Extra consumers + nightly live SVGL job

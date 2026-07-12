@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/httpindex"
 	"github.com/bolens/appicon/internal/pack"
 	"github.com/bolens/appicon/internal/raster"
 	"github.com/bolens/appicon/internal/svgl"
@@ -42,6 +43,8 @@ type Options struct {
 
 	// SVGL injects a client (tests). Nil uses svgl.Default.
 	SVGL *svgl.Client
+	// HTTPIndex injects a client (tests). Nil uses httpindex.Default.
+	HTTPIndex *httpindex.Client
 }
 
 // Result is a successful resolve.
@@ -152,7 +155,8 @@ func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
 func isBenignMiss(err error) bool {
 	return errors.Is(err, ErrNotFound) ||
 		errors.Is(err, svgl.ErrNotFound) ||
-		errors.Is(err, pack.ErrNotFound)
+		errors.Is(err, pack.ErrNotFound) ||
+		errors.Is(err, httpindex.ErrNotFound)
 }
 
 func resolveSource(ctx context.Context, src sourceSpec, query string, opts Options) (Result, error) {
@@ -187,6 +191,28 @@ func resolveSource(ctx context.Context, src sourceSpec, query string, opts Optio
 			Theme:  svglRes.Theme,
 			Format: opts.Format,
 			Cached: svglRes.Cached,
+		}, nil
+	case "http-index":
+		client := opts.HTTPIndex
+		if client == nil {
+			client = httpindex.Default
+		}
+		res, err := client.Lookup(ctx, query, httpindex.Options{
+			Name:     src.Name,
+			IndexURL: src.Index,
+			Hosts:    src.Hosts,
+			Theme:    opts.Theme,
+			Offline:  opts.Offline,
+		})
+		if err != nil {
+			return Result{}, err
+		}
+		return Result{
+			Path:   res.Path,
+			Source: "http-index",
+			Theme:  res.Theme,
+			Format: opts.Format,
+			Cached: res.Cached,
 		}, nil
 	default:
 		return Result{}, ErrNotFound

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/httpindex"
 	"github.com/bolens/appicon/internal/resolve"
 	"github.com/bolens/appicon/internal/svgl"
 )
@@ -332,6 +333,60 @@ func TestPruneRemovesOrphansKeepsCatalogAssets(t *testing.T) {
 	// catalog remains
 	if !cache.Exists("catalog.json") {
 		t.Fatal("catalog should remain")
+	}
+}
+
+func TestBehavioralHTTPIndexSource(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	opts := xdgFixtureOpts(t)
+	opts.DataDirs = []string{t.TempDir()}
+	opts.IconDirs = []string{t.TempDir()}
+
+	index := `{"Remote Only":"https://icons.example/brand.svg"}`
+	mux := http.NewServeMux()
+	mux.HandleFunc("/index.json", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(index))
+	})
+	mux.HandleFunc("/brand.svg", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	client := httpindex.New()
+	client.TTL = time.Hour
+	client.HTTP = &http.Client{
+		Timeout: 2 * time.Second,
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			u := *req.URL
+			u.Scheme = "http"
+			u.Host = srv.Listener.Addr().String()
+			req2 := req.Clone(req.Context())
+			req2.URL = &u
+			req2.Host = u.Host
+			return http.DefaultTransport.RoundTrip(req2)
+		}),
+	}
+	opts.HTTPIndex = client
+
+	sources := `{
+	  "sources": [{
+	    "type": "http-index",
+	    "name": "cdn",
+	    "index": "https://icons.example/index.json",
+	    "hosts": ["icons.example"]
+	  }]
+	}`
+	if err := os.WriteFile(filepath.Join(opts.ConfigDir, "sources.json"), []byte(sources), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	res, err := resolve.Resolve(context.Background(), "Remote Only", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Source != "http-index" {
+		t.Fatalf("source=%q", res.Source)
 	}
 }
 

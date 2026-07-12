@@ -9,9 +9,12 @@ import (
 
 // sourceSpec is one entry from sources.json.
 type sourceSpec struct {
-	Type    string `json:"type"` // svgl|dir
-	Path    string `json:"path"` // for dir
-	Enabled *bool  `json:"enabled"`
+	Type    string   `json:"type"` // svgl|dir|http-index
+	Path    string   `json:"path"` // for dir
+	Name    string   `json:"name"` // for http-index
+	Index   string   `json:"index"`
+	Hosts   []string `json:"hosts"`
+	Enabled *bool    `json:"enabled"`
 }
 
 type sourcesFile struct {
@@ -50,7 +53,7 @@ func loadSources(configDir string) []sourceSpec {
 		}
 		s.Type = strings.ToLower(strings.TrimSpace(s.Type))
 		switch s.Type {
-		case "svgl", "dir":
+		case "svgl", "dir", "http-index":
 			out = append(out, s)
 		}
 	}
