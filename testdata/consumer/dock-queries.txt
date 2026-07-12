@@ -1,0 +1,7 @@
+# Dock / consumer query list for offline smoke (supported miss or hit).
+# Keep short; real consumers may have longer lists.
+firefox
+discord
+code
+org.example.Test
+unknown-long-tail-app

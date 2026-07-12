@@ -27,25 +27,44 @@ var ErrDial = errors.New("daemon unavailable")
 
 // Request is a length-prefixed JSON frame from client → daemon.
 type Request struct {
-	Op      string `json:"op"` // resolve|ping
-	Query   string `json:"query,omitempty"`
-	Format  string `json:"format,omitempty"`
-	Size    int    `json:"size,omitempty"`
-	Theme   string `json:"theme,omitempty"`
-	Offline bool   `json:"offline,omitempty"`
+	Op      string   `json:"op"` // resolve|resolve-batch|ping
+	Query   string   `json:"query,omitempty"`
+	Queries []string `json:"queries,omitempty"` // resolve-batch
+	Format  string   `json:"format,omitempty"`
+	Size    int      `json:"size,omitempty"`
+	Theme   string   `json:"theme,omitempty"`
+	Offline bool     `json:"offline,omitempty"`
+	Order   []string `json:"order,omitempty"`
+	Explain bool     `json:"explain,omitempty"`
 }
 
-// Response mirrors appicon resolve --json (plus op echo for ping).
+// Response mirrors appicon resolve --json (plus op echo for ping / batch).
 type Response struct {
-	Op     string  `json:"op,omitempty"`
-	Query  string  `json:"query,omitempty"`
-	Path   *string `json:"path"`
-	Source string  `json:"source,omitempty"`
-	Theme  string  `json:"theme,omitempty"`
-	Format string  `json:"format,omitempty"`
-	Cached bool    `json:"cached,omitempty"`
-	Error  *string `json:"error"`
-	OK     bool    `json:"ok,omitempty"` // ping
+	Op      string        `json:"op,omitempty"`
+	Query   string        `json:"query,omitempty"`
+	Path    *string       `json:"path"`
+	Source  string        `json:"source,omitempty"`
+	Theme   string        `json:"theme,omitempty"`
+	Format  string        `json:"format,omitempty"`
+	Cached  bool          `json:"cached,omitempty"`
+	Error   *string       `json:"error"`
+	Tried   []string      `json:"tried,omitempty"`
+	Hint    string        `json:"hint,omitempty"`
+	OK      bool          `json:"ok,omitempty"`      // ping
+	Results []BatchResult `json:"results,omitempty"` // resolve-batch
+}
+
+// BatchResult is one entry in a resolve-batch response.
+type BatchResult struct {
+	Query  string   `json:"query"`
+	Path   *string  `json:"path"`
+	Source string   `json:"source,omitempty"`
+	Theme  string   `json:"theme,omitempty"`
+	Format string   `json:"format,omitempty"`
+	Cached bool     `json:"cached,omitempty"`
+	Error  *string  `json:"error"`
+	Tried  []string `json:"tried,omitempty"`
+	Hint   string   `json:"hint,omitempty"`
 }
 
 // SocketPath returns $XDG_RUNTIME_DIR/appicon.sock (or a fallback under TempDir).

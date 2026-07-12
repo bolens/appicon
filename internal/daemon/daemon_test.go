@@ -138,6 +138,111 @@ func TestTryResolveNoDaemonEnv(t *testing.T) {
 	}
 }
 
+func TestDaemonResolveOrderAndExplain(t *testing.T) {
+	opts := fixtureOpts(t)
+	socket, _ := startServer(t, opts)
+	c := &daemon.Client{Socket: socket, Timeout: 2 * time.Second}
+
+	res, err := c.ResolveExplain(context.Background(), "zzzz-missing-daemon-icon", resolve.Options{
+		Offline: true,
+		Format:  "svg",
+		Size:    48,
+		Order:   []string{"glyph"},
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Source != "glyph" {
+		t.Fatalf("source=%q path=%q", res.Source, res.Path)
+	}
+
+	res, err = c.ResolveExplain(context.Background(), "zzzz-missing-daemon-icon", resolve.Options{
+		Offline: true,
+		Format:  "svg",
+		Size:    48,
+		Order:   []string{"xdg"},
+	}, true)
+	if !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("err=%v", err)
+	}
+	if len(res.Tried) == 0 {
+		t.Fatalf("expected tried stages on explain miss: %+v", res)
+	}
+	if res.Hint == "" {
+		t.Fatalf("expected hint from daemon: %+v", res)
+	}
+}
+
+func TestDaemonResolveBatch(t *testing.T) {
+	opts := fixtureOpts(t)
+	socket, _ := startServer(t, opts)
+	c := &daemon.Client{Socket: socket, Timeout: 2 * time.Second}
+
+	items, err := c.ResolveBatch(context.Background(), []string{"org.example.Test", "zzzz-missing"}, opts, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 2 {
+		t.Fatalf("len=%d", len(items))
+	}
+	if items[0].Err != nil || items[0].Result.Source != "xdg" {
+		t.Fatalf("item0=%+v", items[0])
+	}
+	if !errors.Is(items[1].Err, resolve.ErrNotFound) {
+		t.Fatalf("item1=%+v", items[1])
+	}
+}
+
+func TestDaemonResolveBatchExplain(t *testing.T) {
+	opts := fixtureOpts(t)
+	socket, _ := startServer(t, opts)
+	c := &daemon.Client{Socket: socket, Timeout: 2 * time.Second}
+
+	items, err := c.ResolveBatch(context.Background(), []string{"zzzz-batch-explain"}, resolve.Options{
+		Offline: true,
+		Format:  "svg",
+		Size:    48,
+		Order:   []string{"xdg"},
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != 1 || !errors.Is(items[0].Err, resolve.ErrNotFound) {
+		t.Fatalf("%+v", items)
+	}
+	if len(items[0].Result.Tried) == 0 {
+		t.Fatalf("expected tried: %+v", items[0])
+	}
+}
+
+func TestTryResolveExplainUsesDaemon(t *testing.T) {
+	opts := fixtureOpts(t)
+	socket, _ := startServer(t, opts)
+	t.Setenv("APPICON_SOCKET", socket)
+	t.Setenv("APPICON_NO_DAEMON", "")
+	res, err, used := daemon.TryResolveExplain(context.Background(), "org.example.Test", opts, true)
+	if !used {
+		t.Fatal("expected daemon used")
+	}
+	if err != nil || res.Source != "xdg" {
+		t.Fatalf("res=%+v err=%v", res, err)
+	}
+}
+
+func TestTryResolveBatchUsesDaemon(t *testing.T) {
+	opts := fixtureOpts(t)
+	socket, _ := startServer(t, opts)
+	t.Setenv("APPICON_SOCKET", socket)
+	t.Setenv("APPICON_NO_DAEMON", "")
+	items, err, used := daemon.TryResolveBatch(context.Background(), []string{"org.example.Test"}, opts, false)
+	if !used || err != nil {
+		t.Fatalf("used=%v err=%v", used, err)
+	}
+	if len(items) != 1 || items[0].Result.Source != "xdg" {
+		t.Fatalf("%+v", items)
+	}
+}
+
 func TestDaemonPing(t *testing.T) {
 	opts := fixtureOpts(t)
 	socket, _ := startServer(t, opts)

@@ -12,7 +12,7 @@ Part of the [documentation map](README.md). Prefer [consumer-contract.md](consum
 
 ## Operational (not deferred product)
 
-- Publish AUR packages: [packaging/aur/README.md](../packaging/aur/README.md)
+- Publish AUR packages: [packaging/aur/README.md](../packaging/aur/README.md) — reference PKGBUILDs are publish-ready (`make check-aur-publish`); push to `aur.archlinux.org` is still a human step after each release.
 - After releases, refresh AUR/Nix checksums: [nix/README.md](../nix/README.md)
 - Security reporting and release verification: [SECURITY.md](../SECURITY.md)
 

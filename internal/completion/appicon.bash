@@ -46,6 +46,12 @@ _appicon() {
       esac
       if [[ ${cur} == -* ]]; then
         COMPREPLY=($(compgen -W "--json --explain --offline --local --format --size --theme --order --help" -- "${cur}"))
+      else
+        local qs
+        qs="$(appicon __complete queries "${cur}" 2>/dev/null)"
+        if [[ -n "${qs}" ]]; then
+          COMPREPLY=($(compgen -W "${qs}" -- "${cur}"))
+        fi
       fi
       ;;
     sources)
@@ -108,7 +114,13 @@ _appicon() {
           ;;
       esac
       if [[ ${cur} == -* ]]; then
-        COMPREPLY=($(compgen -W "--json --offline --order --help" -- "${cur}"))
+        COMPREPLY=($(compgen -W "--json --offline --from-desktop --theme --order --help" -- "${cur}"))
+      else
+        local qs
+        qs="$(appicon __complete queries "${cur}" 2>/dev/null)"
+        if [[ -n "${qs}" ]]; then
+          COMPREPLY=($(compgen -W "${qs}" -- "${cur}"))
+        fi
       fi
       ;;
     status)
@@ -123,12 +135,33 @@ _appicon() {
       ;;
     override)
       if [[ ${COMP_CWORD} -eq 2 ]]; then
-        COMPREPLY=($(compgen -W "list get set rm path" -- "${cur}"))
+        COMPREPLY=($(compgen -W "list get set rm path suggest" -- "${cur}"))
         return
       fi
-      if [[ ${cur} == -* ]]; then
-        COMPREPLY=($(compgen -W "--json --help" -- "${cur}"))
-      fi
+      case "${COMP_WORDS[2]}" in
+        suggest)
+          if [[ ${cur} == -* ]]; then
+            COMPREPLY=($(compgen -W "--json --apply --from-misses --help" -- "${cur}"))
+          else
+            local qs
+            qs="$(appicon __complete queries "${cur}" 2>/dev/null)"
+            if [[ -n "${qs}" ]]; then
+              COMPREPLY=($(compgen -W "${qs}" -- "${cur}"))
+            fi
+          fi
+          ;;
+        *)
+          if [[ ${cur} == -* ]]; then
+            COMPREPLY=($(compgen -W "--json --help" -- "${cur}"))
+          else
+            local qs
+            qs="$(appicon __complete queries "${cur}" 2>/dev/null)"
+            if [[ -n "${qs}" ]]; then
+              COMPREPLY=($(compgen -W "${qs}" -- "${cur}"))
+            fi
+          fi
+          ;;
+      esac
       ;;
     completion)
       if [[ ${COMP_CWORD} -eq 2 ]]; then

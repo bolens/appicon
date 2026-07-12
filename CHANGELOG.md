@@ -2,8 +2,22 @@
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-07-12
+
 ### Added
 
+- CLI↔daemon integration tests; prefetch uses daemon `resolve-batch` when available; `Result.Hint` plumbed end-to-end
+- Examples: batch resolve in rofi/walker; `examples/prefetch-and-suggest.sh`
+- Docs: CONTRIBUTING checks table, sources MCP/theme, systemd order/explain/batch
+- Tests for batch resolve, override suggest, prefetch `--from-desktop`, `__complete`, daemon order/explain/batch, MCP `queries` / `override_suggest` / `from_desktop`, theme/recent/catalog helpers
+- Batch JSON schema ([docs/resolve-batch-result.schema.json](docs/resolve-batch-result.schema.json)); CI path filters cover `testdata/**` / `examples/**`; jobs assert `consumer-smoke` + `aur-publish-check`
+- Daemon protocol: `order`, `explain`, and `resolve-batch` (CLI no longer forces in-process for `--order`/`--explain`)
+- Batch resolve: `appicon resolve --json q1 q2 …` → `{results:[…]}`; MCP `resolve` accepts `queries`
+- `appicon override suggest` (+ `--from-misses` / `--apply`); MCP `override_suggest`; recent miss journal under cache
+- `appicon prefetch --from-desktop` (+ MCP `from_desktop`) — warm from installed `.desktop` files
+- Theme auto-detect from `GTK_THEME` `:dark`/`:light`; XDG prefers `name-dark` / `name-symbolic` / `name-light`
+- Shell completions for queries via `appicon __complete queries` (overrides, recent, catalog)
+- Consumer smoke: `make check-consumer-smoke`; AUR publish readiness: `make check-aur-publish`
 - Repo hygiene: Dependabot, `govulncheck`, `SECURITY.md`, CODEOWNERS, issue/PR templates, `.editorconfig` / `.gitattributes`, pinned `markdownlint-cli`, release build provenance attestations
 - Docs hub ([docs/README.md](docs/README.md)) with CI `check-docs-crosslinks` so pages stay crosslinked
 - Pin CI Go to 1.25.12 (stdlib GO-2026-5856); cache `Path` no longer creates dirs (Nix `/homeless-shelter` tests)

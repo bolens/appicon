@@ -74,13 +74,15 @@ func (s *Server) handle(ctx context.Context, conn net.Conn) error {
 			req.Op = "resolve"
 		}
 		return s.handleResolve(ctx, conn, req)
+	case "resolve-batch":
+		return s.handleResolveBatch(ctx, conn, req)
 	default:
 		msg := fmt.Sprintf("unknown op %q", req.Op)
 		return WriteFrame(conn, Response{Op: req.Op, Path: nil, Error: &msg})
 	}
 }
 
-func (s *Server) handleResolve(ctx context.Context, conn net.Conn, req Request) error {
+func (s *Server) mergeOpts(req Request) resolve.Options {
 	opts := s.Options
 	if req.Format != "" {
 		opts.Format = req.Format
@@ -92,7 +94,14 @@ func (s *Server) handleResolve(ctx context.Context, conn net.Conn, req Request) 
 		opts.Theme = req.Theme
 	}
 	opts.Offline = opts.Offline || req.Offline
+	if len(req.Order) > 0 {
+		opts.Order = append([]string(nil), req.Order...)
+	}
+	return opts
+}
 
+func (s *Server) handleResolve(ctx context.Context, conn net.Conn, req Request) error {
+	opts := s.mergeOpts(req)
 	resp := Response{
 		Op:     "resolve",
 		Query:  req.Query,
@@ -100,10 +109,49 @@ func (s *Server) handleResolve(ctx context.Context, conn net.Conn, req Request) 
 		Format: opts.Format,
 	}
 	res, err := resolve.Resolve(ctx, req.Query, opts)
+	fillResolveResponse(&resp, res, err, opts, req.Explain)
+	return WriteFrame(conn, resp)
+}
+
+func (s *Server) handleResolveBatch(ctx context.Context, conn net.Conn, req Request) error {
+	opts := s.mergeOpts(req)
+	resp := Response{
+		Op:      "resolve-batch",
+		Results: make([]BatchResult, 0, len(req.Queries)),
+	}
+	for _, q := range req.Queries {
+		br := BatchResult{Query: q, Theme: opts.Theme, Format: opts.Format}
+		res, err := resolve.Resolve(ctx, q, opts)
+		var single Response
+		fillResolveResponse(&single, res, err, opts, req.Explain)
+		br.Path = single.Path
+		br.Source = single.Source
+		br.Theme = single.Theme
+		br.Format = single.Format
+		br.Cached = single.Cached
+		br.Error = single.Error
+		br.Tried = single.Tried
+		br.Hint = single.Hint
+		resp.Results = append(resp.Results, br)
+	}
+	return WriteFrame(conn, resp)
+}
+
+func fillResolveResponse(resp *Response, res resolve.Result, err error, opts resolve.Options, explain bool) {
 	if err != nil {
 		msg := err.Error()
 		resp.Error = &msg
-		return WriteFrame(conn, resp)
+		if errors.Is(err, resolve.ErrNotFound) {
+			hint := res.Hint
+			if hint == "" {
+				hint = resolve.MissHint(opts.ConfigDir, opts.Order)
+			}
+			resp.Hint = hint
+		}
+		if explain {
+			resp.Tried = res.Tried
+		}
+		return
 	}
 	path := res.Path
 	resp.Path = &path
@@ -111,7 +159,9 @@ func (s *Server) handleResolve(ctx context.Context, conn net.Conn, req Request) 
 	resp.Theme = res.Theme
 	resp.Format = res.Format
 	resp.Cached = res.Cached
-	return WriteFrame(conn, resp)
+	if explain {
+		resp.Tried = res.Tried
+	}
 }
 
 // Listen opens a filesystem unix socket at path (mode 0600).

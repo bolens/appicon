@@ -19,7 +19,7 @@ _appicon() {
     'help:Show usage'
   )
   cache_cmds=(path clear stats prune)
-  override_cmds=(list get set rm path)
+  override_cmds=(list get set rm path suggest)
   sources_cmds=(list get set path)
   pack_cmds=(list path add install update)
   shells=(bash zsh fish)
@@ -47,7 +47,7 @@ _appicon() {
             '--size[Pixel size]:size:' \
             '--theme[Prefer theme]:theme:(dark light)' \
             "--order[Stage type order override]:order:(${stages[*]})" \
-            '1:query:_files'
+            '*:query:->queries'
           ;;
         sources)
           _arguments \
@@ -74,8 +74,10 @@ _appicon() {
           _arguments \
             '--json[Emit JSON results]' \
             '--offline[Skip network]' \
+            '--from-desktop[Derive queries from .desktop files]' \
+            '--theme[Prefer theme]:theme:(dark light)' \
             "--order[Stage type order override]:order:(${stages[*]})" \
-            '*:query:'
+            '*:query:->queries'
           ;;
         status)
           _arguments '--json[Emit JSON]'
@@ -86,13 +88,22 @@ _appicon() {
         override)
           _arguments \
             '--json[Emit JSON]' \
+            '--apply[Apply first suggest candidate]' \
+            '--from-misses[Suggest for recent misses]' \
             "1:subcommand:(${override_cmds[*]})" \
-            '*:arg:'
+            '*:query:->queries'
           ;;
         completion)
           _arguments "1:shell:(${shells[*]})"
           ;;
+        mcp|version|help|man)
+          ;;
       esac
+      if [[ $state == queries ]]; then
+        local -a qs
+        qs=(${(f)"$(appicon __complete queries ${words[-1]} 2>/dev/null)"})
+        (( $#qs )) && _describe -t queries 'query' qs
+      fi
       ;;
   esac
 }

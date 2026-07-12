@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/bolens/appicon/docs/resolve-batch-result.schema.json",
+  "title": "appicon resolve --json batch result",
+  "description": "Envelope for multi-query appicon resolve --json. Each results[] item matches resolve-result.schema.json. See docs/consumer-contract.md.",
+  "type": "object",
+  "required": ["results"],
+  "additionalProperties": true,
+  "properties": {
+    "results": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "resolve-result.schema.json"
+      }
+    }
+  }
+}

@@ -10,8 +10,11 @@ systemctl --user daemon-reload
 systemctl --user enable --now appicon.socket
 ```
 
-`resolve` dials `$XDG_RUNTIME_DIR/appicon.sock` when present and falls back to in-process
-resolve if the socket is missing (`--local` / `APPICON_NO_DAEMON=1` skips the dial).
+`resolve` and `prefetch` dial `$XDG_RUNTIME_DIR/appicon.sock` when present and fall back to
+in-process resolve if the socket is missing (`--local` / `APPICON_NO_DAEMON=1` skips the dial).
+
+The daemon speaks the same resolve path as the CLI: `order`, `explain`, and `resolve-batch`
+(multi-query) are supported over the socket — no need to force `--local` for those flags.
 
 Foreground without systemd: `appicon daemon` (creates the socket itself).
 

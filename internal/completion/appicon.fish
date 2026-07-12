@@ -53,6 +53,8 @@ complete -c appicon -n '__fish_seen_subcommand_from daemon' -l socket -r -d 'Uni
 
 complete -c appicon -n '__fish_seen_subcommand_from prefetch' -l json -d 'Emit JSON results'
 complete -c appicon -n '__fish_seen_subcommand_from prefetch' -l offline -d 'Skip network'
+complete -c appicon -n '__fish_seen_subcommand_from prefetch' -l from-desktop -d 'Derive queries from .desktop files'
+complete -c appicon -n '__fish_seen_subcommand_from prefetch' -l theme -xa 'dark light'
 complete -c appicon -n '__fish_seen_subcommand_from prefetch' -l order -xa "$__appicon_stages" -d 'Stage type order override'
 
 complete -c appicon -n '__fish_seen_subcommand_from status' -l json -d 'Emit JSON'
@@ -61,12 +63,21 @@ complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_s
 complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_subcommand_from path clear stats prune' -a clear -d 'Delete cache'
 complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_subcommand_from path clear stats prune' -a stats -d 'Cache stats'
 complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_subcommand_from path clear stats prune' -a prune -d 'Prune stale entries'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path' -a list -d 'List remaps'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path' -a get -d 'Get remap'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path' -a set -d 'Set remap'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path' -a rm -d 'Remove remap'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path' -a path -d 'Print overrides.json path'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a list -d 'List remaps'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a get -d 'Get remap'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a set -d 'Set remap'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a rm -d 'Remove remap'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a path -d 'Print overrides.json path'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a suggest -d 'Suggest remap targets'
 complete -c appicon -n '__fish_seen_subcommand_from override' -l json -d 'Emit JSON'
+complete -c appicon -n '__fish_seen_subcommand_from override' -l apply -d 'Apply first suggest candidate'
+complete -c appicon -n '__fish_seen_subcommand_from override' -l from-misses -d 'Suggest for recent misses'
+
+function __appicon_queries
+  appicon __complete queries (commandline -ct) 2>/dev/null
+end
+complete -c appicon -n '__fish_seen_subcommand_from resolve prefetch' -a '(__appicon_queries)'
+complete -c appicon -n '__fish_seen_subcommand_from override; and __fish_seen_subcommand_from get set rm suggest' -a '(__appicon_queries)'
 
 complete -c appicon -n '__fish_seen_subcommand_from completion' -a bash -d 'Bash completion'
 complete -c appicon -n '__fish_seen_subcommand_from completion' -a zsh -d 'Zsh completion'

@@ -111,6 +111,20 @@ if "matrix:" not in text or "./cmd/appicon" not in text:
     print("FAIL: unit-tests package matrix missing", file=sys.stderr)
     fail = 1
 
+for job in ("consumer-smoke:", "aur-publish-check:"):
+    if job not in text:
+        print(f"FAIL: CI job {job!r} missing", file=sys.stderr)
+        fail = 1
+
+go_paths = dorny("go")
+for required in ("testdata/**", "examples/**"):
+    if required not in go_paths:
+        print(f"FAIL: dorny go filter missing {required}", file=sys.stderr)
+        fail = 1
+    if not push_covers(required):
+        print(f"FAIL: push on.paths does not cover {required}", file=sys.stderr)
+        fail = 1
+
 if fail:
     sys.exit(1)
 print("ok: push paths cover dorny filters; concurrency + matrix present")

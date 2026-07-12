@@ -45,6 +45,41 @@ func (f *Finder) lookupIcon(name string) (string, error) {
 		return "", ErrNotFound
 	}
 
+	for _, candidate := range iconNameCandidates(name, f.ColorScheme) {
+		if path, err := f.lookupIconExact(candidate); err == nil {
+			return path, nil
+		}
+	}
+	return "", ErrNotFound
+}
+
+func iconNameCandidates(name, colorScheme string) []string {
+	name = strings.TrimSpace(name)
+	cs := strings.ToLower(strings.TrimSpace(colorScheme))
+	out := make([]string, 0, 3)
+	seen := map[string]struct{}{}
+	add := func(s string) {
+		if s == "" {
+			return
+		}
+		if _, ok := seen[s]; ok {
+			return
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	switch cs {
+	case "dark":
+		add(name + "-dark")
+		add(name + "-symbolic")
+	case "light":
+		add(name + "-light")
+	}
+	add(name)
+	return out
+}
+
+func (f *Finder) lookupIconExact(name string) (string, error) {
 	size := f.Size
 	if size <= 0 {
 		size = 48

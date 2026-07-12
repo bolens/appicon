@@ -3,7 +3,7 @@
 # Update pkgver + sha256sums_* from release SHA256SUMS before uploading.
 
 pkgname=appicon-bin
-pkgver=0.1.2
+pkgver=0.2.0
 pkgrel=1
 pkgdesc='Resolve desktop and brand icons to local file paths (prebuilt)'
 arch=('x86_64' 'aarch64')

@@ -15,8 +15,10 @@ var ErrNotFound = errors.New("xdg icon not found")
 type Options struct {
 	Size      int
 	IconTheme string // empty = GTK_THEME / hicolor
-	DataDirs  []string
-	IconDirs  []string
+	// ColorScheme is dark|light|"" — prefer name-dark / name-light icon variants when set.
+	ColorScheme string
+	DataDirs    []string
+	IconDirs    []string
 }
 
 // Result is a successful XDG resolve.
@@ -28,19 +30,21 @@ type Result struct {
 
 // Finder looks up icons against configurable XDG roots (injectable for tests).
 type Finder struct {
-	Size      int
-	IconTheme string
-	DataDirs  []string
-	IconDirs  []string
+	Size        int
+	IconTheme   string
+	ColorScheme string
+	DataDirs    []string
+	IconDirs    []string
 }
 
 // NewFinder builds a Finder from Options, filling defaults for empty fields.
 func NewFinder(opts Options) *Finder {
 	f := &Finder{
-		Size:      opts.Size,
-		IconTheme: opts.IconTheme,
-		DataDirs:  append([]string(nil), opts.DataDirs...),
-		IconDirs:  append([]string(nil), opts.IconDirs...),
+		Size:        opts.Size,
+		IconTheme:   opts.IconTheme,
+		ColorScheme: strings.ToLower(strings.TrimSpace(opts.ColorScheme)),
+		DataDirs:    append([]string(nil), opts.DataDirs...),
+		IconDirs:    append([]string(nil), opts.IconDirs...),
 	}
 	if f.Size <= 0 {
 		f.Size = 48
