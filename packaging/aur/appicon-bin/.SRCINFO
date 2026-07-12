@@ -1,6 +1,6 @@
 pkgbase = appicon-bin
 	pkgdesc = Resolve desktop and brand icons to local file paths (prebuilt)
-	pkgver = 0.2.0
+	pkgver = 0.2.1
 	pkgrel = 1
 	url = https://github.com/bolens/appicon
 	arch = x86_64
@@ -13,9 +13,9 @@ pkgbase = appicon-bin
 	conflicts = appicon
 	conflicts = appicon-git
 	options = !strip
-	source_x86_64 = https://github.com/bolens/appicon/releases/download/v0.2.0/appicon_v0.2.0_linux_amd64.tar.gz
+	source_x86_64 = https://github.com/bolens/appicon/releases/download/v0.2.1/appicon_v0.2.1_linux_amd64.tar.gz
 	sha256sums_x86_64 = 4f7458901a9590f960b421e0733d5578ea9760eb0fb9275f16e965709f893234
-	source_aarch64 = https://github.com/bolens/appicon/releases/download/v0.2.0/appicon_v0.2.0_linux_arm64.tar.gz
+	source_aarch64 = https://github.com/bolens/appicon/releases/download/v0.2.1/appicon_v0.2.1_linux_arm64.tar.gz
 	sha256sums_aarch64 = 9107145f4cb079906ff5bfecd78124f43895ed145673cf46e91f72c7d36ceeee
 
 pkgname = appicon-bin
