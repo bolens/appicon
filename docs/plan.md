@@ -28,7 +28,7 @@ todos:
     status: completed
   - id: release-v0
     content: Tag v0.1.0 with checksums; verify install script against release assets
-    status: in_progress
+    status: completed
   - id: waybar-consume
     content: Add install-appicon.sh + make target; dock CSS proof behind settings flag with glyph fallback
     status: pending
@@ -69,7 +69,7 @@ isProject: false
 | PNG raster (`resvg`/`rsvg-convert`/oksvg) + raster cache | **Done** |
 | `--offline`, `cache prune`/`clear`/`stats`/`path` | **Done** |
 | Overrides (`overrides.json`) + CLI `--json` e2e tests | **Done** |
-| Tag **`v0.1.0`** + checksummed release assets | **In progress** |
+| Tag **`v0.1.0`** + checksummed release assets | **Done** — [v0.1.0](https://github.com/bolens/appicon/releases/tag/v0.1.0) |
 | waybar-config install + dock CSS proof | **Next** (other repo) |
 | Completions/man, Nix/AUR/Home Manager, nightly live SVGL | Post-v1 |
 
@@ -274,7 +274,7 @@ path → XDG → dir packs (user) → svgl → miss
 4. ~~PNG output~~
 5. ~~CI workflows + `make check`~~
 6. ~~`--offline`, prune, packs, http-index, Steam, Snap~~
-7. **Cut `v0.1.0` with checksums** ← current
-8. waybar-config install + dock CSS proof
+7. ~~Cut `v0.1.0` with checksums~~
+8. waybar-config install + dock CSS proof ← current
 9. (post-v1) Completions/man; Nix / Home Manager / AUR; optional release signing
 10. (post-v1) Extra consumers + nightly live SVGL job

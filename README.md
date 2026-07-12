@@ -36,10 +36,18 @@ Do not point `http-index` at third-party CDNs unless you control the allowlist a
 ## Install (after first release)
 
 ```bash
-# pinned version + SHA256 — helper will live in waybar-config as install-appicon.sh
-curl -fsSL "https://github.com/bolens/appicon/releases/download/vX.Y.Z/appicon_linux_amd64.tar.gz" | tar -xz
+ver=v0.1.0
+arch=$(uname -m)
+case "$arch" in
+  x86_64) arch=amd64 ;;
+  aarch64|arm64) arch=arm64 ;;
+esac
+curl -fsSL "https://github.com/bolens/appicon/releases/download/${ver}/appicon_${ver}_linux_${arch}.tar.gz" | tar -xz
 install -m 755 appicon ~/.local/bin/appicon
+appicon version   # → v0.1.0
 ```
+
+Checksums: download `SHA256SUMS` from the same release and verify before install. waybar-config will pin this via `install-appicon.sh`.
 
 Until releases exist:
 
