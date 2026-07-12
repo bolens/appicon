@@ -27,6 +27,7 @@ func xdgEnv(t *testing.T) (share, flatpak, cache string) {
 	t.Setenv("XDG_CACHE_HOME", cache)
 	t.Setenv("APPICON_ICON_THEME", "hicolor")
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("APPICON_NO_DAEMON", "1")
 	return share, flatpak, cache
 }
 

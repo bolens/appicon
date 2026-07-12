@@ -12,8 +12,9 @@ Short rules for AI coding agents in this repository.
 ## Source of truth
 
 - Design / remaining work: [docs/plan.md](docs/plan.md) (also mirrored under `.cursor/plans/`).
-- Public CLI: `cmd/appicon` (`resolve`, `prefetch`, `cache`, `mcp`, `completion`, `man`, `version`).
-- Packages: `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`.
+- Public CLI: `cmd/appicon` (`resolve`, `prefetch`, `cache`, `daemon`, `mcp`, `completion`, `man`, `version`).
+- Packages: `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/daemon`.
+- Optional daemon: unix socket under `$XDG_RUNTIME_DIR`; never required — CLI falls back in-process.
 
 ## Do / don’t
 

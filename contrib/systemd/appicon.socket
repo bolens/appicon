@@ -1,0 +1,11 @@
+[Unit]
+Description=appicon resolve socket
+Documentation=https://github.com/bolens/appicon
+
+[Socket]
+ListenStream=%t/appicon.sock
+SocketMode=0600
+DirectoryMode=0700
+
+[Install]
+WantedBy=sockets.target

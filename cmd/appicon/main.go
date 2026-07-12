@@ -10,9 +10,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/bolens/appicon/internal/appmcp"
 	"github.com/bolens/appicon/internal/completion"
+	"github.com/bolens/appicon/internal/daemon"
 	"github.com/bolens/appicon/internal/resolve"
 	"github.com/bolens/appicon/internal/version"
 )
@@ -56,6 +59,8 @@ func run(args []string, stdout, stderr io.Writer) error {
 		return cmdCompletion(args[1:], stdout, stderr)
 	case "man":
 		return cmdMan(args[1:], stdout, stderr)
+	case "daemon":
+		return cmdDaemon(args[1:], stderr)
 	default:
 		printUsage(stderr)
 		return fmt.Errorf("unknown command %q", args[0])
@@ -66,9 +71,10 @@ func printUsage(w io.Writer) {
 	_, _ = fmt.Fprintf(w, `appicon — resolve desktop / brand icons to local file paths
 
 Usage:
-  appicon resolve [--json] [--offline] [--format png|svg] [--size N] [--theme dark|light] <query>
+  appicon resolve [--json] [--offline] [--local] [--format png|svg] [--size N] [--theme dark|light] <query>
   appicon prefetch <query>...
   appicon cache path|clear|stats|prune
+  appicon daemon [--socket PATH]
   appicon mcp
   appicon completion bash|zsh|fish
   appicon man
@@ -76,12 +82,31 @@ Usage:
 
 Resolve order: existing path → XDG icon theme / .desktop → sources (SVGL / local packs) → miss.
 
+Daemon: optional user socket at $XDG_RUNTIME_DIR/appicon.sock; resolve dials it when present
+(unless --local or APPICON_NO_DAEMON=1) and falls back to in-process resolve.
+
 MCP: run "appicon mcp" over stdio for agent tooling (resolve, prefetch, cache_*, version).
 
 Completions: eval "$(appicon completion bash)"  # or zsh/fish; see README.
 
 See README.md and docs/plan.md for design details.
 `)
+}
+
+func cmdDaemon(args []string, stderr io.Writer) error {
+	fs := flag.NewFlagSet("daemon", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	socket := fs.String("socket", "", "unix socket path (default $XDG_RUNTIME_DIR/appicon.sock)")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 0 {
+		return errors.New("daemon takes no positional arguments")
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	srv := &daemon.Server{Socket: *socket}
+	return srv.Run(ctx)
 }
 
 func cmdMCP(args []string, stderr io.Writer) error {
@@ -131,6 +156,7 @@ func cmdResolve(args []string, stdout, stderr io.Writer) error {
 	fs.SetOutput(stderr)
 	asJSON := fs.Bool("json", false, "emit JSON result")
 	offline := fs.Bool("offline", false, "do not use the network (cache + XDG + local packs only)")
+	localOnly := fs.Bool("local", false, "skip daemon socket; resolve in-process only")
 	format := fs.String("format", "svg", "output format: svg|png")
 	size := fs.Int("size", 48, "pixel size for png (and XDG size preference)")
 	theme := fs.String("theme", "", "prefer dark|light variants when available")
@@ -147,7 +173,20 @@ func cmdResolve(args []string, stdout, stderr io.Writer) error {
 		Theme:   *theme,
 		Offline: *offline,
 	}
-	res, err := resolve.Resolve(context.Background(), fs.Arg(0), opts)
+	ctx := context.Background()
+	var (
+		res resolve.Result
+		err error
+	)
+	if !*localOnly {
+		var used bool
+		res, err, used = daemon.TryResolve(ctx, fs.Arg(0), opts)
+		if !used {
+			res, err = resolve.Resolve(ctx, fs.Arg(0), opts)
+		}
+	} else {
+		res, err = resolve.Resolve(ctx, fs.Arg(0), opts)
+	}
 	if *asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetEscapeHTML(false)

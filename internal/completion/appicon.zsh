@@ -7,6 +7,7 @@ _appicon() {
     'resolve:Resolve an icon query to a local path'
     'prefetch:Warm the icon cache for queries'
     'cache:Cache path/clear/stats/prune'
+    'daemon:Run optional unix-socket resolve daemon'
     'mcp:Run stdio MCP server for agents'
     'completion:Print shell completion script'
     'man:Print man page (troff) to stdout'
@@ -32,10 +33,14 @@ _appicon() {
           _arguments \
             '--json[Emit JSON result]' \
             '--offline[Skip network]' \
+            '--local[Skip daemon; resolve in-process]' \
             '--format[Output format]:format:(svg png)' \
             '--size[Pixel size]:size:' \
             '--theme[Prefer theme]:theme:(dark light)' \
             '1:query:_files'
+          ;;
+        daemon)
+          _arguments '--socket[Unix socket path]:path:_files'
           ;;
         prefetch)
           _arguments '*:query:'

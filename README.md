@@ -10,13 +10,14 @@ appicon prefetch firefox discord
 appicon cache stats
 appicon cache prune
 appicon mcp   # stdio MCP for agents
+appicon daemon            # optional user socket daemon
 appicon completion bash   # print completion script
 appicon man | man -l -    # view man page
 ```
 
 **Resolve order:** existing path → FreeDesktop icon theme / `.desktop` → configured sources ([SVGL](https://svgl.app/) and/or local packs) → miss.
 
-XDG, SVGL (cache-first), local logo packs (`sources.json`), PNG rasterization, `--offline`, `cache prune`, MCP, and shell completions are implemented. See [docs/plan.md](docs/plan.md).
+XDG, SVGL (cache-first), local logo packs (`sources.json`), PNG rasterization, `--offline`, `cache prune`, MCP, optional socket daemon, and shell completions are implemented. See [docs/plan.md](docs/plan.md).
 
 **PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`.
 
@@ -65,6 +66,16 @@ Example Cursor / Claude Desktop snippet:
 ```
 
 Agents should call `resolve` only — never invent SVGL URLs in other repos.
+
+## Daemon (optional)
+
+Long-lived resolve over `$XDG_RUNTIME_DIR/appicon.sock` (mode `0600`). Same allowlists/cache as the CLI. `resolve` dials the socket when present and falls back in-process (`--local` / `APPICON_NO_DAEMON=1` skips dial).
+
+```bash
+appicon daemon                          # foreground
+# or user systemd — see contrib/systemd/README.md
+systemctl --user enable --now appicon.socket
+```
 
 ## Shell completions
 

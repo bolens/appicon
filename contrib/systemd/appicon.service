@@ -1,0 +1,18 @@
+[Unit]
+Description=appicon icon resolve daemon
+Documentation=https://github.com/bolens/appicon
+Requires=appicon.socket
+After=appicon.socket
+
+[Service]
+Type=simple
+ExecStart=appicon daemon
+Restart=on-failure
+RestartSec=1
+
+# Inherit the activated socket via LISTEN_FDS / LISTEN_PID.
+# Do not set a different --socket path when using socket activation.
+
+[Install]
+Also=appicon.socket
+WantedBy=default.target

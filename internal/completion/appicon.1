@@ -16,14 +16,18 @@ Flatpak, Snap, and Steam heuristics), then configured logo sources (SVGL and/or
 local packs via sources.json). A miss exits with status 1.
 .SH COMMANDS
 .TP
-.B resolve [\-\-json] [\-\-offline] [\-\-format svg|png] [\-\-size N] [\-\-theme dark|light] \fIquery\fR
+.B resolve [\-\-json] [\-\-offline] [\-\-local] [\-\-format svg|png] [\-\-size N] [\-\-theme dark|light] \fIquery\fR
 Resolve \fIquery\fR and print the absolute path (or JSON with \-\-json).
+When a daemon socket is present, dial it unless \-\-local or APPICON_NO_DAEMON is set.
 .TP
 .B prefetch \fIquery\fR...
 Warm the cache for one or more queries.
 .TP
 .B cache path|clear|stats|prune
 Inspect or manage the on-disk cache under $XDG_CACHE_HOME/appicon.
+.TP
+.B daemon [\-\-socket \fIpath\fR]
+Run the optional unix-socket resolve daemon (or under systemd socket activation).
 .TP
 .B mcp
 Run a stdio MCP server for coding agents (tools: resolve, prefetch, cache_*, version).
@@ -49,6 +53,12 @@ Default dark|light preference when \-\-theme is omitted.
 .TP
 .B APPICON_ICON_THEME
 Override FreeDesktop icon theme name.
+.TP
+.B APPICON_SOCKET
+Override daemon socket path (default $XDG_RUNTIME_DIR/appicon.sock).
+.TP
+.B APPICON_NO_DAEMON
+When set, resolve never dials the daemon socket.
 .SH FILES
 .TP
 .I $XDG_CONFIG_HOME/appicon/overrides.json

@@ -1,6 +1,6 @@
 ---
 name: Standalone appicon CLI
-overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. Core + MCP + completions + Nix/HM + nightly SVGL done; optional release signing left."
+overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. Core + MCP + daemon + Nix done; AUR/cosign next."
 todos:
   - id: scaffold-repo
     content: Clone bolens/appicon into /home/panda/dev/appicon; scaffold Go module, Makefile, LICENSE, CONTRIBUTING, AGENTS, README; push
@@ -47,12 +47,18 @@ todos:
   - id: nightly-svgl
     content: "Post-v1: nightly/workflow_dispatch live SVGL smoke (1–2 titles); not required to merge"
     status: completed
-  - id: release-signing
-    content: "Post-v1: optional cosign/sigstore signing beyond SHA256SUMS"
-    status: pending
   - id: extra-consumers
     content: "Post-v1: Rofi/walker + notification helper examples (shell out to appicon only)"
     status: completed
+  - id: daemon-socket
+    content: "Optional user systemd socket daemon; resolve dials with in-process fallback"
+    status: completed
+  - id: release-signing
+    content: "Post-v1: optional cosign/sigstore signing beyond SHA256SUMS"
+    status: pending
+  - id: aur-package
+    content: "Post-v1: AUR package (same tier as Nix flake)"
+    status: pending
 isProject: false
 ---
 
@@ -79,7 +85,8 @@ isProject: false
 | Nix flake + Home Manager module | **Done** — `flake.nix`, `nix/home-manager.nix` (set `vendorHash` on first build) |
 | Nightly live SVGL smoke | **Done** — `.github/workflows/nightly-svgl.yml` |
 | Extra consumer examples | **Done** — `examples/{rofi,walker,notify}-appicon.sh` |
-| Release signing (cosign) | Post-v1 optional |
+| Optional socket daemon | **Done** — `appicon daemon` + `contrib/systemd/` |
+| AUR / release signing (cosign) | Pending |
 
 **Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/version`.
 
@@ -143,6 +150,7 @@ flowchart LR
 | `appicon resolve --offline` | No network | **Done** |
 | `appicon prefetch <query>...` | Warm cache | **Done** |
 | `appicon cache path\|clear\|stats\|prune` | Cache management | **Done** |
+| `appicon daemon [\-\-socket PATH]` | Optional unix-socket resolve server | **Done** |
 | `appicon mcp` | Stdio MCP tools (resolve/prefetch/cache/version) | **Done** |
 | `appicon completion bash\|zsh\|fish` | Print shell completion script | **Done** |
 | `appicon man` | Print embedded man page | **Done** |
@@ -178,16 +186,13 @@ These stay **out of the product roadmap unless a concrete consumer forces them**
 
 ### Daemon / socket
 
-**Why deferred:** Waybar/Rofi/scripts already shell out per query; warm cache + ~ms XDG hits make a long-lived process unnecessary for the dock use case. A daemon adds lifecycle (systemd user unit), IPC versioning, and failure modes (stale socket, double instance) without changing the public “print a path” contract.
+**Status:** **Done** (optional; not required for Waybar dock).
 
-**If revisited:**
-
-- Prefer a **user systemd** `appicon.socket` + `appicon.service` (socket activation), not a root daemon.
-- Protocol: length-prefixed JSON request/response mirroring `resolve --json` fields (`query`, `format`, `size`, `theme`, `offline`) so CLI and socket share one resolver.
-- Transport: `AF_UNIX` under `$XDG_RUNTIME_DIR/appicon.sock` (mode `0600`); reject abstract-namespace unless documented.
-- Concurrency: single-flight per cache key for catalog refresh (existing flock); do not invent a second cache.
-- Clients stay thin: `appicon resolve` can dial the socket when present and fall back to in-process resolve — never require the daemon.
-- **Do not** put SVGL credentials or non-allowlisted downloads in the daemon; same security model as the CLI.
+- User systemd: `contrib/systemd/appicon.socket` + `appicon.service` (socket activation via `LISTEN_FDS`)
+- Protocol: big-endian uint32 length + JSON (`op=resolve|ping`) mirroring `resolve --json`
+- Transport: `$XDG_RUNTIME_DIR/appicon.sock` (mode `0600`); `APPICON_SOCKET` override; abstract sockets rejected
+- `appicon resolve` dials when socket present; `--local` / `APPICON_NO_DAEMON=1` skips; dial failure falls back in-process
+- Same `internal/resolve` path — no second cache or download allowlist
 
 ### Replacing tray SNI icons
 
@@ -313,4 +318,5 @@ path → XDG → dir packs (user) → svgl → miss
 9. ~~MCP server for agents~~
 10. ~~Completions/man~~
 11. ~~Nix / Home Manager; nightly SVGL; extra consumer examples~~
-12. (optional) AUR package; cosign/sigstore release signing
+12. ~~Optional socket daemon~~
+13. (optional) AUR package; cosign/sigstore release signing

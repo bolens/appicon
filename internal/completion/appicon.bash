@@ -13,7 +13,7 @@ _appicon() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
   fi
 
-  local cmds="resolve prefetch cache mcp completion man version help"
+  local cmds="resolve prefetch cache daemon mcp completion man version help"
 
   if [[ ${COMP_CWORD} -eq 1 ]]; then
     COMPREPLY=($(compgen -W "${cmds}" -- "${cur}"))
@@ -29,7 +29,15 @@ _appicon() {
         --size) return ;;
       esac
       if [[ ${cur} == -* ]]; then
-        COMPREPLY=($(compgen -W "--json --offline --format --size --theme --help" -- "${cur}"))
+        COMPREPLY=($(compgen -W "--json --offline --local --format --size --theme --help" -- "${cur}"))
+      fi
+      ;;
+    daemon)
+      case "${prev}" in
+        --socket) return ;;
+      esac
+      if [[ ${cur} == -* ]]; then
+        COMPREPLY=($(compgen -W "--socket --help" -- "${cur}"))
       fi
       ;;
     prefetch)
