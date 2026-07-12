@@ -1,6 +1,6 @@
 ---
 name: Standalone appicon CLI
-overview: "bolens/appicon — plan complete; v0.1.1 ready to cut (cut-release.sh) then push tag + AUR."
+overview: "bolens/appicon — v0.1.1 shipped; CI green on golangci-lint v2; AUR refs ready to publish."
 todos:
   - id: scaffold-repo
     content: Clone bolens/appicon into /home/panda/dev/appicon; scaffold Go module, Makefile, LICENSE, CONTRIBUTING, AGENTS, README; push
@@ -91,7 +91,8 @@ isProject: false
 | Optional socket daemon | **Done** — `appicon daemon` + `contrib/systemd/` |
 | AUR reference PKGBUILDs | **Done** — `packaging/aur/{appicon,appicon-bin,appicon-git}` (not yet pushed to aur.archlinux.org) |
 | Cosign keyless release signing | **Done** — `SHA256SUMS.sigstore.json` on tag releases |
-| Cut **`v0.1.1`** (MCP/daemon/packaging) | **Tagged locally** — push `main` + `v0.1.1` to publish release + cosign; then AUR |
+| Cut **`v0.1.1`** (MCP/daemon/packaging) | **Shipped** — [v0.1.1](https://github.com/bolens/appicon/releases/tag/v0.1.1) (+ cosign bundle); AUR PKGBUILDs checksummed |
+| CI golangci-lint on Go 1.25 | **Fixed** — golangci-lint v2.12.2 |
 
 **Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/daemon`, `internal/version`.
 
@@ -325,4 +326,5 @@ path → XDG → dir packs (user) → svgl → miss
 11. ~~Nix / Home Manager; nightly SVGL; extra consumer examples~~
 12. ~~Optional socket daemon~~
 13. ~~AUR reference PKGBUILDs; cosign keyless release signing~~
-14. Cut **`v0.1.1`**: `bash scripts/ci/cut-release.sh v0.1.1` → push `main` + tag → update AUR checksums / publish AUR repos
+14. ~~Cut **`v0.1.1`** (push tag; release + cosign)~~
+15. Manual: publish AUR packages to aur.archlinux.org (`appicon` / `appicon-bin` / `appicon-git`)
