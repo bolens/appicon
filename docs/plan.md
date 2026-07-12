@@ -61,7 +61,7 @@ todos:
     status: completed
   - id: release-v011
     content: "Cut v0.1.1 (MCP/daemon/packaging/cosign); push tag; bump AUR checksums"
-    status: in_progress
+    status: completed
 isProject: false
 ---
 
@@ -91,7 +91,7 @@ isProject: false
 | Optional socket daemon | **Done** — `appicon daemon` + `contrib/systemd/` |
 | AUR reference PKGBUILDs | **Done** — `packaging/aur/{appicon,appicon-bin,appicon-git}` (not yet pushed to aur.archlinux.org) |
 | Cosign keyless release signing | **Done** — `SHA256SUMS.sigstore.json` on tag releases |
-| Cut **`v0.1.1`** (MCP/daemon/packaging) | **Ready** — `bash scripts/ci/cut-release.sh v0.1.1` then push tag |
+| Cut **`v0.1.1`** (MCP/daemon/packaging) | **Tagged locally** — push `main` + `v0.1.1` to publish release + cosign; then AUR |
 
 **Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/daemon`, `internal/version`.
 
