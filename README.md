@@ -160,9 +160,14 @@ cosign verify-blob \
   --certificate-identity-regexp '^https://github.com/bolens/appicon/\.github/workflows/release\.yml@refs/tags/v' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   SHA256SUMS
+
+# optional GitHub build provenance attestation
+gh attestation verify "appicon_${ver}_linux_${arch}.tar.gz" --repo bolens/appicon
 ```
 
 Or: `bash scripts/ci/verify-release.sh /path/to/downloaded/assets`.
+
+See [SECURITY.md](SECURITY.md) for reporting vulnerabilities and the trust model.
 
 [waybar-config](https://github.com/bolens/waybar-config) pins this via `make install-appicon`.
 
@@ -229,11 +234,25 @@ bash examples/notify-appicon.sh firefox "Hello" "Icon from appicon"
 
 ```bash
 make check-fast   # go test + vet + gofmt
-make check        # + golangci-lint + gitleaks + actionlint + markdownlint
+make check        # + golangci-lint + govulncheck + gitleaks + actionlint + markdownlint + docs crosslinks
 make build
 ```
 
-Agent briefing: [AGENTS.md](AGENTS.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Changelog: [CHANGELOG.md](CHANGELOG.md). Consumer contract: [docs/consumer-contract.md](docs/consumer-contract.md).
+## Documentation
+
+Canonical map (update the listed source of truth when behavior changes): **[docs/README.md](docs/README.md)**.
+
+| Topic | Doc |
+|-------|-----|
+| Exit codes / `resolve --json` | [docs/consumer-contract.md](docs/consumer-contract.md), [docs/resolve-result.schema.json](docs/resolve-result.schema.json) |
+| Stages / `sources.json` | [docs/sources.md](docs/sources.md) |
+| Local packs / recipes | [docs/packs.md](docs/packs.md) |
+| Not a backlog | [docs/deferred.md](docs/deferred.md) |
+| Security / verify releases | [SECURITY.md](SECURITY.md) |
+| Agents | [AGENTS.md](AGENTS.md) |
+| Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Changelog | [CHANGELOG.md](CHANGELOG.md) |
+| Nix / AUR / systemd | [nix/README.md](nix/README.md), [packaging/aur/README.md](packaging/aur/README.md), [contrib/systemd/README.md](contrib/systemd/README.md) |
 
 To cut a release locally (no push): `bash scripts/ci/cut-release.sh v0.1.1`.
 

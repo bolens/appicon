@@ -11,7 +11,8 @@ concurrency:
 
 permissions:
   contents: write
-  id-token: write # cosign keyless OIDC
+  id-token: write # cosign keyless OIDC + attestations
+  attestations: write
   actions: read # await CI runs for this commit
   checks: read
 
@@ -53,7 +54,7 @@ jobs:
 
       - uses: actions/setup-go@v6
         with:
-          go-version: "1.25.x"
+          go-version: "1.25.12"
 
       - name: Build
         run: |
@@ -87,6 +88,14 @@ jobs:
           cosign sign-blob --yes \
             --bundle dist/SHA256SUMS.sigstore.json \
             dist/SHA256SUMS
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            dist/*.tar.gz
+            dist/SHA256SUMS
+            dist/SHA256SUMS.sigstore.json
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v3

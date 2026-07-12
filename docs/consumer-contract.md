@@ -2,6 +2,8 @@
 
 Stable interface for Waybar, Rofi, scripts, and agents. Treat misses as **supported** outcomes (keep glyphs / hide chrome), not bugs.
 
+Part of the [documentation map](README.md). Machine schema: [resolve-result.schema.json](resolve-result.schema.json). Stages: [sources.md](sources.md).
+
 ## Exit codes (`resolve`)
 
 | Code | Meaning | Typical consumer action |
@@ -61,3 +63,10 @@ Like `zscroll` / `cava`: install is optional. Consumers must:
 
 - Optional remaps: `$XDG_CONFIG_HOME/appicon/overrides.json` via `appicon override` / MCP `override_*`.
 - Resolve stages / packs: [sources.md](sources.md), [packs.md](packs.md). Enabling `glyph` as a stage yields exit `0` with `source: glyph` instead of a miss.
+
+## See also
+
+- [Documentation map](README.md)
+- [resolve-result.schema.json](resolve-result.schema.json)
+- [sources.md](sources.md) · [packs.md](packs.md) · [deferred.md](deferred.md)
+- [../README.md](../README.md) · [../AGENTS.md](../AGENTS.md) · [../SECURITY.md](../SECURITY.md)

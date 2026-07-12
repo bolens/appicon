@@ -1,0 +1,8 @@
+{
+  "name": "appicon-dev",
+  "private": true,
+  "description": "Dev-only Node deps for repo hygiene (markdownlint). Not part of the Go module.",
+  "devDependencies": {
+    "markdownlint-cli": "0.49.0"
+  }
+}

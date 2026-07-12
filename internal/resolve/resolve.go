@@ -80,15 +80,7 @@ type PruneStats struct {
 
 // CacheDir returns the appicon cache root under XDG_CACHE_HOME.
 func CacheDir() string {
-	base := os.Getenv("XDG_CACHE_HOME")
-	if base == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return filepath.Join(os.TempDir(), "appicon")
-		}
-		base = filepath.Join(home, ".cache")
-	}
-	return filepath.Join(base, "appicon")
+	return cache.Dir()
 }
 
 // Resolve looks up an icon using the effective ordered stages from sources.json.

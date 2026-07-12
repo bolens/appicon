@@ -13,7 +13,8 @@ GOLANGCI_LINT_VERSION ?= 2.12.2
 ACTIONLINT_VERSION ?= 1.7.7
 
 .PHONY: help build test vet fmt check check-fast lint \
-	check-gitleaks check-actionlint check-markdownlint \
+	check-gitleaks check-actionlint check-markdownlint check-govulncheck \
+	check-docs-crosslinks \
 	check-ci-path-filters check-nix-packages check-packaging-versions \
 	build-packaging clean
 
@@ -27,6 +28,8 @@ help:
 		'make check              - full local gate (lint + scripts + packaging versions)' \
 		'make build-packaging    - AUR-style smoke builds (set APPICON_BUILD_NIX=1 for nix)' \
 		'make lint               - golangci-lint run' \
+		'make check-govulncheck  - govulncheck ./...' \
+		'make check-docs-crosslinks - docs hub / sibling link contract' \
 		'make clean              - remove bin/ and coverage artifacts'
 
 build:
@@ -65,6 +68,12 @@ check-actionlint:
 check-markdownlint:
 	bash scripts/ci/check-markdownlint.sh
 
+check-govulncheck:
+	bash scripts/ci/check-govulncheck.sh
+
+check-docs-crosslinks:
+	bash scripts/ci/check-docs-crosslinks.sh
+
 check-ci-path-filters:
 	bash scripts/ci/check-ci-path-filters.sh
 
@@ -79,9 +88,11 @@ build-packaging:
 
 check: check-fast
 	@if command -v golangci-lint >/dev/null 2>&1; then $(MAKE) lint; else echo 'skip lint (golangci-lint missing)'; fi
+	@$(MAKE) check-govulncheck
 	@$(MAKE) check-gitleaks
 	@$(MAKE) check-actionlint
 	@$(MAKE) check-markdownlint
+	@$(MAKE) check-docs-crosslinks
 	@$(MAKE) check-ci-path-filters
 	@$(MAKE) check-nix-packages
 	@$(MAKE) check-packaging-versions

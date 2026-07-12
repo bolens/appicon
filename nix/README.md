@@ -42,3 +42,8 @@ nix build
 On each GitHub release, update `version` and the `binHashes` in [packages.nix](packages.nix) from `SHA256SUMS` (convert with `nix hash convert --hash-algo sha256 --to sri <hex>`).
 
 CI: `make check-packaging-versions` aligns flake / AUR / Nix hashes; the `packaging-nix-build` matrix runs `nix build .#{appicon,appicon-git,appicon-bin}`.
+
+## See also
+
+- [Documentation map](../docs/README.md)
+- [Root README](../README.md) · [AUR packaging](../packaging/aur/README.md) · [SECURITY.md](../SECURITY.md)

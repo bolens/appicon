@@ -2,6 +2,8 @@
 
 Canonical reference for `$XDG_CONFIG_HOME/appicon/sources.json`.
 
+Part of the [documentation map](README.md). Packs: [packs.md](packs.md). Consumer exits/JSON: [consumer-contract.md](consumer-contract.md).
+
 ## Default order
 
 When `sources.json` is missing:
@@ -91,3 +93,11 @@ Custom catalog + host allowlist (do not point at third-party CDNs unless you con
 | `resolve` / `prefetch` | Optional `order` array |
 
 Allowlisted CDN hosts (when those stages are enabled): `cdn.jsdelivr.net`; GitHub: `github.com`, `avatars.githubusercontent.com`. Consumers must not embed these URLs — call `appicon` / MCP only.
+
+## See also
+
+- [Documentation map](README.md)
+- [packs.md](packs.md) — local packs vs CDN stages
+- [consumer-contract.md](consumer-contract.md) — exit codes / `--json`
+- [deferred.md](deferred.md) — not a backlog
+- [../README.md](../README.md) · [../SECURITY.md](../SECURITY.md) · [../AGENTS.md](../AGENTS.md)

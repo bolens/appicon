@@ -1,0 +1,8 @@
+# gitleaks — default rules apply; keep this file so CI path filters stay accurate.
+title = "appicon"
+
+[allowlist]
+description = "Test fixtures may contain fake tokens / URLs"
+paths = [
+  '''(^|/)testdata/''',
+]

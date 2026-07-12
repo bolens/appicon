@@ -8,17 +8,22 @@ import (
 	"time"
 )
 
-// Root returns the cache directory, creating it if needed.
-func Root() (string, error) {
+// Dir returns the cache directory path without creating it.
+func Dir() string {
 	base := os.Getenv("XDG_CACHE_HOME")
 	if base == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			return "", err
+			return filepath.Join(os.TempDir(), "appicon")
 		}
 		base = filepath.Join(home, ".cache")
 	}
-	dir := filepath.Join(base, "appicon")
+	return filepath.Join(base, "appicon")
+}
+
+// Root returns the cache directory, creating it if needed.
+func Root() (string, error) {
+	dir := Dir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", err
 	}
@@ -56,13 +61,9 @@ func WriteAtomic(name string, data []byte) (string, error) {
 	return final, nil
 }
 
-// Path returns an absolute path under the cache root without creating parents.
+// Path returns an absolute path under the cache root without creating it.
 func Path(name string) (string, error) {
-	dir, err := Root()
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(dir, name), nil
+	return filepath.Join(Dir(), name), nil
 }
 
 // Read reads a file under the cache root.
@@ -88,9 +89,6 @@ func Exists(name string) bool {
 func WithLock(lockName string, fn func() error) error {
 	dir, err := Root()
 	if err != nil {
-		return err
-	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 	lockPath := filepath.Join(dir, lockName)

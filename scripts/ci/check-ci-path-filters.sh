@@ -27,8 +27,10 @@ push_pos = {p for p in push if not p.startswith("!")}
 
 
 def dorny(name: str) -> set[str]:
+    # Do not use DOTALL: path lines must stay single-line ([^\n]+), else one
+    # entry swallows the rest of the filters block.
     m = re.search(
-        rf"(?ms)^            {re.escape(name)}:\n((?:              - .+\n)+)",
+        rf"(?m)^            {re.escape(name)}:\n((?:              - [^\n]+\n)+)",
         text,
     )
     if not m:
@@ -44,6 +46,7 @@ DORNY_FILTERS = (
     "workflow",
     "nix",
     "packaging",
+    "vuln",
 )
 
 filters = {name: dorny(name) for name in DORNY_FILTERS}
