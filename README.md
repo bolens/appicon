@@ -19,6 +19,20 @@ XDG, SVGL (cache-first), local logo packs (`sources.json`), PNG rasterization, `
 
 **Sources:** optional `$XDG_CONFIG_HOME/appicon/sources.json` — ordered `svgl`, local `dir` packs, and `http-index` remotes (explicit host allowlist required). Default is SVGL only.
 
+Example — local [Simple Icons](https://github.com/simple-icons/simple-icons) / [dashboard-icons](https://github.com/homarr-labs/dashboard-icons) clones before SVGL:
+
+```json
+{
+  "sources": [
+    { "type": "dir", "path": "~/.local/share/appicon/packs/dashboard-icons" },
+    { "type": "dir", "path": "~/.local/share/appicon/packs/simple-icons/icons" },
+    { "type": "svgl" }
+  ]
+}
+```
+
+Do not point `http-index` at third-party CDNs unless you control the allowlist and accept their terms; prefer cloning packs locally.
+
 ## Install (after first release)
 
 ```bash

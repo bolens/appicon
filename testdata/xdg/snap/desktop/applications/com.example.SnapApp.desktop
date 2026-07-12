@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Snap Example
+Icon=com.example.SnapApp
+StartupWMClass=SnapApp
+Type=Application

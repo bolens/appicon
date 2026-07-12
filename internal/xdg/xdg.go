@@ -78,6 +78,7 @@ func DefaultDataDirs() []string {
 		add(filepath.Join(home, ".local", "share", "flatpak", "exports", "share"))
 	}
 	add("/var/lib/flatpak/exports/share")
+	add("/var/lib/snapd/desktop")
 
 	dataDirs := os.Getenv("XDG_DATA_DIRS")
 	if dataDirs == "" {

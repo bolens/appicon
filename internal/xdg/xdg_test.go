@@ -17,10 +17,12 @@ func fixtureRoots(t *testing.T) (dataDirs, iconDirs []string) {
 	root := filepath.Join(filepath.Dir(file), "..", "..", "testdata", "xdg")
 	share := filepath.Join(root, "share")
 	flatpak := filepath.Join(root, "flatpak", "exports", "share")
-	return []string{share, flatpak}, []string{
+	snap := filepath.Join(root, "snap", "desktop")
+	return []string{share, flatpak, snap}, []string{
 		filepath.Join(share, "icons"),
 		filepath.Join(share, "pixmaps"),
 		filepath.Join(flatpak, "icons"),
+		filepath.Join(snap, "icons"),
 	}
 }
 
@@ -139,6 +141,21 @@ func TestResolveFlatpakDesktop(t *testing.T) {
 	}
 	if !containsPathPart(res.Path, "flatpak") {
 		t.Fatalf("expected flatpak icon path, got %s", res.Path)
+	}
+}
+
+func TestResolveSnapDesktop(t *testing.T) {
+	t.Parallel()
+	f := testFinder(t, 48, "hicolor")
+	res, err := f.Resolve("com.example.SnapApp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IconName != "com.example.SnapApp" {
+		t.Fatalf("icon=%q", res.IconName)
+	}
+	if !containsPathPart(res.Path, "snap") {
+		t.Fatalf("expected snap icon path, got %s", res.Path)
 	}
 }
 
