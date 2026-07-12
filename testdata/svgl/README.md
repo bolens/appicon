@@ -1,1 +1,3 @@
-# Recorded SVGL JSON/SVG fixtures for httptest tests (populated during implementation).
+# SVGL fixtures
+
+Recorded JSON/SVG payloads for `httptest` unit tests. No live network required.

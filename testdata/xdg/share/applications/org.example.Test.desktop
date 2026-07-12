@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Example Test App
+Icon=example-app
+StartupWMClass=ExampleTest
+Type=Application

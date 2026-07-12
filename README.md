@@ -5,13 +5,19 @@ Resolve desktop and brand icons to **local file paths** — for Waybar, Rofi, sc
 ```bash
 appicon resolve firefox
 appicon resolve --json --format png --size 24 "VS Code"
+appicon resolve --offline some-cached-app
 appicon prefetch firefox discord
 appicon cache stats
+appicon cache prune
 ```
 
-**Resolve order:** existing path → FreeDesktop icon theme / `.desktop` → [SVGL](https://svgl.app/) (cached) → miss.
+**Resolve order:** existing path → FreeDesktop icon theme / `.desktop` → configured sources ([SVGL](https://svgl.app/) and/or local packs) → miss.
 
-This repository is **scaffolded**; XDG and SVGL backends are stubs. See [docs/plan.md](docs/plan.md) for the full design.
+XDG, SVGL (cache-first), local logo packs (`sources.json`), PNG rasterization, `--offline`, and `cache prune` are implemented. Remaining v1: cut `v0.1.0`, then waybar-config consumer. See [docs/plan.md](docs/plan.md).
+
+**PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`.
+
+**Sources:** optional `$XDG_CONFIG_HOME/appicon/sources.json` — ordered list of `svgl` and `dir` packs (see plan). Default is SVGL only.
 
 ## Install (after first release)
 

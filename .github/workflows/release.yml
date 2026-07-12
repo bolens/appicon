@@ -32,7 +32,7 @@ jobs:
             tar -C "${out}" -czf "dist/appicon_${ver}_linux_${pair}.tar.gz" appicon
             rm -rf "${out}"
           done
-          (cd dist && sha256sum *.tar.gz > SHA256SUMS)
+          (cd dist && sha256sum ./*.tar.gz > SHA256SUMS)
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

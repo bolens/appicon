@@ -1,0 +1,10 @@
+[Icon Theme]
+Name=Adwaita
+Comment=Test Adwaita
+Inherits=hicolor
+Directories=24x24/apps
+
+[24x24/apps]
+Size=24
+Type=Fixed
+Context=Applications

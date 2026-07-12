@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Flat Example
+Icon=com.example.FlatApp
+StartupWMClass=FlatApp
+Type=Application

@@ -1,21 +1,69 @@
-# Binaries
-/appicon
+# Build outputs (make build / make clean)
 /bin/
 /dist/
+/appicon
 *.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-# Test / coverage
+# Go test binaries and coverage / profiles
+*.test
 coverage.out
 coverage.html
-*.test
+*.coverprofile
+*.prof
+cpu.out
+mem.out
+trace.out
 
-# Editor / OS
+# Module scratch (do not vendor deps; no go.work in-tree)
+/vendor/
+go.work
+go.work.sum
+
+# Local CI tool downloads (scripts/ci → .tools/)
+.tools/
+.cache/
+
+# Release / packaging scratch (assets built into dist/ in CI)
+*.tar.gz
+*.zip
+SHA256SUMS
+*.sig
+cosign.key
+
+# Nix / direnv (post-v1 flake)
+/result
+/result-*
+.direnv/
+
+# Secrets and local env (none required today; keep out of commits)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+secrets/
+
+# Editor / IDE
 .idea/
 .vscode/
 *.swp
+*.swo
 *~
-.DS_Store
+*.sublime-project
+*.sublime-workspace
 
-# Local tool caches (CI downloads)
-.cache/
-.tools/
+# OS junk
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Misc scratch
+*.tmp
+*.bak
+*.log
+node_modules/
