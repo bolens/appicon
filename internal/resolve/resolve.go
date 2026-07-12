@@ -159,6 +159,10 @@ func resolvePipeline(ctx context.Context, query string, opts Options) (Result, e
 			res.Tried = tried
 			return ensureFormat(res, opts)
 		}
+		if errors.Is(err, ErrAuthSkipped) {
+			tried = append(tried, label+"(auth)")
+			continue
+		}
 		if isBenignMiss(err) {
 			tried = append(tried, label)
 			continue

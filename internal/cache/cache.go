@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 )
 
@@ -12,6 +13,11 @@ import (
 func Dir() string {
 	base := os.Getenv("XDG_CACHE_HOME")
 	if base == "" {
+		if runtime.GOOS == "windows" {
+			if d, err := os.UserCacheDir(); err == nil && d != "" {
+				return filepath.Join(d, "appicon")
+			}
+		}
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return filepath.Join(os.TempDir(), "appicon")

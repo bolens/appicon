@@ -25,17 +25,19 @@ appicon completion bash   # print completion script
 appicon man | man -l -    # view man page
 ```
 
-**Resolve order (default):** file → overrides → XDG / `.desktop` → [SVGL](https://svgl.app/). Fully reorderable via `sources.json` / `--order` — including opt-in `simple-icons`, `dashboard-icons`, `github`, `glyph`, and local packs. See [docs/sources.md](docs/sources.md) and [docs/packs.md](docs/packs.md).
+**Resolve order (default):** file → overrides → XDG / `.desktop` → [SVGL](https://svgl.app/). Fully reorderable via `sources.json` / `sources.yaml` / `--order` — including opt-in `simple-icons`, `dashboard-icons`, `github`, BYOK (`logo-dev`, `iconify`, `noun-project`), `glyph`, and local packs. See [docs/sources.md](docs/sources.md) and [docs/packs.md](docs/packs.md).
 
-XDG, SVGL (cache-first), local packs, opt-in CDN/github/glyph stages, PNG rasterization, `--offline`, `cache prune`, MCP, optional socket daemon, and shell completions are implemented. Deferred ideas: [docs/deferred.md](docs/deferred.md).
+XDG, SVGL (cache-first), local packs, opt-in CDN/github/BYOK/glyph stages, PNG rasterization, `--offline`, `cache prune`, MCP, optional unix-socket daemon (not on Windows), and shell completions are implemented. Deferred ideas: [docs/deferred.md](docs/deferred.md).
 
-**Consumer contract:** exit `0` / `1` (miss) / `2` (error); stable `resolve --json` fields (single object or `{results:[…]}` batch) — [docs/consumer-contract.md](docs/consumer-contract.md), schemas [docs/resolve-result.schema.json](docs/resolve-result.schema.json) / [docs/resolve-batch-result.schema.json](docs/resolve-batch-result.schema.json). Misses are supported (callers keep glyphs). Treat appicon like optional peers such as `zscroll` / `cava`: never require the binary for a working bar.
+**Consumer contract:** exit `0` / `1` (miss) / `2` (error); stable `resolve --json` fields (single object or `{results:[…]}` batch) — [docs/consumer-contract.md](docs/consumer-contract.md), schemas [docs/resolve-result.schema.json](docs/resolve-result.schema.json) / [docs/resolve-batch-result.schema.json](docs/resolve-batch-result.schema.json). Misses are supported (callers keep glyphs). Auth-skipped BYOK stages show as `stage(auth)` in `--explain` `tried`. Treat appicon like optional peers such as `zscroll` / `cava`: never require the binary for a working bar.
+
+**Portability:** Primary target is Linux (XDG, Flatpak/Snap roots, systemd daemon). macOS/Windows build and run in-process resolve; config/cache fall back to OS user dirs when `XDG_*` are unset. Daemon refuses on Windows (`daemon_supported=false` in `status`).
 
 **PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`.
 
 **Theme note:** `--theme dark|light`, `APPICON_THEME`, or `GTK_THEME` suffix (`Adwaita:dark`) prefer matching SVGL/CDN and XDG variants (`name-dark` / `name-symbolic` / `name-light`). Icon **theme name** is separate (`APPICON_ICON_THEME`).
 
-**Sources:** `$XDG_CONFIG_HOME/appicon/sources.json` — every stage is an ordered entry. Default without a file is `file → overrides → xdg → svgl`. Opt-in remotes are never enabled by default.
+**Sources:** `$XDG_CONFIG_HOME/appicon/sources.json` (or `.yaml`) — every stage is an ordered entry. Default without a file is `file → overrides → xdg → svgl`. Opt-in remotes are never enabled by default. BYOK stages take `token_env` / `secret_env` (env var *names* whose values hold secrets — never put keys or secret paths in config).
 
 ```bash
 appicon sources list
@@ -43,6 +45,7 @@ appicon sources get --json
 appicon pack install simple-icons   # local clone + register
 appicon pack install --name mine --subdir icons https://github.com/org/my-icons.git
 appicon resolve --order glyph,svgl,xdg my-app
+appicon resolve --order logo-dev,xdg shopify.com   # needs LOGO_DEV_TOKEN
 appicon status
 ```
 
@@ -65,11 +68,13 @@ CDN stages (`simple-icons` / `dashboard-icons`) are separate from **local** `pac
 
 ## Overrides
 
-Long-tail query remaps live in `$XDG_CONFIG_HOME/appicon/overrides.json`:
+Long-tail query remaps live in `$XDG_CONFIG_HOME/appicon/overrides.json` (or `.yaml`):
 
 ```bash
 appicon override set my-wm-class firefox
 appicon override list --json
+appicon override export --format yaml > overrides.yaml
+appicon override import --merge --file overrides.yaml
 ```
 
 ## MCP (agents)
@@ -88,7 +93,7 @@ appicon mcp
 | `sources_list` / `sources_get` / `sources_set` | `appicon sources list\|get\|set` |
 | `pack_list` / `pack_path` / `pack_add` / `pack_install` / `pack_update` / `pack_install_bundle` | `appicon pack …` (`pack_install`: `recipe` or `url`, plus `name`/`subdir`/`ref`) |
 | `cache_stats` / `cache_clear` / `cache_prune` | matching `cache` subcommands |
-| `override_list` / `override_get` / `override_set` / `override_rm` / `override_suggest` | `appicon override …` |
+| `override_list` / `override_get` / `override_set` / `override_rm` / `override_suggest` / `override_export` / `override_import` | `appicon override …` |
 | `version` | `appicon version` |
 
 Example Cursor / Claude Desktop snippet:
@@ -219,6 +224,8 @@ Optional query remaps: `$XDG_CONFIG_HOME/appicon/overrides.json` — manage with
 appicon override set steam_app_12345 "Some Game"
 appicon override get steam_app_12345
 appicon override list --json
+appicon override export --format yaml
+appicon override import --merge --file overrides.yaml
 appicon override rm steam_app_12345
 appicon override path
 ```

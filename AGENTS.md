@@ -7,9 +7,9 @@ Short rules for AI coding agents in this repository.
 - This is a standalone Go CLI: `github.com/bolens/appicon`.
 - Consumers (e.g. [waybar-config](https://github.com/bolens/waybar-config)) shell out to `appicon resolve` and get a local path.
 - Agents can also run `appicon mcp` (stdio MCP) — tools wrap the same resolve path.
-- Prefer MCP tools (`resolve`, `sources_*`, `pack_*`, `override_*`, …) over shelling the CLI when MCP is connected.
+- Prefer MCP tools (`resolve`, `sources_*`, `pack_*`, `override_*` including `override_export` / `override_import`, …) over shelling the CLI when MCP is connected.
 - Do **not** embed SVGL/CDN URLs or download logic in consumer repos — only call this binary / MCP tools.
-- BYOK providers (`logo-dev`, `noun-project`, `github` PAT, `http-index` Bearer): configure `token_env` / `secret_env` in sources config; never commit API keys.
+- BYOK providers (`logo-dev`, `iconify`, `noun-project`, `github` PAT, `http-index` Bearer): configure `token_env` / `secret_env` in sources config; never commit API keys. Missing env → stage skipped as `stage(auth)` in explain `tried`; check `status.credentials`.
 
 ## Source of truth
 
@@ -20,7 +20,8 @@ Documentation map (start here when adding or renaming docs): [docs/README.md](do
 - Resolve stages / packs: [docs/sources.md](docs/sources.md), [docs/packs.md](docs/packs.md).
 - Public CLI: `cmd/appicon` (`resolve`, `prefetch`, `status`, `cache`, `override`, `sources`, `pack`, `daemon`, `mcp`, `completion`, `man`, `version`).
 - Packages: `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/packs`, `internal/simpleicons`, `internal/dashboardicons`, `internal/githubicon`, `internal/logodev`, `internal/iconify`, `internal/nounproject`, `internal/glyph`, `internal/slugcdn`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/daemon`.
-- Optional daemon: unix socket under `$XDG_RUNTIME_DIR`; never required — CLI falls back in-process.
+- Optional daemon: unix socket under `$XDG_RUNTIME_DIR`; never required — CLI falls back in-process. Not supported on Windows (`daemon_supported=false`).
+- Bulk remaps: `appicon override export|import` / MCP `override_export` / `override_import`.
 
 ## Do / don’t
 

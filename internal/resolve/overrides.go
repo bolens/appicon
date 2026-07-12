@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 )
@@ -17,6 +18,11 @@ var ErrOverrideNotFound = errors.New("override not found")
 func ConfigDir() string {
 	base := os.Getenv("XDG_CONFIG_HOME")
 	if base == "" {
+		if runtime.GOOS == "windows" {
+			if d, err := os.UserConfigDir(); err == nil && d != "" {
+				return filepath.Join(d, "appicon")
+			}
+		}
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return filepath.Join(os.TempDir(), "appicon")
@@ -159,17 +165,21 @@ func writeOverridesFile(configDir string, m map[string]string) error {
 	} else {
 		fmtKind = formatFromPath(path)
 	}
+	return writeOverridesFileAt(path, fmtKind, m)
+}
+
+func writeOverridesFileAt(path string, fmtKind ConfigFormat, m map[string]string) error {
 	if m == nil {
 		m = map[string]string{}
 	}
 	var data []byte
+	var err error
 	if fmtKind == ConfigFormatYAML {
 		data, err = EncodeConfigData(m, ConfigFormatYAML)
 		if err != nil {
 			return err
 		}
 	} else {
-		// Stable key order for nicer diffs (JSON).
 		var b strings.Builder
 		b.WriteString("{\n")
 		keys := SortedOverrideKeys(m)
@@ -195,6 +205,81 @@ func writeOverridesFile(configDir string, m map[string]string) error {
 		data = []byte(b.String())
 	}
 	return writeAtomic(path, data)
+}
+
+// ExportOverrides returns the overrides map encoded as JSON or YAML.
+func ExportOverrides(configDir string, format string) ([]byte, error) {
+	fmtKind, err := ParseConfigFormat(format)
+	if err != nil {
+		return nil, err
+	}
+	m, err := ListOverrides(configDir)
+	if err != nil {
+		return nil, err
+	}
+	if fmtKind == ConfigFormatYAML {
+		return EncodeConfigData(m, ConfigFormatYAML)
+	}
+	// Stable JSON like on-disk format.
+	var b strings.Builder
+	b.WriteString("{\n")
+	keys := SortedOverrideKeys(m)
+	for i, k := range keys {
+		kj, _ := json.Marshal(k)
+		vj, _ := json.Marshal(m[k])
+		b.WriteString("  ")
+		b.Write(kj)
+		b.WriteString(": ")
+		b.Write(vj)
+		if i < len(keys)-1 {
+			b.WriteByte(',')
+		}
+		b.WriteByte('\n')
+	}
+	b.WriteString("}\n")
+	return []byte(b.String()), nil
+}
+
+// ImportOverrides loads a JSON/YAML map of remaps.
+// merge=true keeps existing keys not in the import; false replaces the file.
+func ImportOverrides(configDir string, data []byte, merge bool) (int, error) {
+	data = []byte(strings.TrimSpace(string(data)))
+	if len(data) == 0 {
+		return 0, errors.New("override import requires JSON or YAML object")
+	}
+	var raw map[string]string
+	if err := DecodeConfigData(data, &raw); err != nil {
+		return 0, err
+	}
+	incoming := make(map[string]string, len(raw))
+	for k, v := range raw {
+		k = strings.ToLower(strings.TrimSpace(k))
+		v = strings.TrimSpace(v)
+		if k == "" || v == "" {
+			continue
+		}
+		incoming[k] = v
+	}
+	if !merge {
+		if err := writeOverridesFile(configDir, incoming); err != nil {
+			return 0, err
+		}
+		return len(incoming), nil
+	}
+	cur, err := readOverridesFile(configDir)
+	if err != nil {
+		return 0, err
+	}
+	if cur == nil {
+		cur = map[string]string{}
+	}
+	for k, v := range incoming {
+		cur[k] = v
+	}
+	if err := writeOverridesFile(configDir, cur); err != nil {
+		return 0, err
+	}
+	return len(incoming), nil
 }
 
 func applyOverrides(query, configDir string) string {

@@ -8,7 +8,7 @@ Hub for appicon docs. Prefer editing the **source of truth** column when behavio
 | [consumer-contract.md](consumer-contract.md) | Exit codes, `resolve --json` fields (single + batch), consumer rules |
 | [resolve-result.schema.json](resolve-result.schema.json) | Machine-readable JSON schema for a single resolve result |
 | [resolve-batch-result.schema.json](resolve-batch-result.schema.json) | Batch `{results:[…]}` envelope schema |
-| [sources.md](sources.md) | `sources.json`/`sources.yaml` stages, BYOK `token_env`, `--order`, offline/MCP notes |
+| [sources.md](sources.md) | `sources.json`/`sources.yaml` stages, BYOK `token_env`, platform notes, `--order`, offline/MCP notes |
 | [sources.schema.json](sources.schema.json) | Machine-readable schema for sources config |
 | [packs.md](packs.md) | Local packs, recipes, CDN vs pack, bundle artifact |
 | [deferred.md](deferred.md) | Explicitly **not** a backlog |

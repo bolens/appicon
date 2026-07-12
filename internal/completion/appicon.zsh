@@ -19,13 +19,13 @@ _appicon() {
     'help:Show usage'
   )
   cache_cmds=(path clear stats prune)
-  override_cmds=(list get set rm path suggest)
+  override_cmds=(list get set rm path suggest export import)
   sources_cmds=(list get set path)
   pack_cmds=(list path add install update)
   shells=(bash zsh fish)
   formats=(svg png)
   themes=(dark light)
-  stages=(file overrides xdg svgl pack dir simple-icons dashboard-icons http-index github glyph)
+  stages=(file overrides xdg svgl pack dir simple-icons dashboard-icons http-index github logo-dev iconify noun-project glyph)
 
   _arguments -C \
     '1:command:->cmd' \
@@ -90,6 +90,9 @@ _appicon() {
             '--json[Emit JSON]' \
             '--apply[Apply first suggest candidate]' \
             '--from-misses[Suggest for recent misses]' \
+            '--format[Export format]:format:(json yaml)' \
+            '--file[Import from path]:file:_files' \
+            '--merge[Merge into existing overrides]' \
             "1:subcommand:(${override_cmds[*]})" \
             '*:query:->queries'
           ;;

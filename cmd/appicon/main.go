@@ -86,7 +86,7 @@ Usage:
   appicon prefetch [--json] [--offline] [--from-desktop] [--theme dark|light] [--order T,…] [query]...
   appicon status [--json]
   appicon cache path|clear|stats|prune
-  appicon override list|get|set|rm|path|suggest [--json] ...
+  appicon override list|get|set|rm|path|suggest|export|import [--json] ...
   appicon sources list|get|set|path [--json] [--file PATH]
   appicon pack list|path|add|install|update [--json] ...
   appicon daemon [--socket PATH]
@@ -146,6 +146,9 @@ Examples:
 	}
 	if fs.NArg() != 0 {
 		return errors.New("daemon takes no positional arguments")
+	}
+	if !daemon.Supported() {
+		return fmt.Errorf("%w: use in-process resolve (omit daemon / set APPICON_NO_DAEMON=1)", daemon.ErrUnsupportedPlatform)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -555,13 +558,16 @@ Examples:
 
 func cmdOverride(args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return errors.New("override requires list|get|set|rm|path|suggest")
+		return errors.New("override requires list|get|set|rm|path|suggest|export|import")
 	}
 	fs := flag.NewFlagSet("override", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	asJSON := fs.Bool("json", false, "emit JSON")
 	fromMisses := fs.Bool("from-misses", false, "suggest for recent miss queries")
 	applyFirst := fs.Bool("apply", false, "apply the first candidate via override set")
+	filePath := fs.String("file", "", "for import: read from PATH instead of stdin")
+	format := fs.String("format", "json", "for export: json|yaml")
+	merge := fs.Bool("merge", false, "for import: merge into existing overrides (default replace)")
 	fs.Usage = func() {
 		_, _ = fmt.Fprintf(stderr, `Usage:
   appicon override list [--json]
@@ -569,12 +575,16 @@ func cmdOverride(args []string, stdout, stderr io.Writer) error {
   appicon override set <query> <target>
   appicon override rm <query>
   appicon override suggest [--json] [--apply] [--from-misses] [query]
+  appicon override export [--format json|yaml]
+  appicon override import [--file PATH] [--merge]
   appicon override path
 
 Examples:
   appicon override set my-wm-class firefox
   appicon override suggest my-wm-class
   appicon override suggest --from-misses --json
+  appicon override export --format yaml > overrides.yaml
+  appicon override import --merge --file overrides.yaml
   appicon override list --json
 `)
 	}
@@ -602,6 +612,34 @@ Examples:
 		for _, k := range resolve.SortedOverrideKeys(m) {
 			_, _ = fmt.Fprintf(stdout, "%s\t%s\n", k, m[k])
 		}
+		return nil
+	case "export":
+		data, err := resolve.ExportOverrides("", *format)
+		if err != nil {
+			return err
+		}
+		_, err = stdout.Write(data)
+		return err
+	case "import":
+		var data []byte
+		var err error
+		if *filePath != "" {
+			data, err = os.ReadFile(*filePath)
+		} else {
+			data, err = io.ReadAll(os.Stdin)
+		}
+		if err != nil {
+			return err
+		}
+		n, err := resolve.ImportOverrides("", data, *merge)
+		if err != nil {
+			return err
+		}
+		mode := "replaced"
+		if *merge {
+			mode = "merged"
+		}
+		_, _ = fmt.Fprintf(stdout, "%s %d overrides into %s\n", mode, n, resolve.OverridesPath(""))
 		return nil
 	case "get":
 		if len(pos) != 1 {

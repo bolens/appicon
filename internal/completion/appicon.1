@@ -11,17 +11,20 @@ looks up an application or brand icon and prints a local filesystem path.
 Consumers such as Waybar, Rofi, and scripts can use the path without embedding
 remote download logic.
 .PP
-Default resolve order: file, overrides.json, FreeDesktop icon theme / .desktop
-(including Flatpak, Snap, and Steam heuristics), then SVGL. Customize the full
-pipeline (including opt-in CDN/github/glyph stages and local packs) via
-sources.json. A miss exits with status 1 unless a glyph stage is reached.
+Default resolve order: file, overrides, FreeDesktop icon theme / .desktop
+(including Flatpak/Snap heuristics on Linux, and Steam heuristics), then SVGL.
+Customize the full pipeline (opt\-in CDN/github/BYOK/glyph stages and local packs)
+via sources.json or sources.yaml. A miss exits with status 1 unless a glyph stage
+is reached. The optional unix\-socket daemon is supported on Unix; Windows uses
+in\-process resolve only.
 .SH COMMANDS
 .TP
 .B resolve [\-\-json] [\-\-explain] [\-\-offline] [\-\-local] [\-\-order \fITYPES\fR] [\-\-format svg|png] [\-\-size N] [\-\-theme dark|light] \fIquery\fR...
 Resolve one or more queries and print absolute paths (or JSON with \-\-json).
 Multiple queries emit {results:[…]} with \-\-json.
 \-\-order is a comma-separated list of stage types.
-\-\-explain includes tried stages and a miss hint.
+\-\-explain includes tried stages and a miss hint (auth\-skipped BYOK stages appear as
+stage(auth)).
 When a daemon socket is present, dial it unless \-\-local or APPICON_NO_DAEMON is set
 (order, explain, batch, and prefetch are supported over the socket).
 .TP
@@ -31,20 +34,26 @@ Warm the cache for queries (same effective order as resolve).
 Uses the daemon socket when available (same as resolve).
 .TP
 .B status [\-\-json]
-Print config/cache/pack paths, effective order, daemon socket, and helper tools.
+Print config/cache/pack paths, effective order, BYOK credentials readiness,
+platform (goos/goarch), daemon socket support, and helper tools.
 .TP
 .B cache path|clear|stats|prune
-Inspect or manage the on-disk cache under $XDG_CACHE_HOME/appicon.
+Inspect or manage the on-disk cache under $XDG_CACHE_HOME/appicon
+(or the platform cache dir when XDG_CACHE_HOME is unset).
 .TP
-.B override list|get|set|rm|path|suggest [\-\-json]
-Manage $XDG_CONFIG_HOME/appicon/overrides.json query remaps (long-tail aliases).
+.B override list|get|set|rm|path|suggest|export|import [\-\-json]
+Manage overrides.json / overrides.yaml query remaps (long-tail aliases).
 .B suggest
 proposes remap targets; \-\-from\-misses uses recent miss queries.
+.B export
+/
+.B import
+bulk dump or load JSON/YAML (\-\-format, \-\-file, \-\-merge).
 .TP
-.B sources list|get|set|path [\-\-json] [\-\-file \fIPATH\fR]
-Show effective order, read/write sources.json, or print its path.
+.B sources list|get|set|path [\-\-json] [\-\-file \fIPATH\fR] [\-\-format json|yaml]
+Show effective order, read/write sources.json|yaml, or print its path.
 .B set
-reads JSON from stdin or \-\-file.
+reads JSON/YAML from stdin or \-\-file.
 .TP
 .B pack list|path|add|install|update [\-\-json] ...
 Manage local icon packs (add directory, install recipes or git/.tar.gz URLs,
@@ -52,11 +61,12 @@ update clones, or install from \-\-from-bundle).
 .TP
 .B daemon [\-\-socket \fIpath\fR]
 Run the optional unix-socket resolve daemon (or under systemd socket activation).
+Refused on Windows (use in\-process resolve).
 .TP
 .B mcp
 Run a stdio MCP server for coding agents (tools: resolve, prefetch, status,
-sources_*, pack_*, override_*, cache_*, version). Prefer MCP tools over shelling
-the CLI when connected.
+sources_*, pack_*, override_* including export/import, cache_*, version). Prefer MCP
+tools over shelling the CLI when connected.
 .TP
 .B completion bash|zsh|fish
 Print a shell completion script to stdout.
@@ -84,18 +94,36 @@ Install a local pack and remap a WM class:
 .br
 .B appicon override set my\-wm\-class firefox
 .TP
+BYOK Logo.dev (token in env, never in config):
+.B export LOGO_DEV_TOKEN=pk_…
+.br
+.B appicon resolve \-\-order logo\-dev,xdg shopify.com
+.TP
+Bulk overrides:
+.B appicon override export \-\-format yaml > overrides.yaml
+.br
+.B appicon override import \-\-merge \-\-file overrides.yaml
+.TP
 Inspect environment:
 .B appicon status
 .SH ENVIRONMENT
 .TP
 .B XDG_CACHE_HOME
-Cache root parent (default ~/.cache). Assets live in $XDG_CACHE_HOME/appicon.
+Cache root parent (default ~/.cache; on Windows, UserCacheDir when unset).
+Assets live in $XDG_CACHE_HOME/appicon.
 .TP
 .B XDG_CONFIG_HOME
-Config parent (default ~/.config). Reads appicon/overrides.json and sources.json.
+Config parent (default ~/.config; on Windows, UserConfigDir when unset).
+Reads appicon/overrides.json|yaml and sources.json|yaml.
 .TP
 .B XDG_DATA_HOME
-Data parent (default ~/.local/share). Packs default under appicon/packs/.
+Data parent (default ~/.local/share; on Windows, LOCALAPPDATA when unset).
+Packs default under appicon/packs/.
+.TP
+.B XDG_DATA_DIRS / XDG_RUNTIME_DIR
+FreeDesktop roots (Linux defaults for /usr share and Flatpak/Snap).
+Daemon socket defaults to $XDG_RUNTIME_DIR/appicon.sock, else a private
+cache\-backed run dir.
 .TP
 .B APPICON_THEME
 Default dark|light preference when \-\-theme is omitted.
@@ -111,19 +139,25 @@ When set, resolve never dials the daemon socket.
 .TP
 .B APPICON_OFFLINE
 When set, skip network (same as resolve \-\-offline); pack install/update refuse.
+.TP
+.I token_env / secret_env names
+BYOK stages reference env var
+.I names
+in sources config (e.g. LOGO_DEV_TOKEN). Values must be secrets, never file paths.
 .SH FILES
 .TP
 .I $XDG_CONFIG_HOME/appicon/overrides.json
-Query remaps (e.g. WM class to catalog name).
+Query remaps (e.g. WM class to catalog name). YAML alternate: overrides.yaml.
 .TP
 .I $XDG_CONFIG_HOME/appicon/sources.json
-Ordered resolve stages (file, overrides, xdg, pack, svgl, opt-in remotes, glyph).
+Ordered resolve stages (file, overrides, xdg, pack, svgl, opt\-in remotes including
+logo\-dev / iconify / noun\-project, glyph). YAML alternate: sources.yaml.
 .TP
 .I $XDG_DATA_HOME/appicon/packs/
 Recommended local pack root.
 .TP
 .I $XDG_CACHE_HOME/appicon/
-Downloaded SVGs, CDN/github assets, glyph SVGs, and rasterized PNGs.
+Downloaded SVGs, CDN/github/BYOK assets, glyph SVGs, and rasterized PNGs.
 .SH EXIT STATUS
 .TP
 .B 0

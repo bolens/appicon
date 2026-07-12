@@ -111,6 +111,30 @@ if "matrix:" not in text or "./cmd/appicon" not in text:
     print("FAIL: unit-tests package matrix missing", file=sys.stderr)
     fail = 1
 
+# Every first-party package under cmd/ and internal/ must appear in the matrix.
+matrix_pkgs = set(
+    re.findall(
+        r"(?m)^          - (\./(?:cmd|internal)/[A-Za-z0-9_-]+)\s*$",
+        text,
+    )
+)
+root = Path(sys.argv[1]).resolve().parents[2]
+expected = {"./cmd/appicon"}
+for p in sorted((root / "internal").iterdir()):
+    if p.is_dir() and not p.name.startswith("."):
+        expected.add(f"./internal/{p.name}")
+missing_pkgs = sorted(expected - matrix_pkgs)
+extra_pkgs = sorted(matrix_pkgs - expected)
+if missing_pkgs:
+    print("FAIL: unit-tests matrix missing packages:", ", ".join(missing_pkgs), file=sys.stderr)
+    fail = 1
+if extra_pkgs:
+    print("FAIL: unit-tests matrix has unknown packages:", ", ".join(extra_pkgs), file=sys.stderr)
+    fail = 1
+if "windows-compile:" not in text:
+    print("FAIL: CI job 'windows-compile:' missing", file=sys.stderr)
+    fail = 1
+
 for job in ("consumer-smoke:", "aur-publish-check:"):
     if job not in text:
         print(f"FAIL: CI job {job!r} missing", file=sys.stderr)

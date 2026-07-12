@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -58,7 +59,7 @@ func NewFinder(opts Options) *Finder {
 	return f
 }
 
-// DefaultDataDirs returns XDG data roots including Flatpak export shares.
+// DefaultDataDirs returns XDG data roots (Linux Flatpak/Snap paths only on Linux).
 func DefaultDataDirs() []string {
 	var dirs []string
 	seen := map[string]struct{}{}
@@ -79,19 +80,35 @@ func DefaultDataDirs() []string {
 			dataHome = filepath.Join(home, ".local", "share")
 		}
 		add(dataHome)
-		add(filepath.Join(home, ".local", "share", "flatpak", "exports", "share"))
+		if runtime.GOOS == "linux" {
+			add(filepath.Join(home, ".local", "share", "flatpak", "exports", "share"))
+		}
 	}
-	add("/var/lib/flatpak/exports/share")
-	add("/var/lib/snapd/desktop")
+	if runtime.GOOS == "linux" {
+		add("/var/lib/flatpak/exports/share")
+		add("/var/lib/snapd/desktop")
+	}
 
 	dataDirs := os.Getenv("XDG_DATA_DIRS")
-	if dataDirs == "" {
-		dataDirs = "/usr/local/share:/usr/share"
+	if dataDirs == "" && runtime.GOOS == "linux" {
+		dataDirs = "/usr/local/share" + string(os.PathListSeparator) + "/usr/share"
 	}
-	for _, d := range strings.Split(dataDirs, ":") {
-		add(strings.TrimSpace(d))
+	if dataDirs != "" {
+		for _, d := range splitPathList(dataDirs) {
+			add(strings.TrimSpace(d))
+		}
 	}
 	return dirs
+}
+
+func splitPathList(s string) []string {
+	sep := string(os.PathListSeparator)
+	parts := strings.Split(s, sep)
+	// Also accept ':' on Windows if someone exports Unix-style XDG_DATA_DIRS.
+	if sep != ":" && strings.Contains(s, ":") && !strings.Contains(s, sep) {
+		parts = strings.Split(s, ":")
+	}
+	return parts
 }
 
 // DefaultIconDirs returns icon base directories (before theme name).
@@ -114,7 +131,9 @@ func DefaultIconDirs(dataDirs []string) []string {
 	for _, root := range dataDirs {
 		add(filepath.Join(root, "icons"))
 	}
-	add("/usr/share/pixmaps")
+	if runtime.GOOS == "linux" {
+		add("/usr/share/pixmaps")
+	}
 	return dirs
 }
 

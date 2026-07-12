@@ -18,7 +18,7 @@ complete -c appicon -n __fish_use_subcommand -a man -d 'Print man page (troff) t
 complete -c appicon -n __fish_use_subcommand -a version -d 'Print version'
 complete -c appicon -n __fish_use_subcommand -a help -d 'Show usage'
 
-set -l __appicon_stages file overrides xdg svgl pack dir simple-icons dashboard-icons http-index github glyph
+set -l __appicon_stages file overrides xdg svgl pack dir simple-icons dashboard-icons http-index github logo-dev iconify noun-project glyph
 
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l json -d 'Emit JSON result'
 complete -c appicon -n '__fish_seen_subcommand_from resolve' -l explain -d 'Include tried stages / miss hint'
@@ -63,15 +63,20 @@ complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_s
 complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_subcommand_from path clear stats prune' -a clear -d 'Delete cache'
 complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_subcommand_from path clear stats prune' -a stats -d 'Cache stats'
 complete -c appicon -n '__fish_seen_subcommand_from cache; and not __fish_seen_subcommand_from path clear stats prune' -a prune -d 'Prune stale entries'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a list -d 'List remaps'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a get -d 'Get remap'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a set -d 'Set remap'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a rm -d 'Remove remap'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a path -d 'Print overrides.json path'
-complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest' -a suggest -d 'Suggest remap targets'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest export import' -a list -d 'List remaps'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest export import' -a get -d 'Get remap'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest export import' -a set -d 'Set remap'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest export import' -a rm -d 'Remove remap'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest export import' -a path -d 'Print overrides.json path'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest export import' -a suggest -d 'Suggest remap targets'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest export import' -a export -d 'Export overrides JSON/YAML'
+complete -c appicon -n '__fish_seen_subcommand_from override; and not __fish_seen_subcommand_from list get set rm path suggest export import' -a import -d 'Import overrides JSON/YAML'
 complete -c appicon -n '__fish_seen_subcommand_from override' -l json -d 'Emit JSON'
 complete -c appicon -n '__fish_seen_subcommand_from override' -l apply -d 'Apply first suggest candidate'
 complete -c appicon -n '__fish_seen_subcommand_from override' -l from-misses -d 'Suggest for recent misses'
+complete -c appicon -n '__fish_seen_subcommand_from override; and __fish_seen_subcommand_from export' -l format -xa 'json yaml' -d 'Export format'
+complete -c appicon -n '__fish_seen_subcommand_from override; and __fish_seen_subcommand_from import' -l file -r -d 'Import from path'
+complete -c appicon -n '__fish_seen_subcommand_from override; and __fish_seen_subcommand_from import' -l merge -d 'Merge into existing overrides'
 
 function __appicon_queries
   appicon __complete queries (commandline -ct) 2>/dev/null

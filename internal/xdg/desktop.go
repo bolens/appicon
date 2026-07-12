@@ -214,7 +214,7 @@ func PrefetchQueriesFromDesktop(opts Options) []string {
 			return
 		}
 		// Skip absolute icon paths — resolve prefers names / ids.
-		if strings.Contains(s, string(filepath.Separator)) || strings.HasPrefix(s, "/") {
+		if strings.Contains(s, string(filepath.Separator)) || filepath.IsAbs(s) {
 			return
 		}
 		key := strings.ToLower(s)

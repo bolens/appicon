@@ -44,12 +44,15 @@ programs.appicon = {
   overrides = {
     "my-wm-class" = "firefox";
   };
-  # Prefer sops-nix / agenix for secret values — do not commit API keys.
-  environment = {
-    LOGO_DEV_TOKEN = "pk_…";
-  };
+  # Prefer EnvironmentFile with secret *values* (not sops .path strings):
+  # sops.templates."appicon.env".content = ''
+  #   LOGO_DEV_TOKEN=${config.sops.placeholder."logo-dev-token"}
+  # '';
+  environmentFiles = [ config.sops.templates."appicon.env".path ];
 };
 ```
+
+Do **not** set `environment.LOGO_DEV_TOKEN = config.sops.secrets….path` — that puts a filesystem path into the env var `token_env` reads as the API token.
 
 That installs a user socket at `$XDG_RUNTIME_DIR/appicon.sock` (same as `contrib/systemd/`). Source packages also ship units under `$out/lib/systemd/user/`.
 

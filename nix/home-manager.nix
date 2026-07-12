@@ -4,7 +4,7 @@
 #   home-manager.users.you = { ... }: {
 #     imports = [ inputs.appicon.homeManagerModules.default ];
 #     programs.appicon.enable = true;
-#     programs.appicon.daemon.enable = true; # optional user socket
+#     programs.appicon.daemon.enable = true; # optional user socket (Linux/systemd)
 #     programs.appicon.configFormat = "yaml"; # optional: sources/overrides as YAML
 #     programs.appicon.sources = {
 #       sources = [
@@ -14,10 +14,14 @@
 #         { type = "logo-dev"; token_env = "LOGO_DEV_TOKEN"; }
 #       ];
 #     };
-#     programs.appicon.environment = {
-#       # Prefer sops/agenix for the actual secret values.
-#       LOGO_DEV_TOKEN = config.sops.secrets.logo-dev-token.path; # or sessionVariables with plaintext (not recommended)
-#     };
+#     # BYOK: token_env names must resolve to secret *values*, never secret file paths.
+#     # Prefer environmentFiles (KEY=value lines) with sops-nix templates, e.g.:
+#     #   sops.templates."appicon.env".content = ''
+#     #     LOGO_DEV_TOKEN=${config.sops.placeholder."logo-dev-token"}
+#     #   '';
+#     #   programs.appicon.environmentFiles = [ config.sops.templates."appicon.env".path ];
+#     # Do NOT set LOGO_DEV_TOKEN = config.sops.secrets….path — that puts a path string
+#     # into the env var that appicon reads as the API token.
 #     # optional if not using the flake overlay:
 #     # programs.appicon.package = inputs.appicon.packages.${pkgs.system}.appicon-bin;
 #   };
@@ -78,14 +82,31 @@ in
       type = lib.types.attrsOf lib.types.str;
       default = { };
       description = ''
-        Session environment variables for BYOK tokens (token_env names).
-        Prefer sops-nix / agenix for secret values — do not commit API keys in Nix.
+        Session environment variables for BYOK tokens (token_env / secret_env *names* map here).
+        Values must be the secret strings themselves — never a path to a secret file
+        (do not assign sops secret paths here). Prefer environmentFiles + sops templates
+        for real secrets; use this only for non-secret defaults or test tokens.
       '';
       example = lib.literalExpression ''
         {
-          LOGO_DEV_TOKEN = "pk_…"; # better: wire via sops
-          GITHUB_TOKEN = "ghp_…";
+          # Prefer environmentFiles for production secrets.
+          # LOGO_DEV_TOKEN = "pk_test_…"; # local only
         }
+      '';
+    };
+
+    environmentFiles = lib.mkOption {
+      type = lib.types.listOf lib.types.path;
+      default = [ ];
+      description = ''
+        systemd EnvironmentFile= paths for the optional daemon (KEY=value lines).
+        Use with sops-nix / agenix templates so the file contains secret *values*.
+        Interactive shells still need the same vars via your session (login env,
+        or a matching template loaded by your shell); environmentFiles alone only
+        affect the user systemd appicon service.
+      '';
+      example = lib.literalExpression ''
+        [ config.sops.templates."appicon.env".path ]
       '';
     };
 
@@ -148,8 +169,9 @@ in
             ExecStart = "${lib.getExe cfg.package} daemon";
             Restart = "on-failure";
             RestartSec = "1";
-            # Propagate BYOK env into the daemon if set via sessionVariables.
+            # Non-secret defaults only — real BYOK secrets belong in EnvironmentFile.
             Environment = lib.mapAttrsToList (n: v: "${n}=${v}") cfg.environment;
+            EnvironmentFile = cfg.environmentFiles;
           };
           Install = {
             Also = [ "appicon.socket" ];

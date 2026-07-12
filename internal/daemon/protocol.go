@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -24,6 +25,9 @@ const (
 
 // ErrDial means the daemon socket was missing or unreachable.
 var ErrDial = errors.New("daemon unavailable")
+
+// ErrUnsupportedPlatform means the daemon cannot run on this OS.
+var ErrUnsupportedPlatform = errors.New("daemon requires a unix socket (not supported on this platform)")
 
 // Request is a length-prefixed JSON frame from client → daemon.
 type Request struct {
@@ -67,16 +71,40 @@ type BatchResult struct {
 	Hint   string   `json:"hint,omitempty"`
 }
 
-// SocketPath returns $XDG_RUNTIME_DIR/appicon.sock (or a fallback under TempDir).
+// SocketPath returns $XDG_RUNTIME_DIR/appicon.sock, or a private fallback under
+// the user cache dir when XDG_RUNTIME_DIR is unset (mode 0700 parent).
 func SocketPath() string {
 	if p := os.Getenv("APPICON_SOCKET"); p != "" {
 		return p
 	}
 	runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
 	if runtimeDir == "" {
-		return filepath.Join(os.TempDir(), "appicon-"+fmt.Sprint(os.Getuid()), SocketName)
+		runtimeDir = fallbackRuntimeDir()
 	}
 	return filepath.Join(runtimeDir, SocketName)
+}
+
+func fallbackRuntimeDir() string {
+	// Prefer a private cache-backed run dir over shared TempDir.
+	if cache, err := os.UserCacheDir(); err == nil && cache != "" {
+		return filepath.Join(cache, "appicon", "run")
+	}
+	home, err := os.UserHomeDir()
+	if err == nil {
+		return filepath.Join(home, ".cache", "appicon", "run")
+	}
+	return filepath.Join(os.TempDir(), "appicon-run")
+}
+
+// EnsureRuntimeDir creates the socket parent directory with mode 0700 when needed.
+func EnsureRuntimeDir(socketPath string) error {
+	dir := filepath.Dir(socketPath)
+	return os.MkdirAll(dir, 0o700)
+}
+
+// Supported reports whether the daemon can run on this platform.
+func Supported() bool {
+	return runtime.GOOS != "windows"
 }
 
 // ValidateSocketPath rejects abstract namespace and empty paths.

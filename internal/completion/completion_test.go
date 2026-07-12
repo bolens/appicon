@@ -52,6 +52,12 @@ func TestBashMentionsSourcesPack(t *testing.T) {
 	if !strings.Contains(s, "simple-icons") || !strings.Contains(s, "status") || !strings.Contains(s, "--explain") {
 		t.Fatal("bash completion missing stage names/status/--explain")
 	}
+	if !strings.Contains(s, "logo-dev") || !strings.Contains(s, "iconify") || !strings.Contains(s, "noun-project") {
+		t.Fatal("bash completion missing BYOK stages")
+	}
+	if !strings.Contains(s, "export") || !strings.Contains(s, "import") {
+		t.Fatal("bash completion missing override export/import")
+	}
 	if !strings.Contains(s, "get") || !strings.Contains(s, "set") {
 		t.Fatal("bash completion missing sources get/set")
 	}
@@ -68,7 +74,7 @@ func TestZshFishMentionStatusAndStages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, needle := range []string{"status", "simple-icons", "glyph", "--explain", "suggest", "--from-desktop", "__complete queries"} {
+	for _, needle := range []string{"status", "simple-icons", "glyph", "logo-dev", "--explain", "suggest", "--from-desktop", "__complete queries", "export"} {
 		if !strings.Contains(zsh, needle) {
 			t.Fatalf("zsh missing %q", needle)
 		}
@@ -77,7 +83,7 @@ func TestZshFishMentionStatusAndStages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, needle := range []string{"status", "simple-icons", "glyph", "-l explain", "suggest", "from-desktop", "__appicon_queries"} {
+	for _, needle := range []string{"status", "simple-icons", "glyph", "logo-dev", "-l explain", "suggest", "from-desktop", "__appicon_queries", "export"} {
 		if !strings.Contains(fish, needle) {
 			t.Fatalf("fish missing %q", needle)
 		}
@@ -87,7 +93,7 @@ func TestZshFishMentionStatusAndStages(t *testing.T) {
 func TestManPageNewSurfaces(t *testing.T) {
 	t.Parallel()
 	man := completion.ManPage()
-	for _, needle := range []string{"suggest", "from\\-desktop", "results", "APPICON_NO_DAEMON"} {
+	for _, needle := range []string{"suggest", "from\\-desktop", "results", "APPICON_NO_DAEMON", "logo\\-dev", "export", "credentials"} {
 		if !strings.Contains(man, needle) {
 			t.Fatalf("man missing %q", needle)
 		}

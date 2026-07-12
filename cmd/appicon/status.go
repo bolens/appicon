@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -43,6 +44,7 @@ Examples:
 		return err
 	}
 	labels := resolve.FormatStages(stages)
+	creds := resolve.CredentialStatuses(stages)
 	cache, err := resolve.CacheStats()
 	if err != nil {
 		return err
@@ -70,6 +72,8 @@ Examples:
 
 	payload := map[string]any{
 		"version":              version.Version,
+		"goos":                 runtime.GOOS,
+		"goarch":               runtime.GOARCH,
 		"config_dir":           resolve.ConfigDir(),
 		"sources_path":         resolve.SourcesPath(""),
 		"overrides_path":       resolve.OverridesPath(""),
@@ -79,6 +83,8 @@ Examples:
 		"packs_root":           packs.Root(),
 		"packs":                len(packList),
 		"order":                labels,
+		"credentials":          creds,
+		"daemon_supported":     daemon.Supported(),
 		"daemon_socket":        sock,
 		"daemon_socket_exists": sockErr == nil,
 		"daemon_alive":         alive,
@@ -93,12 +99,16 @@ Examples:
 	}
 
 	_, _ = fmt.Fprintf(stdout, "version=%s\n", version.Version)
+	_, _ = fmt.Fprintf(stdout, "goos=%s goarch=%s\n", runtime.GOOS, runtime.GOARCH)
 	_, _ = fmt.Fprintf(stdout, "config_dir=%s\n", resolve.ConfigDir())
 	_, _ = fmt.Fprintf(stdout, "sources=%s\n", resolve.SourcesPath(""))
 	_, _ = fmt.Fprintf(stdout, "overrides=%s\n", resolve.OverridesPath(""))
 	_, _ = fmt.Fprintf(stdout, "cache=%s files=%d bytes=%d\n", cache.Dir, cache.Files, cache.Bytes)
 	_, _ = fmt.Fprintf(stdout, "packs_root=%s count=%d\n", packs.Root(), len(packList))
 	_, _ = fmt.Fprintf(stdout, "order=%s\n", strings.Join(labels, ","))
+	if line := resolve.FormatCredentialStatuses(creds); line != "" {
+		_, _ = fmt.Fprintf(stdout, "credentials=%s\n", line)
+	}
 	exists := "missing"
 	if sockErr == nil {
 		exists = "ok"
@@ -107,7 +117,11 @@ Examples:
 	if alive {
 		aliveStr = "alive"
 	}
-	_, _ = fmt.Fprintf(stdout, "daemon_socket=%s (%s, %s)\n", sock, exists, aliveStr)
+	supported := "yes"
+	if !daemon.Supported() {
+		supported = "no"
+	}
+	_, _ = fmt.Fprintf(stdout, "daemon_socket=%s (%s, %s, supported=%s)\n", sock, exists, aliveStr, supported)
 	for _, t := range tools {
 		if t.OK {
 			_, _ = fmt.Fprintf(stdout, "tool_%s=%s\n", t.Name, t.Path)

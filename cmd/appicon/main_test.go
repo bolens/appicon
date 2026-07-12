@@ -399,7 +399,7 @@ func TestCLIStatus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"version=", "order=", "cache=", "daemon_socket="} {
+	for _, key := range []string{"version=", "order=", "cache=", "daemon_socket=", "goos="} {
 		if !strings.Contains(out, key) {
 			t.Fatalf("missing %q in %q", key, out)
 		}
@@ -412,11 +412,49 @@ func TestCLIStatus(t *testing.T) {
 	if err := json.Unmarshal([]byte(out), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if payload["sources_path"] == nil || payload["order"] == nil {
-		t.Fatalf("%v", payload)
+	for _, key := range []string{"sources_path", "order", "daemon_supported", "goos", "goarch", "credentials", "daemon_alive"} {
+		if _, ok := payload[key]; !ok {
+			t.Fatalf("missing %q in %v", key, payload)
+		}
+	}
+	if _, ok := payload["daemon_supported"].(bool); !ok {
+		t.Fatalf("daemon_supported type %T", payload["daemon_supported"])
 	}
 }
 
+func TestCLIOverrideExportImport(t *testing.T) {
+	cfg := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", cfg)
+	t.Setenv("APPICON_NO_DAEMON", "1")
+
+	if _, _, err := captureRun("override", "set", "a", "firefox"); err != nil {
+		t.Fatal(err)
+	}
+	out, _, err := captureRun("override", "export", "--format", "yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "firefox") {
+		t.Fatalf("export=%q", out)
+	}
+
+	cfg2 := t.TempDir()
+	t.Setenv("XDG_CONFIG_HOME", cfg2)
+	file := filepath.Join(t.TempDir(), "overrides.yaml")
+	if err := os.WriteFile(file, []byte(out), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := captureRun("override", "import", "--file", file); err != nil {
+		t.Fatal(err)
+	}
+	got, _, err := captureRun("override", "get", "a")
+	if err != nil || strings.TrimSpace(got) != "firefox" {
+		t.Fatalf("get=%q err=%v", got, err)
+	}
+	if _, _, err := captureRun("override", "import", "--merge", "--file", file); err != nil {
+		t.Fatal(err)
+	}
+}
 func TestCLIPrefetchJSON(t *testing.T) {
 	xdgEnv(t)
 	out, _, err := captureRun("prefetch", "--json", "--offline", "--order", "glyph", "zzzz-prefetch")
