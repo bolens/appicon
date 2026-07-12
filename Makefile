@@ -9,7 +9,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS ?= -X github.com/bolens/appicon/internal/version.Version=$(VERSION)
 
 GITLEAKS_VERSION ?= 8.21.2
-GOLANGCI_LINT_VERSION ?= 1.64.8
+GOLANGCI_LINT_VERSION ?= 2.12.2
 ACTIONLINT_VERSION ?= 1.7.7
 
 .PHONY: help build test vet fmt check check-fast lint \
@@ -40,7 +40,7 @@ fmt:
 	gofmt -w .
 
 check-fast: test vet
-	@out=$$(gofmt -l .); \
+	@out=$$(find . \( -path './.gopath' -o -path './.tools' -o -path './vendor' -o -path './.git' \) -prune -o -name '*.go' -print | xargs -r gofmt -l); \
 	if [ -n "$$out" ]; then \
 		printf 'gofmt needed:\n%s\n' "$$out" >&2; \
 		exit 1; \

@@ -58,7 +58,7 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 }
 
 func (s *Server) handle(ctx context.Context, conn net.Conn) error {
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(30 * time.Second))
 
 	var req Request

@@ -75,8 +75,8 @@ func TestProtocolRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer r.Close()
-	defer w.Close()
+	defer func() { _ = r.Close() }()
+	defer func() { _ = w.Close() }()
 
 	req := daemon.Request{Op: "ping"}
 	if err := daemon.WriteFrame(w, req); err != nil {
@@ -145,7 +145,7 @@ func TestDaemonPing(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 	_ = conn.SetDeadline(time.Now().Add(2 * time.Second))
 	if err := daemon.WriteFrame(conn, daemon.Request{Op: "ping"}); err != nil {
 		t.Fatal(err)

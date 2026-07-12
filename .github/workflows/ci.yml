@@ -22,9 +22,9 @@ jobs:
         run: make check-fast
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
+        uses: golangci/golangci-lint-action@v8
         with:
-          version: v1.64.8
+          version: v2.12.2
 
       - name: gitleaks
         run: bash scripts/ci/check-gitleaks.sh

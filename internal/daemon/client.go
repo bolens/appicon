@@ -44,7 +44,7 @@ func (c *Client) Resolve(ctx context.Context, query string, opts resolve.Options
 	if err != nil {
 		return resolve.Result{}, fmt.Errorf("%w: %v", ErrDial, err)
 	}
-	defer conn.Close()
+	defer func() { _ = conn.Close() }()
 
 	deadline, ok := ctx.Deadline()
 	if !ok {
