@@ -180,7 +180,6 @@ Follow-ups after a tagged release + Waybar proof. Same packaging tier as each ot
 
 | Item | Notes |
 |------|-------|
-| **Steam / games** | Heuristics for Steam shortcuts / `steam_appid` / common game `.desktop` misses |
 | **Steam / games** | **Done** — `steam_app_<id>` / numeric appid / `steam://rungameid/` Exec + `steam_icon_<id>` fallback |
 | **Snap exports** | **Done** — `/var/lib/snapd/desktop` alongside Flatpak export shares |
 
