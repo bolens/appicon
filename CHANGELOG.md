@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.1] — 2026-07-12
+
 ### Added
 
 - BYOK stages: `logo-dev`, `iconify`, `noun-project`; GitHub PAT + private repo Contents API; optional Bearer on `http-index` via `token_env`
