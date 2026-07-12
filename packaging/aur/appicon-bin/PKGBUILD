@@ -41,9 +41,10 @@ package() {
     install -Dm644 man/man1/appicon.1 "$pkgdir/usr/share/man/man1/appicon.1"
   fi
   if [[ -d contrib/systemd ]]; then
-    install -Dm644 contrib/systemd/appicon.service \
-      "$pkgdir/usr/lib/systemd/user/appicon.service"
     install -Dm644 contrib/systemd/appicon.socket \
       "$pkgdir/usr/lib/systemd/user/appicon.socket"
+    sed 's|^ExecStart=appicon daemon$|ExecStart=/usr/bin/appicon daemon|' \
+      contrib/systemd/appicon.service \
+      | install -Dm644 /dev/stdin "$pkgdir/usr/lib/systemd/user/appicon.service"
   fi
 }

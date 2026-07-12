@@ -33,6 +33,14 @@ let
         "-w"
         "-X github.com/bolens/appicon/internal/version.Version=v${version}"
       ];
+      postInstall = ''
+        install -Dm644 contrib/systemd/appicon.socket \
+          $out/lib/systemd/user/appicon.socket
+        substitute contrib/systemd/appicon.service \
+          $out/lib/systemd/user/appicon.service \
+          --replace-fail 'ExecStart=appicon daemon' \
+          "ExecStart=$out/bin/appicon daemon"
+      '';
       meta = with lib; {
         description = "Resolve desktop and brand icons to local file paths";
         homepage = "https://github.com/bolens/appicon";
@@ -86,6 +94,16 @@ let
         fi
         if [ -f man/man1/appicon.1 ]; then
           install -Dm644 man/man1/appicon.1 $out/share/man/man1/appicon.1
+        fi
+        if [ -f contrib/systemd/appicon.socket ]; then
+          install -Dm644 contrib/systemd/appicon.socket \
+            $out/lib/systemd/user/appicon.socket
+        fi
+        if [ -f contrib/systemd/appicon.service ]; then
+          substitute contrib/systemd/appicon.service \
+            $out/lib/systemd/user/appicon.service \
+            --replace-fail 'ExecStart=appicon daemon' \
+            "ExecStart=$out/bin/appicon daemon"
         fi
         runHook postInstall
       '';

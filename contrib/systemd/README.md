@@ -5,6 +5,7 @@
 install -Dm644 contrib/systemd/appicon.socket ~/.config/systemd/user/appicon.socket
 install -Dm644 contrib/systemd/appicon.service ~/.config/systemd/user/appicon.service
 # Ensure `appicon` is on PATH for the user service, or edit ExecStart to an absolute path.
+# Prefer Home Manager: programs.appicon.daemon.enable = true (sets ExecStart to the package path).
 systemctl --user daemon-reload
 systemctl --user enable --now appicon.socket
 ```

@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Added
+
+- Home Manager `programs.appicon.daemon.enable` (user systemd socket)
+- Nix packages install `lib/systemd/user/` units with absolute `ExecStart`
+
+### Changed
+
+- AUR PKGBUILDs pin systemd `ExecStart` to `/usr/bin/appicon daemon`
+
 ## [0.1.1] — 2026-07-12
 
 Post-v0.1.0 packaging and agent/daemon surface. Cut after pushing `main` and tagging `v0.1.1`.

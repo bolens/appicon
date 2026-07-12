@@ -21,6 +21,14 @@ nix profile install .#appicon-bin
 
 Home Manager: import `homeManagerModules.default`, set `programs.appicon.enable = true`, and add `overlays.default` (or set `programs.appicon.package` to `appicon` / `appicon-bin` / `appicon-git`).
 
+Optional warm-cache daemon (Linux/systemd):
+
+```nix
+programs.appicon.daemon.enable = true;
+```
+
+That installs a user socket at `$XDG_RUNTIME_DIR/appicon.sock` (same as `contrib/systemd/`). Source packages also ship units under `$out/lib/systemd/user/`.
+
 `vendorHash` in [packages.nix](packages.nix) / [flake.nix](../flake.nix) is set from a local `go mod vendor` SRI hash. After `go.sum` changes, refresh with:
 
 ```bash

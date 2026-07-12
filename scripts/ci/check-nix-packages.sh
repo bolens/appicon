@@ -27,13 +27,26 @@ for name in appicon appicon-bin appicon-git; do
   fi
 done
 
-# Overlay / packages wiring in flake.nix
 for needle in 'appicon-bin' 'appicon-git' 'packages.nix'; do
   if ! grep -q "$needle" "$FLAKE"; then
     echo "FAIL: flake.nix missing ${needle}" >&2
     fail=1
   fi
 done
+
+if ! grep -q 'daemon.enable' "$ROOT/nix/home-manager.nix"; then
+  echo "FAIL: home-manager.nix missing programs.appicon.daemon.enable" >&2
+  fail=1
+else
+  echo "PASS: HM daemon.enable"
+fi
+
+if ! grep -q 'lib/systemd/user' "$PACKAGES_NIX"; then
+  echo "FAIL: packages.nix should install systemd user units" >&2
+  fail=1
+else
+  echo "PASS: systemd user units in packages.nix"
+fi
 
 # Binary package must pin release checksums (linux amd64 + arm64).
 if ! grep -q 'sha256-QzKy4zvDnAlf0UVTRXF/U7zt3lpp1g/EmRZ0zirkOiU=' "$PACKAGES_NIX"; then

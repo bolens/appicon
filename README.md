@@ -79,6 +79,8 @@ appicon daemon                          # foreground
 systemctl --user enable --now appicon.socket
 ```
 
+Home Manager (Linux): `programs.appicon.daemon.enable = true`.
+
 ## Shell completions
 
 ```bash
@@ -154,7 +156,7 @@ nix build github:bolens/appicon#appicon-git   # source + unstable version (like 
 # local: see nix/README.md for vendorHash + appicon / appicon-bin / appicon-git
 ```
 
-Home Manager: `programs.appicon.enable = true` via `homeManagerModules.default` (overlay or set `package` to `appicon` / `appicon-bin` / `appicon-git`).
+Home Manager: `programs.appicon.enable = true` via `homeManagerModules.default` (overlay or set `package` to `appicon` / `appicon-bin` / `appicon-git`). Optional `programs.appicon.daemon.enable = true` for the user socket daemon on Linux.
 
 From source:
 

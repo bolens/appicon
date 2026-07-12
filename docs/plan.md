@@ -251,7 +251,7 @@ Follow-ups after a tagged release + Waybar proof.
 |------|-------|--------|
 | **Completions + man** | `appicon completion` / `appicon man`; scripts + man1 in release tarball | **Done** |
 | **Nix flake** | `flake.nix`: package + `apps.appicon` for `nix run` | **Done** (update `vendorHash`) |
-| **Home Manager** | `programs.appicon.enable` via `homeManagerModules.default` | **Done** |
+| **Home Manager** | `programs.appicon.enable` + optional `daemon.enable` | **Done** |
 | **AUR** | Reference PKGBUILDs: `appicon`, `appicon-bin`, `appicon-git` | **Done** (publish manually) |
 | **Release signing** | Cosign keyless OIDC → `SHA256SUMS.sigstore.json` | **Done** |
 
@@ -330,3 +330,4 @@ path → XDG → dir packs (user) → svgl → miss
 15. Manual: publish AUR packages to aur.archlinux.org (`appicon` / `appicon-bin` / `appicon-git`)
 16. ~~Consumer hygiene (zscroll/cava peers): stable contract doc, binary-miss negative cache, launch prefetch~~
 17. ~~CI: parallel test matrix, path filters, concurrency cancel; Nix attrs matching AUR~~
+18. ~~Home Manager daemon.enable + package/AUR systemd ExecStart absolute path~~
