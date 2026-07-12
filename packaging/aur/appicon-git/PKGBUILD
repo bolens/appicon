@@ -1,49 +1,61 @@
 # Maintainer: bolens <https://github.com/bolens>
-# Reference PKGBUILD for AUR — update pkgver/sha256sums on each release.
-# Publish via: git clone ssh://aur@aur.archlinux.org/appicon.git
+# VCS package tracking upstream main (latest commit).
+# Publish via: git clone ssh://aur@aur.archlinux.org/appicon-git.git
 
-pkgname=appicon
-pkgver=0.1.0
+pkgname=appicon-git
+pkgver=0.1.0.r0.g2436df9
 pkgrel=1
-pkgdesc='Resolve desktop and brand icons to local file paths'
+pkgdesc='Resolve desktop and brand icons to local file paths (git)'
 arch=('x86_64' 'aarch64')
 url='https://github.com/bolens/appicon'
 license=('MIT')
 depends=('glibc')
-makedepends=('go')
+makedepends=('git' 'go')
 optdepends=(
   'resvg: preferred SVG→PNG rasterizer'
   'librsvg: rsvg-convert SVG→PNG fallback'
 )
-provides=('appicon')
-conflicts=('appicon-bin' 'appicon-git')
-source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP') # replace with archive checksum before uploading to AUR
+provides=("appicon=${pkgver}")
+conflicts=('appicon' 'appicon-bin')
+source=("$pkgname::git+$url.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$pkgname"
+  # Tags are v0.1.0 — strip leading v; fall back to r<count>.g<sha> if untagged.
+  ( set -o pipefail
+    git describe --long --tags --abbrev=7 2>/dev/null \
+      | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g' \
+      || printf "r%s.g%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+  )
+}
 
 prepare() {
-  cd "$pkgname-$pkgver"
+  cd "$pkgname"
   mkdir -p build
 }
 
 build() {
-  cd "$pkgname-$pkgver"
+  cd "$pkgname"
   export CGO_CPPFLAGS="${CPPFLAGS}"
   export CGO_CFLAGS="${CFLAGS}"
   export CGO_CXXFLAGS="${CXXFLAGS}"
   export CGO_LDFLAGS="${LDFLAGS}"
   export GOPATH="${srcdir}"
   export GOFLAGS="-buildmode=pie -trimpath -mod=readonly -modcacherw"
-  go build -ldflags "-linkmode=external -X github.com/bolens/appicon/internal/version.Version=v${pkgver}" \
+  local ver
+  ver=$(git describe --tags --always --dirty 2>/dev/null || echo git)
+  go build -ldflags "-linkmode=external -X github.com/bolens/appicon/internal/version.Version=${ver}" \
     -o build/appicon ./cmd/appicon
 }
 
 check() {
-  cd "$pkgname-$pkgver"
+  cd "$pkgname"
   go test ./...
 }
 
 package() {
-  cd "$pkgname-$pkgver"
+  cd "$pkgname"
   install -Dm755 build/appicon "$pkgdir/usr/bin/appicon"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
   install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"

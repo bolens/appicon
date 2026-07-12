@@ -15,7 +15,7 @@ optdepends=(
   'librsvg: rsvg-convert SVG→PNG fallback'
 )
 provides=('appicon')
-conflicts=('appicon')
+conflicts=('appicon' 'appicon-git')
 options=('!strip')
 
 source_x86_64=("$url/releases/download/v$pkgver/appicon_v${pkgver}_linux_amd64.tar.gz")

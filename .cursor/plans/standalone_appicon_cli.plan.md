@@ -86,7 +86,7 @@ isProject: false
 | Nightly live SVGL smoke | **Done** — `.github/workflows/nightly-svgl.yml` |
 | Extra consumer examples | **Done** — `examples/{rofi,walker,notify}-appicon.sh` |
 | Optional socket daemon | **Done** — `appicon daemon` + `contrib/systemd/` |
-| AUR reference PKGBUILDs | **Done** — `packaging/aur/` (not yet pushed to aur.archlinux.org) |
+| AUR reference PKGBUILDs | **Done** — `packaging/aur/{appicon,appicon-bin,appicon-git}` (not yet pushed to aur.archlinux.org) |
 | Cosign keyless release signing | **Done** — `SHA256SUMS.sigstore.json` on tag releases |
 
 **Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/version`.
@@ -247,7 +247,7 @@ Follow-ups after a tagged release + Waybar proof.
 | **Completions + man** | `appicon completion` / `appicon man`; scripts + man1 in release tarball | **Done** |
 | **Nix flake** | `flake.nix`: package + `apps.appicon` for `nix run` | **Done** (update `vendorHash`) |
 | **Home Manager** | `programs.appicon.enable` via `homeManagerModules.default` | **Done** |
-| **AUR** | Reference PKGBUILDs under `packaging/aur/` | **Done** (publish manually) |
+| **AUR** | Reference PKGBUILDs: `appicon`, `appicon-bin`, `appicon-git` | **Done** (publish manually) |
 | **Release signing** | Cosign keyless OIDC → `SHA256SUMS.sigstore.json` | **Done** |
 
 ### Pluggable logo sources

@@ -132,7 +132,15 @@ Or: `bash scripts/ci/verify-release.sh /path/to/downloaded/assets`.
 
 ### AUR (Arch)
 
-Reference PKGBUILDs live under [packaging/aur/](packaging/aur/) (`appicon` source build, `appicon-bin` prebuilt). Not auto-published — fill checksums and push to aur.archlinux.org when ready.
+Reference PKGBUILDs live under [packaging/aur/](packaging/aur/):
+
+| Package | Tracks |
+|---------|--------|
+| `appicon` | Tagged source release |
+| `appicon-bin` | Prebuilt release tarball |
+| `appicon-git` | Latest git commit on `main` |
+
+Fill checksums (except `-git`) and push to aur.archlinux.org when ready.
 
 ### Nix
 
