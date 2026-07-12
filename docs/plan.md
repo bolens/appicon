@@ -1,6 +1,6 @@
 ---
 name: Standalone appicon CLI
-overview: "bolens/appicon — Go CLI resolving desktop/brand icons to local paths. Plan items complete (daemon, AUR refs, cosign); publish AUR when ready."
+overview: "bolens/appicon — plan complete; v0.1.1 ready to cut (cut-release.sh) then push tag + AUR."
 todos:
   - id: scaffold-repo
     content: Clone bolens/appicon into /home/panda/dev/appicon; scaffold Go module, Makefile, LICENSE, CONTRIBUTING, AGENTS, README; push
@@ -57,8 +57,11 @@ todos:
     content: "Post-v1: optional cosign/sigstore signing beyond SHA256SUMS"
     status: completed
   - id: aur-package
-    content: "Post-v1: AUR package (same tier as Nix flake)"
+    content: "Post-v1: AUR packages appicon / appicon-bin / appicon-git"
     status: completed
+  - id: release-v011
+    content: "Cut v0.1.1 (MCP/daemon/packaging/cosign); push tag; bump AUR checksums"
+    status: in_progress
 isProject: false
 ---
 
@@ -82,14 +85,15 @@ isProject: false
 | waybar-config install + dock CSS proof | **Done** — `make install-appicon` + `icons.appicon` in waybar-config |
 | MCP server (`appicon mcp`) | **Done** — `internal/appmcp` + stdio tools |
 | Completions + man (`appicon completion`, `appicon man`) | **Done** |
-| Nix flake + Home Manager module | **Done** — `flake.nix`, `nix/home-manager.nix` (set `vendorHash` on first build) |
+| Nix flake + Home Manager module | **Done** — `flake.nix`, `nix/home-manager.nix` (`vendorHash` set; run `nix flake lock` once) |
 | Nightly live SVGL smoke | **Done** — `.github/workflows/nightly-svgl.yml` |
 | Extra consumer examples | **Done** — `examples/{rofi,walker,notify}-appicon.sh` |
 | Optional socket daemon | **Done** — `appicon daemon` + `contrib/systemd/` |
 | AUR reference PKGBUILDs | **Done** — `packaging/aur/{appicon,appicon-bin,appicon-git}` (not yet pushed to aur.archlinux.org) |
 | Cosign keyless release signing | **Done** — `SHA256SUMS.sigstore.json` on tag releases |
+| Cut **`v0.1.1`** (MCP/daemon/packaging) | **Ready** — `bash scripts/ci/cut-release.sh v0.1.1` then push tag |
 
-**Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/version`.
+**Packages shipped:** `cmd/appicon`, `internal/resolve`, `internal/xdg`, `internal/svgl`, `internal/pack`, `internal/httpindex`, `internal/cache`, `internal/raster`, `internal/appmcp`, `internal/completion`, `internal/daemon`, `internal/version`.
 
 **Tests:** fixture trees under `testdata/xdg` + `testdata/svgl`; httptest for SVGL/http-index; CLI e2e in `cmd/appicon`; behavioral resolve-order tests in `internal/resolve`; MCP in-memory session tests in `internal/appmcp`. `make check` is the gate.
 
@@ -321,4 +325,4 @@ path → XDG → dir packs (user) → svgl → miss
 11. ~~Nix / Home Manager; nightly SVGL; extra consumer examples~~
 12. ~~Optional socket daemon~~
 13. ~~AUR reference PKGBUILDs; cosign keyless release signing~~
-14. Manual: push AUR packages to aur.archlinux.org; cut next release to publish cosign bundles
+14. Cut **`v0.1.1`**: `bash scripts/ci/cut-release.sh v0.1.1` → push `main` + tag → update AUR checksums / publish AUR repos

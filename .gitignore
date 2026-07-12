@@ -67,3 +67,4 @@ Desktop.ini
 *.bak
 *.log
 node_modules/
+.nix-cache/

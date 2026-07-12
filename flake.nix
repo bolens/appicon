@@ -3,59 +3,74 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
   };
 
   outputs =
+    { self, nixpkgs }:
+    let
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "x86_64-darwin"
+        "aarch64-darwin"
+      ];
+      forAllSystems = nixpkgs.lib.genAttrs systems;
+      version = "0.1.1";
+    in
     {
-      self,
-      nixpkgs,
-      flake-utils,
-    }:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = nixpkgs.legacyPackages.${system};
-        version = "0.1.0";
-        appicon = pkgs.buildGoModule {
-          pname = "appicon";
-          inherit version;
-          src = ./.;
-          # Bump after go.mod/go.sum changes:
-          #   nix build .# 2>&1 | sed -n 's/.*got: *//p'
-          vendorHash = "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-          ldflags = [
-            "-s"
-            "-w"
-            "-X github.com/bolens/appicon/internal/version.Version=v${version}"
-          ];
-          meta = with pkgs.lib; {
-            description = "Resolve desktop and brand icons to local file paths";
-            homepage = "https://github.com/bolens/appicon";
-            license = licenses.mit;
-            mainProgram = "appicon";
-            platforms = platforms.linux ++ platforms.darwin;
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+          appicon = pkgs.buildGoModule {
+            pname = "appicon";
+            inherit version;
+            src = self;
+            vendorHash = "sha256-USrxmmu8moHcfqZvtb/kS6rbcW4RaleCp0x6lkXfymY=";
+            ldflags = [
+              "-s"
+              "-w"
+              "-X github.com/bolens/appicon/internal/version.Version=v${version}"
+            ];
+            meta = with pkgs.lib; {
+              description = "Resolve desktop and brand icons to local file paths";
+              homepage = "https://github.com/bolens/appicon";
+              license = licenses.mit;
+              mainProgram = "appicon";
+              platforms = platforms.linux ++ platforms.darwin;
+            };
           };
-        };
-      in
-      {
-        packages.default = appicon;
-        packages.appicon = appicon;
-        apps.default = {
+        in
+        {
+          default = appicon;
+          appicon = appicon;
+        }
+      );
+
+      apps = forAllSystems (system: {
+        default = {
           type = "app";
-          program = "${appicon}/bin/appicon";
+          program = "${self.packages.${system}.default}/bin/appicon";
         };
-        apps.appicon = self.apps.${system}.default;
-        devShells.default = pkgs.mkShell {
-          packages = [
-            pkgs.go
-            pkgs.golangci-lint
-            appicon
-          ];
-        };
-      }
-    )
-    // {
+        appicon = self.apps.${system}.default;
+      });
+
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        {
+          default = pkgs.mkShell {
+            packages = [
+              pkgs.go
+              pkgs.golangci-lint
+              self.packages.${system}.appicon
+            ];
+          };
+        }
+      );
+
       homeManagerModules.default = import ./nix/home-manager.nix;
       overlays.default = final: prev: {
         appicon = self.packages.${final.system}.appicon;

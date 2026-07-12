@@ -185,7 +185,9 @@ make check        # + golangci-lint + gitleaks + actionlint + markdownlint
 make build
 ```
 
-Agent briefing: [AGENTS.md](AGENTS.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md).
+Agent briefing: [AGENTS.md](AGENTS.md). Contributing: [CONTRIBUTING.md](CONTRIBUTING.md). Changelog: [CHANGELOG.md](CHANGELOG.md).
+
+To cut a release locally (no push): `bash scripts/ci/cut-release.sh v0.1.1`.
 
 ## License
 
