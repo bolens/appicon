@@ -306,12 +306,8 @@ func cloneAndRegister(configDir, repo, name, ref, subdir, dest string) error {
 
 func installFromArchiveURL(configDir, rawURL string, opts InstallOpts) error {
 	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
-		return fmt.Errorf("archive URL must be http(s): %s", rawURL)
-	}
-	// Allow cleartext only for loopback (fixture/httptest tests); remote installs need TLS.
-	if u.Scheme == "http" && !isLoopbackHost(u.Hostname()) {
-		return fmt.Errorf("archive URL must use https (got http for %s)", u.Hostname())
+	if err != nil || !allowedArchiveFetchURL(u) {
+		return fmt.Errorf("archive URL must be https (http allowed only for loopback): %s", rawURL)
 	}
 	name := opts.Name
 	if name == "" {
@@ -350,8 +346,8 @@ func installFromArchiveURL(configDir, rawURL string, opts InstallOpts) error {
 				return errors.New("too many redirects")
 			}
 			// Same scheme/host rules as the initial URL (see above).
-			if req.URL.Scheme != "https" && !(req.URL.Scheme == "http" && isLoopbackHost(req.URL.Hostname())) {
-				return fmt.Errorf("redirect scheme not allowed: %s", req.URL.Scheme)
+			if !allowedArchiveFetchURL(req.URL) {
+				return fmt.Errorf("redirect not allowed: %s", req.URL.String())
 			}
 			if isBlockedRedirectHost(req.URL.Hostname()) {
 				return fmt.Errorf("redirect host not allowed: %s", req.URL.Hostname())
@@ -636,6 +632,21 @@ func validateGitRemote(repo string) error {
 func isLoopbackHost(host string) bool {
 	h := strings.ToLower(strings.TrimSpace(host))
 	return h == "localhost" || h == "127.0.0.1" || h == "::1" || h == "[::1]"
+}
+
+// allowedArchiveFetchURL permits https anywhere and http only to loopback (tests).
+func allowedArchiveFetchURL(u *url.URL) bool {
+	if u == nil {
+		return false
+	}
+	switch strings.ToLower(u.Scheme) {
+	case "https":
+		return true
+	case "http":
+		return isLoopbackHost(u.Hostname())
+	default:
+		return false
+	}
 }
 
 // isBlockedRedirectHost is a coarse SSRF denylist for cloud metadata / link-local
