@@ -75,15 +75,47 @@ func lookupIndex(dir, query string) (path, title string, ok bool) {
 		if strings.ToLower(k) != q {
 			continue
 		}
-		p := rel
-		if !filepath.IsAbs(p) {
-			p = filepath.Join(dir, rel)
+		p, err := containedPath(dir, rel)
+		if err != nil {
+			continue
 		}
-		if st, err := os.Stat(p); err == nil && !st.IsDir() {
+		// Lstat + IsRegular: refuse symlinks and directories (Stat would follow links).
+		if st, err := os.Lstat(p); err == nil && st.Mode().IsRegular() {
 			return p, k, true
 		}
 	}
 	return "", "", false
+}
+
+// containedPath joins root and a relative index entry, rejecting absolute paths,
+// ".." escapes, and any path that resolves outside root. index.json is
+// untrusted pack metadata, so a malicious entry must not leak files elsewhere.
+func containedPath(root, entry string) (string, error) {
+	entry = strings.TrimSpace(entry)
+	if entry == "" {
+		return "", errors.New("empty path")
+	}
+	if filepath.IsAbs(entry) {
+		return "", errors.New("absolute path")
+	}
+	// Strict on purpose: names like "a..b" are rejected too (Zip-Slip posture).
+	if strings.Contains(entry, "..") {
+		return "", errors.New("path escapes root")
+	}
+	cleaned := filepath.Clean(entry)
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) {
+		return "", errors.New("path escapes root")
+	}
+	// Clean can still yield an absolute path on some platforms (e.g. volume roots).
+	if filepath.IsAbs(cleaned) {
+		return "", errors.New("absolute path")
+	}
+	target := filepath.Join(root, cleaned)
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", errors.New("path escapes root")
+	}
+	return target, nil
 }
 
 var packExts = map[string]struct{}{

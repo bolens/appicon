@@ -51,6 +51,32 @@ func TestWriteAtomicNested(t *testing.T) {
 	}
 }
 
+func TestWriteAtomicRejectsEscape(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	if _, err := cache.WriteAtomic("../escape.txt", []byte("x")); err == nil {
+		t.Fatal("expected escape rejection")
+	}
+	if _, err := cache.WriteAtomic("/tmp/abs.txt", []byte("x")); err == nil {
+		t.Fatal("expected absolute rejection")
+	}
+}
+
+func TestPathReadExistsRejectEscape(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	if _, err := cache.Path("../escape.txt"); err == nil {
+		t.Fatal("Path: expected escape rejection")
+	}
+	if _, err := cache.Path("/tmp/abs.txt"); err == nil {
+		t.Fatal("Path: expected absolute rejection")
+	}
+	if _, err := cache.Read("../escape.txt"); err == nil {
+		t.Fatal("Read: expected escape rejection")
+	}
+	if cache.Exists("../escape.txt") {
+		t.Fatal("Exists: escape should be false")
+	}
+}
+
 func TestFresh(t *testing.T) {
 	dir := t.TempDir()
 	p := filepath.Join(dir, "f")

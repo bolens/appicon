@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Security
+
+- Pack install hardening: contain `index.json` / `--subdir` under the pack root; refuse dangerous `--path` targets (`/`, `.`, `$HOME`); wipe only under the packs data directory; HTTPS for non-loopback archive URLs; block cloud-metadata/link-local redirects; skip tar symlinks/hardlinks and refuse writes through existing symlinks; per-member (32 MiB) and total (512 MiB) extract caps; reject git remotes that look like CLI flags
+- Cache path containment on `Path` / `WriteAtomic` / `Read` / `Exists`
+- GitHub icon downloads: HTTPS only
+- Raster: max edge 512px (`raster.MaxSize`); `resolve` clamps `--size` / MCP `size` to that max
+
 ## [0.2.1] — 2026-07-12
 
 ### Added

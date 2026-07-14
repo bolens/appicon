@@ -17,10 +17,17 @@ import (
 	"github.com/srwiley/rasterx"
 )
 
+// MaxSize is the largest allowed PNG edge length (pixels).
+// Caps CPU/RAM for oksvg / native rasterizers when callers pass huge --size.
+const MaxSize = 512
+
 // SVGToPNG writes a PNG of the given pixel size to pngPath.
 func SVGToPNG(svgPath, pngPath string, size int) error {
 	if size <= 0 {
 		size = 48
+	}
+	if size > MaxSize {
+		return fmt.Errorf("raster size %d exceeds max %d", size, MaxSize)
 	}
 	if err := os.MkdirAll(filepath.Dir(pngPath), 0o755); err != nil {
 		return err

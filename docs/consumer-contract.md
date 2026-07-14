@@ -32,6 +32,8 @@ Stable keys (do not rename):
 | `tried` | string[] (optional) | With `--explain`: stage labels that missed before the hit or final miss. Auth-skipped BYOK stages use `stage(auth)` (e.g. `logo-dev(auth)`). |
 | `hint` | string (optional) | With `--explain` on miss: actionable next steps |
 
+CLI / MCP `size` (PNG / XDG preference) defaults to `48` and is **clamped to 512**. The JSON schema does not include `size`; the rasterized file path reflects the effective size.
+
 Machine-readable schema: [resolve-result.schema.json](resolve-result.schema.json).
 
 ### Multiple queries (batch)

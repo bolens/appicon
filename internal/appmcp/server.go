@@ -158,7 +158,7 @@ type resolveInput struct {
 	Query   string   `json:"query,omitempty" jsonschema:"single icon query (app id, WM class, .desktop id, display name, Steam appid, or file path)"`
 	Queries []string `json:"queries,omitempty" jsonschema:"multiple icon queries for batch resolve"`
 	Format  string   `json:"format,omitempty" jsonschema:"svg or png (default svg)"`
-	Size    int      `json:"size,omitempty" jsonschema:"pixel size for png / XDG preference (default 48)"`
+	Size    int      `json:"size,omitempty" jsonschema:"pixel size for png / XDG preference (default 48, max 512; larger values clamp)"`
 	Theme   string   `json:"theme,omitempty" jsonschema:"prefer dark or light variants when available"`
 	Offline bool     `json:"offline,omitempty" jsonschema:"skip network; use cache, XDG, and local packs only"`
 	Order   []string `json:"order,omitempty" jsonschema:"optional stage type order override (same as resolve --order)"`
@@ -289,7 +289,7 @@ type prefetchInput struct {
 	Queries     []string `json:"queries,omitempty" jsonschema:"one or more icon queries to warm in the cache"`
 	FromDesktop bool     `json:"from_desktop,omitempty" jsonschema:"include queries derived from installed .desktop files"`
 	Format      string   `json:"format,omitempty" jsonschema:"svg or png (default svg)"`
-	Size        int      `json:"size,omitempty" jsonschema:"pixel size preference (default 48)"`
+	Size        int      `json:"size,omitempty" jsonschema:"pixel size preference (default 48, max 512; larger values clamp)"`
 	Theme       string   `json:"theme,omitempty" jsonschema:"prefer dark or light variants when available"`
 	Offline     bool     `json:"offline,omitempty" jsonschema:"skip network while prefetching"`
 	Order       []string `json:"order,omitempty" jsonschema:"optional stage type order override (same as resolve --order)"`

@@ -71,6 +71,7 @@ sources:
   - `owner/repo/path/to/icon.svg` or blob URL → Contents API (requires PAT); raw accept stays on `api.github.com`
   - Stage `path: owner/repo` + stem query tries `{stem}.svg` then `.png`
   - Minimal PAT scopes: `read:user` (avatars), `repo` (private contents)
+  - Asset downloads are **HTTPS-only** (plain `http://` URLs are rejected)
 
 ## Platform notes
 
