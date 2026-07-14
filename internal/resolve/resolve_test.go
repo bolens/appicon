@@ -9,12 +9,14 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/bolens/appicon/internal/cache"
 	"github.com/bolens/appicon/internal/httpindex"
+	"github.com/bolens/appicon/internal/raster"
 	"github.com/bolens/appicon/internal/resolve"
 	"github.com/bolens/appicon/internal/svgl"
 )
@@ -206,6 +208,26 @@ func TestResolvePNGFromSVGFile(t *testing.T) {
 	}
 	if !res2.Cached {
 		t.Fatal("expected raster cache hit")
+	}
+}
+
+func TestResolveClampsSizeToMax(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	dir := t.TempDir()
+	svg := filepath.Join(dir, "icon.svg")
+	const svgBody = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="black"/></svg>`
+	if err := os.WriteFile(svg, []byte(svgBody), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := resolve.Resolve(context.Background(), svg, resolve.Options{
+		Format: "png",
+		Size:   9999,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(res.Path, "-"+strconv.Itoa(raster.MaxSize)+".png") {
+		t.Fatalf("expected clamped size in path, got %s", res.Path)
 	}
 }
 

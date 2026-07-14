@@ -240,7 +240,7 @@ Flags:
   --local      skip daemon socket
   --order T,…  stage type order override
   --format     svg|png (default svg)
-  --size N     png / XDG size preference (default 48)
+  --size N     png / XDG size preference (default 48, max 512; larger values clamp)
   --theme      dark|light (also APPICON_THEME / GTK_THEME :dark|:light)
 
 Exit: 0=all ok, 1=any not found (supported), 2=error.

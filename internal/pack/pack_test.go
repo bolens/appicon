@@ -1,6 +1,7 @@
 package pack_test
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -30,6 +31,52 @@ func TestLookupIndex(t *testing.T) {
 	}
 	if res.Title != "My Brand" {
 		t.Fatalf("title=%q", res.Title)
+	}
+}
+
+func TestLookupIndexRejectsPathEscape(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	outside := filepath.Join(filepath.Dir(dir), "outside-secret")
+	if err := os.WriteFile(outside, []byte("nope"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Remove(outside) })
+
+	payload, err := json.Marshal(map[string]string{
+		"leak": "../" + filepath.Base(outside),
+		"abs":  outside,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "index.json"), payload, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pack.Lookup(dir, "leak"); !errors.Is(err, pack.ErrNotFound) {
+		t.Fatalf("relative escape: err=%v", err)
+	}
+	if _, err := pack.Lookup(dir, "abs"); !errors.Is(err, pack.ErrNotFound) {
+		t.Fatalf("absolute escape: err=%v", err)
+	}
+}
+
+func TestLookupIndexIgnoresSymlinkTarget(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "secret.svg")
+	if err := os.WriteFile(outside, []byte("<svg/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(dir, "linked.svg")
+	if err := os.Symlink(outside, link); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "index.json"), []byte(`{"x":"linked.svg"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pack.Lookup(dir, "x"); !errors.Is(err, pack.ErrNotFound) {
+		t.Fatalf("symlink index entry: err=%v", err)
 	}
 }
 

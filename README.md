@@ -33,7 +33,7 @@ XDG, SVGL (cache-first), local packs, opt-in CDN/github/BYOK/glyph stages, PNG r
 
 **Portability:** Primary target is Linux (XDG, Flatpak/Snap roots, systemd daemon). macOS/Windows build and run in-process resolve; config/cache fall back to OS user dirs when `XDG_*` are unset. Daemon refuses on Windows (`daemon_supported=false` in `status`).
 
-**PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`.
+**PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`. Pixel size defaults to `48` and is capped at **512** (`--size` / MCP `size` values above that are clamped).
 
 **Theme note:** `--theme dark|light`, `APPICON_THEME`, or `GTK_THEME` suffix (`Adwaita:dark`) prefer matching SVGL/CDN and XDG variants (`name-dark` / `name-symbolic` / `name-light`). Icon **theme name** is separate (`APPICON_ICON_THEME`).
 

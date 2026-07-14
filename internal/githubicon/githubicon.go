@@ -231,7 +231,8 @@ func (c *Client) setAuth(req *http.Request, token string) {
 
 func (c *Client) download(ctx context.Context, rawURL, token string) ([]byte, error) {
 	u, err := url.Parse(rawURL)
-	if err != nil || (u.Scheme != "https" && u.Scheme != "http") {
+	// HTTPS only — API/blob URLs must not downgrade to cleartext HTTP.
+	if err != nil || u.Scheme != "https" {
 		return nil, ErrNotFound
 	}
 	host := strings.ToLower(u.Hostname())

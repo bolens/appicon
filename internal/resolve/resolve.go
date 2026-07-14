@@ -116,6 +116,11 @@ func resolvePipeline(ctx context.Context, query string, opts Options) (Result, e
 	if opts.Size <= 0 {
 		opts.Size = 48
 	}
+	// Clamp oversized --size for consumers; raster.SVGToPNG still errors if a
+	// direct caller passes above MaxSize.
+	if opts.Size > raster.MaxSize {
+		opts.Size = raster.MaxSize
+	}
 	opts.Theme = EffectiveTheme(opts.Theme)
 
 	if query == "" {

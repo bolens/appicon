@@ -98,3 +98,26 @@ func TestContentsWithPAT(t *testing.T) {
 		t.Fatal("expected cache hit from default repo stem")
 	}
 }
+
+func TestDownloadRejectsHTTP(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	_ = cache.Dir()
+
+	var srv *httptest.Server
+	mux := http.NewServeMux()
+	mux.HandleFunc("/users/bolens", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"avatar_url":"http://example.com/avatar.png"}`))
+	})
+	srv = httptest.NewTLSServer(mux)
+	defer srv.Close()
+
+	c := githubicon.New()
+	c.HTTP = srv.Client()
+	c.APIBaseURL = srv.URL
+	c.BaseURL = srv.URL
+
+	_, err := c.Lookup(context.Background(), "bolens", githubicon.Options{})
+	if err == nil {
+		t.Fatal("expected http avatar URL rejection")
+	}
+}

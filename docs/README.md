@@ -10,9 +10,9 @@ Hub for appicon docs. Prefer editing the **source of truth** column when behavio
 | [resolve-batch-result.schema.json](resolve-batch-result.schema.json) | Batch `{results:[…]}` envelope schema |
 | [sources.md](sources.md) | `sources.json`/`sources.yaml` stages, BYOK `token_env`, platform notes, `--order`, offline/MCP notes |
 | [sources.schema.json](sources.schema.json) | Machine-readable schema for sources config |
-| [packs.md](packs.md) | Local packs, recipes, CDN vs pack, bundle artifact |
+| [packs.md](packs.md) | Local packs, recipes, install safety, CDN vs pack, bundle artifact |
 | [deferred.md](deferred.md) | Explicitly **not** a backlog |
-| [../SECURITY.md](../SECURITY.md) | Vulnerability reporting, trust model, release verify |
+| [../SECURITY.md](../SECURITY.md) | Vulnerability reporting, trust model (allowlists, packs, cache/raster limits), release verify |
 | [../AGENTS.md](../AGENTS.md) | Rules for coding agents / MCP usage |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Dev loop, checks, PR expectations |
 | [../CHANGELOG.md](../CHANGELOG.md) | User-facing release notes |

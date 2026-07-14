@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -37,13 +38,16 @@ func Root() (string, error) {
 }
 
 // WriteAtomic writes data to name under Root via tempfile + rename.
-// name may include subdirectories (created as needed).
+// name may include subdirectories (created as needed) but must stay under Root.
 func WriteAtomic(name string, data []byte) (string, error) {
 	dir, err := Root()
 	if err != nil {
 		return "", err
 	}
-	final := filepath.Join(dir, name)
+	final, err := contain(dir, name)
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(filepath.Dir(final), 0o755); err != nil {
 		return "", err
 	}
@@ -69,7 +73,39 @@ func WriteAtomic(name string, data []byte) (string, error) {
 
 // Path returns an absolute path under the cache root without creating it.
 func Path(name string) (string, error) {
-	return filepath.Join(Dir(), name), nil
+	return contain(Dir(), name)
+}
+
+// contain joins name under root, rejecting absolute paths and ".." escapes.
+// Checks are layered on purpose: raw ".." (before Clean), cleaned form, then
+// filepath.Rel as a final containment proof after Join.
+func contain(root, name string) (string, error) {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", fmt.Errorf("empty cache path")
+	}
+	if filepath.IsAbs(name) {
+		return "", fmt.Errorf("cache path must be relative: %q", name)
+	}
+	// Reject ".." in the raw name before Clean (same Zip-Slip posture as packs).
+	// Strict on purpose: names like "a..b" are rejected too.
+	if strings.Contains(name, "..") {
+		return "", fmt.Errorf("cache path escapes root: %q", name)
+	}
+	cleaned := filepath.Clean(name)
+	if cleaned == "." || cleaned == ".." || strings.HasPrefix(cleaned, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("cache path escapes root: %q", name)
+	}
+	// Clean can still yield an absolute path on some platforms (e.g. volume roots).
+	if filepath.IsAbs(cleaned) {
+		return "", fmt.Errorf("cache path must be relative: %q", name)
+	}
+	final := filepath.Join(root, cleaned)
+	rel, err := filepath.Rel(root, final)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("cache path escapes root: %q", name)
+	}
+	return final, nil
 }
 
 // Read reads a file under the cache root.

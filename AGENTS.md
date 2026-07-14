@@ -33,6 +33,7 @@ Documentation map (start here when adding or renaming docs): [docs/README.md](do
 - **Do** treat resolve miss (exit `1`) as a supported outcome for consumers.
 - **Do** use `appicon override` / MCP `override_*` for long-tail remaps — not speculative aliases in code.
 - **Do** use `token_env` / `secret_env` (env names only) for BYOK APIs — never inline secrets in sources/overrides.
+- **Do** treat pack archives / `index.json` / install destinations as untrusted; rely on pack path containment (never assume wipe/`http` archive installs are unrestricted).
 - **Don’t** vendor SVGL’s full catalog into releases.
 - **Don’t** commit secrets or live API tokens.
 - **Don’t** require appicon in consumer bars — optional peer like zscroll/cava (glyph fallback).
