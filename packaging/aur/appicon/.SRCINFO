@@ -14,6 +14,6 @@ pkgbase = appicon
 	conflicts = appicon-bin
 	conflicts = appicon-git
 	source = appicon-0.2.2.tar.gz::https://github.com/bolens/appicon/archive/refs/tags/v0.2.2.tar.gz
-	sha256sums = 73cb9e280a3d31ef5ad3f6e2f086a096047e316dac1ccb424826f52cdab32678
+	sha256sums = 6a5d54db5efc3810ae7f75d3f47cc74d2f7076af2fafa046df2d7ec4e599c459
 
 pkgname = appicon

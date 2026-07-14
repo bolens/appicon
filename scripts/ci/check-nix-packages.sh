@@ -65,11 +65,11 @@ else
 fi
 
 # Binary package must pin release checksums (linux amd64 + arm64).
-if ! grep -q 'sha256-W7PxOUoQAXKY3gBh3Cb+Ij3DDeGL03S0Q3ln2Rt1tFo=' "$PACKAGES_NIX"; then
+if ! grep -q 'sha256-Abo54xqsHPhar8FnctWsKfRHCsAPud4n5YJrswJqWbI=' "$PACKAGES_NIX"; then
   echo "FAIL: appicon-bin amd64 hash missing/outdated in nix/packages.nix" >&2
   fail=1
 fi
-if ! grep -q 'sha256-TH3K5BFYrsZD6S5SXTa7x7zvNp3qjQw19460ihMvb6g=' "$PACKAGES_NIX"; then
+if ! grep -q 'sha256-wZTyepTCRph8DQAdVxwqRmnaCOnB+kLvqiOtkwhC2Cw=' "$PACKAGES_NIX"; then
   echo "FAIL: appicon-bin arm64 hash missing/outdated in nix/packages.nix" >&2
   fail=1
 fi

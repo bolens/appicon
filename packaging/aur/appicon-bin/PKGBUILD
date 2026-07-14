@@ -20,8 +20,8 @@ options=('!strip')
 
 source_x86_64=("$url/releases/download/v$pkgver/appicon_v${pkgver}_linux_amd64.tar.gz")
 source_aarch64=("$url/releases/download/v$pkgver/appicon_v${pkgver}_linux_arm64.tar.gz")
-sha256sums_x86_64=('5bb3f1394a10017298de0061dc26fe223dc30de18bd374b4437967d91b75b45a')
-sha256sums_aarch64=('4c7dcae41158aec643e92e525d36bbc7bcef369dea8d0c35f78eb48a132f6fa8')
+sha256sums_x86_64=('01ba39e31aac1cf85aafc16772d5ac29f4470ac00fb9de27e5826bb3026a59b2')
+sha256sums_aarch64=('c194f27a94c246987c0d001d571c2a4669da08e9c1fa42efaa23ad930842d82c')
 
 package() {
   install -Dm755 appicon "$pkgdir/usr/bin/appicon"
