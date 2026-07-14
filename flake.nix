@@ -15,7 +15,7 @@
         "aarch64-darwin"
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      version = "0.2.1";
+      version = "0.2.2";
       vendorHash = "sha256-OLRfiW2HGvALv0v05vUchIF3353FuRyyMgC+IS62e9Y=";
       packagesFor =
         system:

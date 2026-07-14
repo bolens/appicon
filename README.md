@@ -147,7 +147,7 @@ appicon man | man -l -
 ## Install
 
 ```bash
-ver=v0.2.1
+ver=v0.2.2
 arch=$(uname -m)
 case "$arch" in
   x86_64) arch=amd64 ;;
@@ -155,7 +155,7 @@ case "$arch" in
 esac
 curl -fsSL "https://github.com/bolens/appicon/releases/download/${ver}/appicon_${ver}_linux_${arch}.tar.gz" | tar -xz
 install -m 755 appicon ~/.local/bin/appicon
-appicon version   # → v0.2.1
+appicon version   # → v0.2.2
 ```
 
 Checksums: download `SHA256SUMS` (and optionally `SHA256SUMS.sigstore.json`) from the same release.
@@ -266,7 +266,7 @@ Canonical map (update the listed source of truth when behavior changes): **[docs
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
 | Nix / AUR / systemd | [nix/README.md](nix/README.md), [packaging/aur/README.md](packaging/aur/README.md), [contrib/systemd/README.md](contrib/systemd/README.md) |
 
-To cut a release locally (no push): `bash scripts/ci/cut-release.sh v0.2.1`.
+To cut a release locally (no push): `bash scripts/ci/cut-release.sh v0.2.2`.
 
 ## License
 

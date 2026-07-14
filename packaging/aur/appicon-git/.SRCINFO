@@ -1,6 +1,6 @@
 pkgbase = appicon-git
 	pkgdesc = Resolve desktop and brand icons to local file paths (git)
-	pkgver = 0.2.1.r0.g0000000
+	pkgver = 0.2.2.r0.g0000000
 	pkgrel = 1
 	url = https://github.com/bolens/appicon
 	arch = x86_64
@@ -11,7 +11,7 @@ pkgbase = appicon-git
 	depends = glibc
 	optdepends = resvg: preferred SVG→PNG rasterizer
 	optdepends = librsvg: rsvg-convert SVG→PNG fallback
-	provides = appicon=0.2.1.r0.g0000000
+	provides = appicon=0.2.2.r0.g0000000
 	conflicts = appicon
 	conflicts = appicon-bin
 	source = appicon-git::git+https://github.com/bolens/appicon.git
