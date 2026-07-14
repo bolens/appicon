@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.2] — 2026-07-14
+
 ### Security
 
 - Pack install hardening: contain `index.json` / `--subdir` under the pack root; refuse dangerous `--path` targets (`/`, `.`, `$HOME`); wipe only under the packs data directory; HTTPS for non-loopback archive URLs; block cloud-metadata/link-local redirects; skip tar symlinks/hardlinks and refuse writes through existing symlinks; per-member (32 MiB) and total (512 MiB) extract caps; reject git remotes that look like CLI flags

@@ -3,7 +3,7 @@
 # Publish via: git clone ssh://aur@aur.archlinux.org/appicon.git
 
 pkgname=appicon
-pkgver=0.2.1
+pkgver=0.2.2
 pkgrel=1
 pkgdesc='Resolve desktop and brand icons to local file paths'
 arch=('x86_64' 'aarch64')
