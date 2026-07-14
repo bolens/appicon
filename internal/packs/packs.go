@@ -241,15 +241,15 @@ func installFromGitURL(configDir, rawURL string, opts InstallOpts) error {
 }
 
 func cloneAndRegister(configDir, repo, name, ref, subdir, dest string) error {
-	if _, err := exec.LookPath("git"); err != nil {
-		return ErrNoGit
-	}
 	name = sanitizeName(name)
 	if name == "" {
 		return errors.New("invalid pack name")
 	}
 	if err := validateGitRemote(repo); err != nil {
 		return err
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		return ErrNoGit
 	}
 	root, err := resolveInstallRoot(name, dest)
 	if err != nil {
