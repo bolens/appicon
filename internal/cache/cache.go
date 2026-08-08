@@ -2,6 +2,7 @@
 package cache
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,9 @@ import (
 )
 
 var processLocks sync.Map
+
+// ErrEmptyData means a caller attempted to cache an empty artifact.
+var ErrEmptyData = errors.New("refusing to cache empty data")
 
 // Dir returns the cache directory path without creating it.
 func Dir() string {
@@ -40,6 +44,9 @@ func Root() (string, error) {
 // WriteAtomic writes data to name under Root via tempfile + rename.
 // name may include subdirectories (created as needed) but must stay under Root.
 func WriteAtomic(name string, data []byte) (string, error) {
+	if len(data) == 0 {
+		return "", ErrEmptyData
+	}
 	dir, err := Root()
 	if err != nil {
 		return "", err
@@ -134,7 +141,7 @@ func Read(name string) ([]byte, error) {
 	return os.ReadFile(p)
 }
 
-// Exists reports whether name exists under the cache root.
+// Exists reports whether name is a non-empty regular file under the cache root.
 func Exists(name string) bool {
 	p, err := Path(name)
 	if err != nil {
@@ -144,7 +151,7 @@ func Exists(name string) bool {
 		return false
 	}
 	st, err := os.Stat(p)
-	return err == nil && st.Mode().IsRegular()
+	return err == nil && st.Mode().IsRegular() && st.Size() > 0
 }
 
 // WithLock runs fn while holding an exclusive flock on lockName under Root.
