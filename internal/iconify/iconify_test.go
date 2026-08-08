@@ -2,9 +2,11 @@ package iconify_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/bolens/appicon/internal/cache"
@@ -76,5 +78,49 @@ func TestLookupCacheSeparatesBaseURLs(t *testing.T) {
 	}
 	if string(oneData) != "one" || string(twoData) != "two" {
 		t.Fatalf("one=%q two=%q", oneData, twoData)
+	}
+}
+
+func TestLookupRejectsUnsafeRedirects(t *testing.T) {
+	for _, location := range []string{
+		"https://localhost/escaped.svg",
+		"http://127.0.0.1/downgraded.svg",
+	} {
+		t.Run(location, func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, location, http.StatusFound)
+			}))
+			defer srv.Close()
+			c := iconify.New()
+			c.HTTP = srv.Client()
+			_, err := c.Lookup(context.Background(), "mdi:home", iconify.Options{Base: srv.URL})
+			if !errors.Is(err, iconify.ErrNotFound) {
+				t.Fatalf("location=%s err=%v", location, err)
+			}
+		})
+	}
+}
+
+func TestLookupPreservesRedirectPolicy(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	called := false
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/final.svg", http.StatusFound)
+	}))
+	defer srv.Close()
+	client := srv.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		called = true
+		return http.ErrUseLastResponse
+	}
+	c := iconify.New()
+	c.HTTP = client
+	_, err := c.Lookup(context.Background(), "mdi:home", iconify.Options{Base: srv.URL})
+	if err == nil || !strings.Contains(err.Error(), "HTTP 302") {
+		t.Fatalf("err=%v", err)
+	}
+	if !called {
+		t.Fatal("custom redirect policy was not called")
 	}
 }
