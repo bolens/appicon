@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -17,10 +16,8 @@ var processLocks sync.Map
 func Dir() string {
 	base := os.Getenv("XDG_CACHE_HOME")
 	if base == "" {
-		if runtime.GOOS == "windows" {
-			if d, err := os.UserCacheDir(); err == nil && d != "" {
-				return filepath.Join(d, "appicon")
-			}
+		if d, err := os.UserCacheDir(); err == nil && d != "" {
+			return filepath.Join(d, "appicon")
 		}
 		home, err := os.UserHomeDir()
 		if err != nil {

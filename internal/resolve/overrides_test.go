@@ -11,6 +11,17 @@ import (
 	"github.com/bolens/appicon/internal/resolve"
 )
 
+func TestConfigDirUsesNativeFallback(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", "")
+	base, err := os.UserConfigDir()
+	if err != nil || base == "" {
+		t.Skipf("user config directory unavailable: %v", err)
+	}
+	if got, want := resolve.ConfigDir(), filepath.Join(base, "appicon"); got != want {
+		t.Fatalf("ConfigDir()=%q want %q", got, want)
+	}
+}
+
 func TestConcurrentSetOverridePreservesAllKeys(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
