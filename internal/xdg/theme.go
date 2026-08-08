@@ -243,27 +243,36 @@ func inferDirFromPath(rel string) themeDir {
 		d.MaxSize = 512
 		return d
 	}
-	if w, _, ok := parseSizeDir(top); ok {
+	if w, _, scale, ok := parseSizeDir(top); ok {
 		d.Size = w
 		d.MinSize = w
 		d.MaxSize = w
 		d.Type = "Threshold"
+		d.Scale = scale
 	}
 	return d
 }
 
-func parseSizeDir(name string) (int, int, bool) {
-	name = strings.Split(name, "@")[0]
+func parseSizeDir(name string) (int, int, int, bool) {
+	scale := 1
+	if base, rawScale, ok := strings.Cut(name, "@"); ok {
+		name = base
+		n, err := strconv.Atoi(rawScale)
+		if err != nil || n <= 0 {
+			return 0, 0, 0, false
+		}
+		scale = n
+	}
 	a, b, ok := strings.Cut(name, "x")
 	if !ok {
-		return 0, 0, false
+		return 0, 0, 0, false
 	}
 	w, err1 := strconv.Atoi(a)
 	h, err2 := strconv.Atoi(b)
-	if err1 != nil || err2 != nil {
-		return 0, 0, false
+	if err1 != nil || err2 != nil || w <= 0 || h <= 0 {
+		return 0, 0, 0, false
 	}
-	return w, h, true
+	return w, h, scale, true
 }
 
 func (f *Finder) iconFileIn(roots []string, subdir, name string) (string, bool) {
@@ -437,33 +446,40 @@ func parseIndexTheme(path, theme string) (themeIndex, error) {
 }
 
 func directoryMatchesSize(d themeDir, size int) bool {
-	if d.Scale != 0 && d.Scale != 1 {
-		return false
+	scale := d.Scale
+	if scale <= 0 {
+		scale = 1
 	}
 	switch strings.ToLower(d.Type) {
 	case "fixed":
-		return d.Size == size
+		return d.Size*scale == size
 	case "scalable":
-		return d.MinSize <= size && size <= d.MaxSize
+		return d.MinSize*scale <= size && size <= d.MaxSize*scale
 	default: // Threshold
 		t := d.Threshold
 		if t == 0 {
 			t = 2
 		}
-		return size >= d.Size-t && size <= d.Size+t
+		return size >= (d.Size-t)*scale && size <= (d.Size+t)*scale
 	}
 }
 
 func directorySizeDistance(d themeDir, size int) int {
+	scale := d.Scale
+	if scale <= 0 {
+		scale = 1
+	}
 	switch strings.ToLower(d.Type) {
 	case "fixed":
-		return abs(d.Size - size)
+		return abs(d.Size*scale - size)
 	case "scalable":
-		if size < d.MinSize {
-			return d.MinSize - size
+		minSize := d.MinSize * scale
+		maxSize := d.MaxSize * scale
+		if size < minSize {
+			return minSize - size
 		}
-		if size > d.MaxSize {
-			return size - d.MaxSize
+		if size > maxSize {
+			return size - maxSize
 		}
 		return 0
 	default:
@@ -471,11 +487,13 @@ func directorySizeDistance(d themeDir, size int) int {
 		if t == 0 {
 			t = 2
 		}
-		if size < d.Size-t {
-			return (d.Size - t) - size
+		minSize := (d.Size - t) * scale
+		maxSize := (d.Size + t) * scale
+		if size < minSize {
+			return minSize - size
 		}
-		if size > d.Size+t {
-			return size - (d.Size + t)
+		if size > maxSize {
+			return size - maxSize
 		}
 		return 0
 	}

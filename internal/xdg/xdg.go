@@ -102,13 +102,25 @@ func DefaultDataDirs() []string {
 }
 
 func splitPathList(s string) []string {
-	sep := string(os.PathListSeparator)
+	return splitPathListForSeparator(s, string(os.PathListSeparator))
+}
+
+func splitPathListForSeparator(s, sep string) []string {
 	parts := strings.Split(s, sep)
 	// Also accept ':' on Windows if someone exports Unix-style XDG_DATA_DIRS.
-	if sep != ":" && strings.Contains(s, ":") && !strings.Contains(s, sep) {
+	// Do not split a single native drive path such as C:\Users\me\share.
+	if sep != ":" && strings.Contains(s, ":") && !strings.Contains(s, sep) && !hasWindowsDrivePath(s) {
 		parts = strings.Split(s, ":")
 	}
 	return parts
+}
+
+func hasWindowsDrivePath(s string) bool {
+	if len(s) < 3 || s[1] != ':' || (s[2] != '\\' && s[2] != '/') {
+		return false
+	}
+	c := s[0]
+	return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
 // DefaultIconDirs returns icon base directories (before theme name).
