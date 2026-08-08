@@ -116,6 +116,7 @@ func (c *Client) download(ctx context.Context, rawURL, allowHost string) ([]byte
 	if client == nil {
 		client = New().HTTP
 	}
+	client = clientWithAllowedRedirects(client, allowHost)
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -128,6 +129,24 @@ func (c *Client) download(ctx context.Context, rawURL, allowHost string) ([]byte
 		return nil, fmt.Errorf("iconify: HTTP %d", res.StatusCode)
 	}
 	return limitio.ReadAll(res.Body, 2<<20)
+}
+
+func clientWithAllowedRedirects(client *http.Client, allowHost string) *http.Client {
+	copy := *client
+	original := client.CheckRedirect
+	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if req.URL.Scheme != "https" || strings.ToLower(req.URL.Hostname()) != allowHost {
+			return ErrNotFound
+		}
+		if original != nil {
+			return original(req, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &copy
 }
 
 func parseQuery(query string) (prefix, name string, ok bool) {
