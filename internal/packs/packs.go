@@ -836,6 +836,10 @@ func gitUpdate(root, pin string) error {
 
 // InstallBundle extracts a packs bundle tarball into Root and registers packs.
 func InstallBundle(configDir, bundlePath string) error {
+	return installBundle(configDir, bundlePath, maxTarTotalBytes)
+}
+
+func installBundle(configDir, bundlePath string, maxTotal int64) error {
 	f, err := os.Open(bundlePath)
 	if err != nil {
 		return err
@@ -852,6 +856,7 @@ func InstallBundle(configDir, bundlePath string) error {
 		return err
 	}
 	registered := map[string]string{}
+	var total int64
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -882,9 +887,11 @@ func InstallBundle(configDir, bundlePath string) error {
 				registered[top] = filepath.Join(root, top)
 			}
 		case tar.TypeReg:
-			// Local bundle: per-member limit only (no running total like URL extracts).
 			if hdr.Size > maxTarMemberBytes {
 				return fmt.Errorf("archive member too large: %q", hdr.Name)
+			}
+			if total+hdr.Size > maxTotal {
+				return errors.New("archive uncompressed size exceeds limit")
 			}
 			if err := refuseSymlinkPath(root, target); err != nil {
 				return err
@@ -915,6 +922,7 @@ func InstallBundle(configDir, bundlePath string) error {
 				_ = os.Remove(target)
 				return fmt.Errorf("archive member too large: %q", hdr.Name)
 			}
+			total += n
 			if top != "" && top != "." {
 				registered[top] = filepath.Join(root, top)
 			}
