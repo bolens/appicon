@@ -2,8 +2,6 @@ package resolve
 
 import (
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
@@ -57,17 +55,7 @@ func QueryCandidates(configDir, prefix string, limit int) []string {
 }
 
 func catalogTitles(limit int) []string {
-	path := filepath.Join(cache.Dir(), "catalog.json")
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	var entries []struct {
-		Title string `json:"title"`
-	}
-	if json.Unmarshal(b, &entries) != nil {
-		return nil
-	}
+	entries := readCatalogTitleEntries()
 	var titles []string
 	for _, e := range entries {
 		t := strings.TrimSpace(e.Title)
@@ -80,4 +68,29 @@ func catalogTitles(limit int) []string {
 		}
 	}
 	return titles
+}
+
+type catalogTitleEntry struct {
+	Title string `json:"title"`
+}
+
+func readCatalogTitleEntries() []catalogTitleEntry {
+	b, err := cache.Read("catalog.json")
+	if err != nil {
+		return nil
+	}
+	var wrapped struct {
+		Items []catalogTitleEntry `json:"items"`
+	}
+	if len(b) > 0 && b[0] == '{' {
+		if json.Unmarshal(b, &wrapped) != nil {
+			return nil
+		}
+		return wrapped.Items
+	}
+	var entries []catalogTitleEntry
+	if json.Unmarshal(b, &entries) != nil {
+		return nil
+	}
+	return entries
 }

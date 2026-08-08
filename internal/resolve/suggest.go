@@ -1,13 +1,10 @@
 package resolve
 
 import (
-	"encoding/json"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 
-	"github.com/bolens/appicon/internal/cache"
 	"github.com/bolens/appicon/internal/xdg"
 )
 
@@ -101,17 +98,7 @@ func SuggestFromMisses(configDir string, opts Options, limit int) ([]Suggestion,
 }
 
 func catalogTitlesMatching(query string, limit int) []string {
-	path := filepath.Join(cache.Dir(), "catalog.json")
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil
-	}
-	var entries []struct {
-		Title string `json:"title"`
-	}
-	if json.Unmarshal(b, &entries) != nil {
-		return nil
-	}
+	entries := readCatalogTitleEntries()
 	ql := strings.ToLower(strings.TrimSpace(query))
 	var hits []string
 	for _, e := range entries {
