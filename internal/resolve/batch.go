@@ -14,9 +14,11 @@ func Batch(ctx context.Context, queries []string, opts Options) []BatchItem {
 	out := make([]BatchItem, 0, len(queries))
 	for _, q := range queries {
 		item := BatchItem{Query: q}
-		res, err := Resolve(ctx, q, opts)
-		item.Result = res
-		item.Err = err
+		if err := ctx.Err(); err != nil {
+			item.Err = err
+		} else {
+			item.Result, item.Err = Resolve(ctx, q, opts)
+		}
 		out = append(out, item)
 	}
 	return out

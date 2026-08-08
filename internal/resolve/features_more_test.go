@@ -31,6 +31,33 @@ func TestBatchGlyphAndMiss(t *testing.T) {
 	}
 }
 
+func TestResolveHonorsCanceledContextForLocalStage(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	res, err := resolve.Resolve(ctx, "would-render", resolve.Options{Order: []string{"glyph"}})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("res=%+v err=%v want context.Canceled", res, err)
+	}
+}
+
+func TestBatchPreservesShapeAfterCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	queries := []string{"one", "two", "three"}
+	items := resolve.Batch(ctx, queries, resolve.Options{Order: []string{"glyph"}})
+	if len(items) != len(queries) {
+		t.Fatalf("len=%d want %d", len(items), len(queries))
+	}
+	for i, item := range items {
+		if item.Query != queries[i] || !errors.Is(item.Err, context.Canceled) {
+			t.Errorf("item[%d]=%+v", i, item)
+		}
+	}
+}
+
 func TestRecentMissAndSuggestFromMisses(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
