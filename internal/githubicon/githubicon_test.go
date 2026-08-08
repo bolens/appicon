@@ -137,6 +137,39 @@ func TestContentsCacheSeparatesRefs(t *testing.T) {
 	}
 }
 
+func TestContentsCacheSeparatesSanitizedRefCollisions(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.URL.Query().Get("ref")))
+	}))
+	defer srv.Close()
+	c := githubicon.New()
+	c.HTTP = srv.Client()
+	c.APIBaseURL = srv.URL
+	opts := githubicon.Options{Token: "ghp_x"}
+
+	dotted, err := c.Lookup(context.Background(), "https://github.com/org/repo/blob/main.a/icon.svg", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dashed, err := c.Lookup(context.Background(), "https://github.com/org/repo/blob/main-a/icon.svg", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if dotted.Path == dashed.Path {
+		t.Fatalf("colliding sanitized refs share path %q", dotted.Path)
+	}
+	for path, want := range map[string]string{dotted.Path: "main.a", dashed.Path: "main-a"} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(data) != want {
+			t.Fatalf("path=%q data=%q want=%q", path, data, want)
+		}
+	}
+}
+
 func TestDownloadRejectsHTTP(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	_ = cache.Dir()

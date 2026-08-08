@@ -3,6 +3,7 @@ package githubicon
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -183,7 +184,8 @@ func (c *Client) lookupContents(ctx context.Context, owner, repo, filePath, ref 
 	if ref != "" {
 		cacheIdentity += "-ref-" + ref
 	}
-	cacheKey := sanitizeCache(cacheIdentity)
+	sum := sha256.Sum256([]byte(owner + "\x00" + repo + "\x00" + filePath + "\x00" + ref))
+	cacheKey := fmt.Sprintf("%s-%x", sanitizeCache(cacheIdentity), sum[:6])
 	ext := path.Ext(filePath)
 	if ext == "" {
 		ext = ".bin"
