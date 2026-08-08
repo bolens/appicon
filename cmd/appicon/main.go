@@ -371,8 +371,8 @@ func emitResolveOne(ctx context.Context, query string, opts resolve.Options, asJ
 	if explain && len(res.Tried) > 0 {
 		_, _ = fmt.Fprintf(stderr, "appicon: tried %s before %s\n", strings.Join(res.Tried, ","), res.Source)
 	}
-	_, _ = fmt.Fprintln(stdout, res.Path)
-	return nil
+	_, writeErr := fmt.Fprintln(stdout, res.Path)
+	return writeErr
 }
 
 func emitResolveBatch(ctx context.Context, queries []string, opts resolve.Options, asJSON, explain, localOnly bool, stdout, stderr io.Writer) error {
@@ -411,7 +411,9 @@ func emitResolveBatch(ctx context.Context, queries []string, opts resolve.Option
 			}
 			continue
 		}
-		_, _ = fmt.Fprintln(stdout, it.Result.Path)
+		if _, err := fmt.Fprintln(stdout, it.Result.Path); err != nil {
+			return err
+		}
 	}
 	return first
 }
