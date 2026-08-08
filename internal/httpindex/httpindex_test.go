@@ -158,6 +158,25 @@ func TestLookupThemeVariants(t *testing.T) {
 	}
 }
 
+func TestLookupURLQueryUsesPortableExtension(t *testing.T) {
+	index := `{"Brand":"https://icons.example/brand.svg?v=2#asset"}`
+	c, base := startServer(t, index, `<svg xmlns="http://www.w3.org/2000/svg"/>`)
+	res, err := c.Lookup(context.Background(), "Brand", httpindex.Options{
+		Name:     "query-url",
+		IndexURL: base + "/index.json",
+		Hosts:    []string{"icons.example"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ext := filepath.Ext(res.Path); ext != ".svg" {
+		t.Fatalf("path=%q extension=%q", res.Path, ext)
+	}
+	if strings.ContainsAny(filepath.Base(res.Path), `?#`) {
+		t.Fatalf("non-portable cache filename %q", res.Path)
+	}
+}
+
 func TestRejectMissingHosts(t *testing.T) {
 	c := httpindex.New()
 	_, err := c.Lookup(context.Background(), "x", httpindex.Options{
