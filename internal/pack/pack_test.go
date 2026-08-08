@@ -80,6 +80,39 @@ func TestLookupIndexIgnoresSymlinkTarget(t *testing.T) {
 	}
 }
 
+func TestLookupRejectsSymlinkedIndexDirectory(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "secret.svg"), []byte("<svg/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "icons")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "index.json"), []byte(`{"secret":"icons/secret.svg"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pack.Lookup(dir, "secret"); !errors.Is(err, pack.ErrNotFound) {
+		t.Fatalf("symlinked directory: err=%v", err)
+	}
+}
+
+func TestLookupByFilenameIgnoresSymlink(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	outside := filepath.Join(t.TempDir(), "secret.svg")
+	if err := os.WriteFile(outside, []byte("<svg/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(dir, "secret.svg")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pack.Lookup(dir, "secret"); !errors.Is(err, pack.ErrNotFound) {
+		t.Fatalf("symlink filename: err=%v", err)
+	}
+}
+
 func TestLookupByFilename(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
