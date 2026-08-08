@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -15,6 +14,7 @@ import (
 	"unicode"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/limitio"
 )
 
 // ErrNotFound means the CDN returned no icon for the slug.
@@ -112,7 +112,11 @@ func (c *Client) download(ctx context.Context, rawURL string, hosts []string) ([
 	if err != nil {
 		return nil, err
 	}
-	res, err := c.HTTP.Do(req)
+	client := c.HTTP
+	if client == nil {
+		client = New().HTTP
+	}
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +127,7 @@ func (c *Client) download(ctx context.Context, rawURL string, hosts []string) ([
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, fmt.Errorf("cdn: HTTP %d", res.StatusCode)
 	}
-	return io.ReadAll(io.LimitReader(res.Body, 2<<20))
+	return limitio.ReadAll(res.Body, 2<<20)
 }
 
 // Slugify turns a query into a CDN-friendly slug.

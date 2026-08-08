@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -20,6 +19,7 @@ import (
 	"unicode"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/limitio"
 )
 
 // ErrNotFound means the index had no match for the query.
@@ -364,7 +364,7 @@ func (c *Client) download(ctx context.Context, rawURL string, hosts []string, to
 		return nil, err
 	}
 	defer func() { _ = res.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(res.Body, 4<<20))
+	body, err := limitio.ReadAll(res.Body, 4<<20)
 	if err != nil {
 		return nil, err
 	}

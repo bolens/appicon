@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -15,6 +14,7 @@ import (
 	"time"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/limitio"
 	"github.com/bolens/appicon/internal/slugcdn"
 )
 
@@ -254,7 +254,11 @@ func (c *Client) download(ctx context.Context, rawURL, token string) ([]byte, er
 }
 
 func (c *Client) doBytes(req *http.Request) ([]byte, error) {
-	res, err := c.HTTP.Do(req)
+	client := c.HTTP
+	if client == nil {
+		client = New().HTTP
+	}
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -268,7 +272,7 @@ func (c *Client) doBytes(req *http.Request) ([]byte, error) {
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, fmt.Errorf("github: HTTP %d", res.StatusCode)
 	}
-	return io.ReadAll(io.LimitReader(res.Body, 4<<20))
+	return limitio.ReadAll(res.Body, 4<<20)
 }
 
 func (c *Client) apiBase() string {
