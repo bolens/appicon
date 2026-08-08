@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/bolens/appicon/internal/resolve"
+	"github.com/bolens/appicon/internal/userpath"
 )
 
 // ErrOffline means install/update refused because offline mode is set.
@@ -107,7 +108,7 @@ func List(configDir string) ([]Info, error) {
 		if s.Type != "pack" {
 			continue
 		}
-		p := expandHome(s.Path)
+		p := userpath.ExpandHome(s.Path)
 		name := s.Name
 		if name == "" {
 			name = filepath.Base(p)
@@ -119,7 +120,7 @@ func List(configDir string) ([]Info, error) {
 			if r.PackSubdir != "" {
 				want = filepath.Join(want, r.PackSubdir)
 			}
-			if filepath.Clean(p) == filepath.Clean(expandHome(want)) || name == id {
+			if filepath.Clean(p) == filepath.Clean(userpath.ExpandHome(want)) || name == id {
 				info.Recipe = id
 				break
 			}
@@ -131,7 +132,7 @@ func List(configDir string) ([]Info, error) {
 
 // Add appends a pack entry to sources.json (idempotent by path).
 func Add(configDir, name, dir string) error {
-	dir = expandHome(strings.TrimSpace(dir))
+	dir = userpath.ExpandHome(strings.TrimSpace(dir))
 	name = strings.TrimSpace(name)
 	if name == "" || dir == "" {
 		return errors.New("pack add requires <name> <dir>")
@@ -148,7 +149,7 @@ func Add(configDir, name, dir string) error {
 	}
 	for _, s := range cfg.Sources {
 		t := strings.ToLower(s.Type)
-		if (t == "pack" || t == "dir") && filepath.Clean(expandHome(s.Path)) == filepath.Clean(abs) {
+		if (t == "pack" || t == "dir") && filepath.Clean(userpath.ExpandHome(s.Path)) == filepath.Clean(abs) {
 			return nil
 		}
 	}
@@ -525,7 +526,7 @@ func resolveInstallRoot(name, dest string) (string, error) {
 	if root == "" {
 		root = filepath.Join(Root(), name)
 	} else {
-		root = expandHome(root)
+		root = userpath.ExpandHome(root)
 	}
 	abs, err := filepath.Abs(root)
 	if err != nil {
@@ -920,21 +921,4 @@ func InstallBundle(configDir, bundlePath string) error {
 		}
 	}
 	return nil
-}
-
-func expandHome(p string) string {
-	if p == "" || p[0] != '~' {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return p
-	}
-	if p == "~" {
-		return home
-	}
-	if strings.HasPrefix(p, "~/") {
-		return filepath.Join(home, p[2:])
-	}
-	return p
 }
