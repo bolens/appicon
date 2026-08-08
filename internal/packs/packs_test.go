@@ -786,6 +786,79 @@ func TestInstallRejectsSymlinkDestination(t *testing.T) {
 	}
 }
 
+func TestGitInstallValidatesPackSubdir(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not on PATH")
+	}
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation may require elevated privileges")
+	}
+	tests := []struct {
+		name   string
+		setup  func(t *testing.T, repo string)
+		subdir string
+		want   string
+	}{
+		{name: "missing", subdir: "missing", want: "not found"},
+		{
+			name:   "file",
+			subdir: "icon.svg",
+			want:   "not a directory",
+			setup: func(t *testing.T, repo string) {
+				t.Helper()
+				if err := os.WriteFile(filepath.Join(repo, "icon.svg"), []byte("icon"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+		},
+		{
+			name:   "symlink",
+			subdir: "icons",
+			want:   "symlink",
+			setup: func(t *testing.T, repo string) {
+				t.Helper()
+				if err := os.Symlink(".", filepath.Join(repo, "icons")); err != nil {
+					t.Skipf("symlink unavailable: %v", err)
+				}
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("XDG_DATA_HOME", t.TempDir())
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			repo := t.TempDir()
+			if tt.setup != nil {
+				tt.setup(t, repo)
+			}
+			runGit(t, repo, "init", "-b", "main")
+			runGit(t, repo, "add", ".")
+			if tt.name == "missing" {
+				if err := os.WriteFile(filepath.Join(repo, "README"), []byte("fixture"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				runGit(t, repo, "add", ".")
+			}
+			runGit(t, repo, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-m", "fixture")
+
+			err := packs.Install(t.TempDir(), packs.InstallOpts{Target: "file://" + repo, Name: "fixture", Subdir: tt.subdir})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("err=%v want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=Test", "GIT_AUTHOR_EMAIL=test@example.com", "GIT_COMMITTER_NAME=Test", "GIT_COMMITTER_EMAIL=test@example.com")
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %v: %v\n%s", args, err, out)
+	}
+}
+
 func TestInstallRejectsHomeDest(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())

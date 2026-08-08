@@ -311,7 +311,7 @@ func cloneAndRegister(configDir, repo, name, ref, subdir, dest string) error {
 			}
 		}
 	}
-	packPath, err := subdirUnderRoot(root, subdir)
+	packPath, err := existingPackDir(root, subdir)
 	if err != nil {
 		return err
 	}
@@ -705,6 +705,27 @@ func subdirUnderRoot(root, subdir string) (string, error) {
 	p, err := safeArchiveJoin(root, subdir)
 	if err != nil {
 		return "", fmt.Errorf("subdir escapes install root: %w", err)
+	}
+	return p, nil
+}
+
+func existingPackDir(root, subdir string) (string, error) {
+	p, err := subdirUnderRoot(root, subdir)
+	if err != nil {
+		return "", err
+	}
+	if err := refuseSymlinkPath(root, p); err != nil {
+		return "", err
+	}
+	st, err := os.Stat(p)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("pack subdir not found: %s", subdir)
+		}
+		return "", err
+	}
+	if !st.IsDir() {
+		return "", fmt.Errorf("pack subdir is not a directory: %s", subdir)
 	}
 	return p, nil
 }
