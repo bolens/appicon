@@ -162,7 +162,9 @@ func validateOpts(opts Options) error {
 }
 
 func (c *Client) loadIndex(ctx context.Context, name, indexURL string, hosts []string, offline bool, token string) ([]entry, error) {
-	rel := filepath.Join("http", name, "index.json")
+	identity := sha256.Sum256([]byte(indexURL))
+	cacheName := fmt.Sprintf("%s-%x", name, identity[:6])
+	rel := filepath.Join("http", cacheName, "index.json")
 	path, err := cache.Path(rel)
 	if err != nil {
 		return nil, err
@@ -185,18 +187,35 @@ func (c *Client) loadIndex(ctx context.Context, name, indexURL string, hosts []s
 		}
 	}
 
-	entries, fetchErr := c.fetchIndex(ctx, indexURL, hosts, token)
-	if fetchErr != nil {
-		if stale, err := readIndex(path); err == nil {
-			return stale, nil
+	var entries []entry
+	err = cache.WithLock(filepath.Join("http", cacheName, "index.lock"), func() error {
+		// Another process may have refreshed while this caller waited.
+		if cache.Fresh(path, ttl) {
+			var readErr error
+			entries, readErr = readIndex(path)
+			if readErr == nil {
+				return nil
+			}
 		}
-		return nil, fetchErr
-	}
-	payload, err := json.Marshal(indexFile{FetchedAt: time.Now().UTC(), Entries: entries})
+		fetched, fetchErr := c.fetchIndex(ctx, indexURL, hosts, token)
+		if fetchErr != nil {
+			if stale, staleErr := readIndex(path); staleErr == nil {
+				entries = stale
+				return nil
+			}
+			return fetchErr
+		}
+		payload, marshalErr := json.Marshal(indexFile{FetchedAt: time.Now().UTC(), Entries: fetched})
+		if marshalErr != nil {
+			return marshalErr
+		}
+		if _, writeErr := cache.WriteAtomic(rel, payload); writeErr != nil {
+			return writeErr
+		}
+		entries = fetched
+		return nil
+	})
 	if err != nil {
-		return nil, err
-	}
-	if _, err := cache.WriteAtomic(rel, payload); err != nil {
 		return nil, err
 	}
 	return entries, nil
