@@ -33,9 +33,23 @@ func TestAssertAllowedURL(t *testing.T) {
 
 func TestAssetFileName(t *testing.T) {
 	t.Parallel()
-	got := svgl.AssetFileName("Visual Studio Code", "dark", "https://svgl.app/vscode-dark.svg")
-	want := "visual-studio-code-dark.svg"
-	if got != want {
-		t.Fatalf("got %q want %q", got, want)
+	tests := []struct {
+		name string
+		url  string
+		want string
+	}{
+		{name: "plain", url: "https://svgl.app/vscode-dark.svg", want: "visual-studio-code-dark.svg"},
+		{name: "query and fragment", url: "https://svgl.app/vscode-dark.svg?v=2#icon", want: "visual-studio-code-dark.svg"},
+		{name: "extensionless", url: "https://svgl.app/icon", want: "visual-studio-code-dark.svg"},
+		{name: "unsafe encoded extension", url: "https://svgl.app/icon.%3F", want: "visual-studio-code-dark.svg"},
+		{name: "oversized extension", url: "https://svgl.app/icon.abcdefghijkl", want: "visual-studio-code-dark.svg"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := svgl.AssetFileName("Visual Studio Code", "dark", tt.url)
+			if got != tt.want {
+				t.Fatalf("got %q want %q", got, tt.want)
+			}
+		})
 	}
 }

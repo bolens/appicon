@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -451,15 +452,29 @@ func AssetFileName(title, theme, assetURL string) string {
 	if base == "" {
 		base = "icon"
 	}
-	ext := filepath.Ext(assetURL)
-	if ext == "" {
-		ext = ".svg"
-	}
+	ext := assetExtension(assetURL)
 	name := base
 	if theme != "" {
 		name = base + "-" + theme
 	}
 	return name + ext
+}
+
+func assetExtension(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return ".svg"
+	}
+	ext := path.Ext(u.Path)
+	if len(ext) < 2 || len(ext) > 11 {
+		return ".svg"
+	}
+	for _, r := range ext[1:] {
+		if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
+			return ".svg"
+		}
+	}
+	return ext
 }
 
 func assetRelPath(title, theme, assetURL string) string {
