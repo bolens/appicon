@@ -70,7 +70,8 @@ func DefaultDataDirs() []string {
 	var dirs []string
 	seen := map[string]struct{}{}
 	add := func(d string) {
-		if d == "" {
+		d = strings.TrimSpace(d)
+		if d == "" || !filepath.IsAbs(d) {
 			return
 		}
 		if _, ok := seen[d]; ok {
@@ -81,8 +82,8 @@ func DefaultDataDirs() []string {
 	}
 
 	if home, err := os.UserHomeDir(); err == nil {
-		dataHome := os.Getenv("XDG_DATA_HOME")
-		if dataHome == "" {
+		dataHome := strings.TrimSpace(os.Getenv("XDG_DATA_HOME"))
+		if !filepath.IsAbs(dataHome) {
 			dataHome = filepath.Join(home, ".local", "share")
 		}
 		add(dataHome)
@@ -101,7 +102,7 @@ func DefaultDataDirs() []string {
 	}
 	if dataDirs != "" {
 		for _, d := range splitPathList(dataDirs) {
-			add(strings.TrimSpace(d))
+			add(d)
 		}
 	}
 	return dirs

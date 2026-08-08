@@ -19,7 +19,6 @@ import (
 )
 
 func TestRootUsesPlatformFallback(t *testing.T) {
-	t.Setenv("XDG_DATA_HOME", "")
 	var want string
 	switch runtime.GOOS {
 	case "windows":
@@ -40,8 +39,13 @@ func TestRootUsesPlatformFallback(t *testing.T) {
 	if want == "" {
 		t.Skip("platform user directory unavailable")
 	}
-	if got := packs.Root(); got != want {
-		t.Fatalf("Root()=%q want %q", got, want)
+	for _, value := range []string{"", "relative-data"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("XDG_DATA_HOME", value)
+			if got := packs.Root(); got != want {
+				t.Fatalf("Root()=%q want %q", got, want)
+			}
+		})
 	}
 }
 

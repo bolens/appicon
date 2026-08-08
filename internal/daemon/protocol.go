@@ -77,8 +77,8 @@ func SocketPath() string {
 	if p := os.Getenv("APPICON_SOCKET"); p != "" {
 		return p
 	}
-	runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
-	if runtimeDir == "" {
+	runtimeDir := strings.TrimSpace(os.Getenv("XDG_RUNTIME_DIR"))
+	if !filepath.IsAbs(runtimeDir) {
 		runtimeDir = fallbackRuntimeDir()
 	}
 	return filepath.Join(runtimeDir, SocketName)

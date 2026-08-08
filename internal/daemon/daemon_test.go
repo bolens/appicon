@@ -470,13 +470,17 @@ func TestSupported(t *testing.T) {
 
 func TestSocketPathFallbackAbsolute(t *testing.T) {
 	t.Setenv("APPICON_SOCKET", "")
-	t.Setenv("XDG_RUNTIME_DIR", "")
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	p := daemon.SocketPath()
-	if !filepath.IsAbs(p) {
-		t.Fatalf("socket path not absolute: %q", p)
-	}
-	if filepath.Base(p) != daemon.SocketName {
-		t.Fatalf("base=%q", filepath.Base(p))
+	for _, value := range []string{"", "relative-runtime"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("XDG_RUNTIME_DIR", value)
+			p := daemon.SocketPath()
+			if !filepath.IsAbs(p) {
+				t.Fatalf("socket path not absolute: %q", p)
+			}
+			if filepath.Base(p) != daemon.SocketName {
+				t.Fatalf("base=%q", filepath.Base(p))
+			}
+		})
 	}
 }

@@ -78,8 +78,8 @@ type Info struct {
 
 // Root returns the recommended packs directory under XDG_DATA_HOME.
 func Root() string {
-	base := os.Getenv("XDG_DATA_HOME")
-	if base == "" {
+	base := strings.TrimSpace(os.Getenv("XDG_DATA_HOME"))
+	if !filepath.IsAbs(base) {
 		if runtime.GOOS == "windows" {
 			// Prefer LocalAppData for pack trees (larger than config).
 			if local := strings.TrimSpace(os.Getenv("LOCALAPPDATA")); local != "" {

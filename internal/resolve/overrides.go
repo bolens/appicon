@@ -18,8 +18,8 @@ var ErrOverrideNotFound = errors.New("override not found")
 
 // ConfigDir returns the appicon config root ($XDG_CONFIG_HOME/appicon).
 func ConfigDir() string {
-	base := os.Getenv("XDG_CONFIG_HOME")
-	if base == "" {
+	base := strings.TrimSpace(os.Getenv("XDG_CONFIG_HOME"))
+	if !filepath.IsAbs(base) {
 		if d, err := os.UserConfigDir(); err == nil && d != "" {
 			return filepath.Join(d, "appicon")
 		}
