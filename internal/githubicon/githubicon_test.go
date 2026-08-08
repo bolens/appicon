@@ -101,6 +101,43 @@ func TestContentsWithPAT(t *testing.T) {
 	}
 }
 
+func TestDefaultRepoPNGCacheAvoidsSVGProbe(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	requests := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if r.URL.Path == "/repos/org/icons/contents/firefox.png" {
+			_, _ = w.Write([]byte("\x89PNG\r\n\x1a\nicon"))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer srv.Close()
+	c := githubicon.New()
+	c.HTTP = srv.Client()
+	c.APIBaseURL = srv.URL
+	opts := githubicon.Options{Token: "ghp_x", Repo: "org/icons"}
+
+	first, err := c.Lookup(context.Background(), "firefox", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Cached || requests != 2 {
+		t.Fatalf("first=%+v requests=%d want uncached and 2", first, requests)
+	}
+	opts.Offline = true
+	second, err := c.Lookup(context.Background(), "firefox", opts)
+	if err != nil {
+		t.Fatalf("offline cache lookup: %v", err)
+	}
+	if !second.Cached || second.Path != first.Path {
+		t.Fatalf("second=%+v first=%+v", second, first)
+	}
+	if requests != 2 {
+		t.Fatalf("requests=%d want 2; warm cache contacted provider", requests)
+	}
+}
+
 func TestContentsCacheSeparatesRefs(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 
