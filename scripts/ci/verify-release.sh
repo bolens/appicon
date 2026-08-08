@@ -15,7 +15,14 @@ if [[ ! -f SHA256SUMS ]]; then
   exit 1
 fi
 
-sha256sum --check SHA256SUMS
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum --check SHA256SUMS
+elif command -v shasum >/dev/null 2>&1; then
+  shasum -a 256 --check SHA256SUMS
+else
+  echo "missing checksum tool: install sha256sum or shasum" >&2
+  exit 1
+fi
 
 bundle=SHA256SUMS.sigstore.json
 if [[ -f "$bundle" ]]; then

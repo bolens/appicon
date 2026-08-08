@@ -163,6 +163,8 @@ Checksums: download `SHA256SUMS` (and optionally `SHA256SUMS.sigstore.json`) fro
 ```bash
 # checksums
 sha256sum --check SHA256SUMS
+# macOS
+shasum -a 256 --check SHA256SUMS
 
 # optional cosign keyless verify (Sigstore)
 cosign verify-blob \
