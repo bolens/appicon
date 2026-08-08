@@ -3,6 +3,7 @@ package slugcdn
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net/http"
@@ -157,14 +158,18 @@ func Slugify(query string) string {
 func cacheKey(rawURL string) string {
 	u, err := url.Parse(rawURL)
 	if err != nil {
-		return sanitize(rawURL)
+		u = &url.URL{Path: rawURL}
 	}
 	base := path.Base(u.Path)
 	base = strings.TrimSuffix(base, path.Ext(base))
 	if base == "" || base == "." || base == "/" {
-		return sanitize(u.Path)
+		base = sanitize(u.Path)
 	}
-	return sanitize(base)
+	if base == "" {
+		base = "asset"
+	}
+	sum := sha256.Sum256([]byte(rawURL))
+	return fmt.Sprintf("%s-%x", sanitize(base), sum[:6])
 }
 
 func sanitize(s string) string {
