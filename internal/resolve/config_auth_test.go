@@ -1,6 +1,7 @@
 package resolve_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -88,6 +89,53 @@ func TestSourcesYAMLAndJSON(t *testing.T) {
 	}
 	if _, err := resolve.LoadSourcesConfig(dir); err == nil {
 		t.Fatal("expected ambiguous config error")
+	}
+}
+
+func TestSourcesRejectUnknownFieldsAndMultipleDocuments(t *testing.T) {
+	tests := []struct {
+		name string
+		file string
+		data string
+	}{
+		{name: "json field", file: "sources.json", data: `{"sources":[{"type":"svgl","typo":true}]}`},
+		{name: "yaml field", file: "sources.yaml", data: "sources:\n  - type: svgl\n    typo: true\n"},
+		{name: "yaml documents", file: "sources.yaml", data: "sources:\n  - type: svgl\n---\nsources:\n  - type: xdg\n"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			if err := os.WriteFile(filepath.Join(dir, tt.file), []byte(tt.data), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := resolve.LoadSourcesConfig(dir); !errors.Is(err, resolve.ErrInvalidConfig) {
+				t.Fatalf("err=%v want ErrInvalidConfig", err)
+			}
+		})
+	}
+}
+
+func TestEffectiveStagesRejectInvalidEnabledStages(t *testing.T) {
+	tests := []resolve.Stage{
+		{},
+		{Type: "pack"},
+		{Type: "http-index", Index: "https://example.com/index.json"},
+		{Type: "logo-dev"},
+		{Type: "noun-project", TokenEnv: "KEY"},
+	}
+	for _, stage := range tests {
+		if _, err := resolve.EffectiveStages(resolve.SourcesConfig{Sources: []resolve.Stage{stage}}, nil); !errors.Is(err, resolve.ErrInvalidConfig) {
+			t.Errorf("stage=%+v err=%v want ErrInvalidConfig", stage, err)
+		}
+	}
+
+	disabled := false
+	stages, err := resolve.EffectiveStages(resolve.SourcesConfig{Sources: []resolve.Stage{{Type: "pack", Enabled: &disabled}}}, nil)
+	if err != nil {
+		t.Fatalf("disabled invalid stage: %v", err)
+	}
+	if len(stages) == 0 {
+		t.Fatal("disabled-only config should retain defaults")
 	}
 }
 
