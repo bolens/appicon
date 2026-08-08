@@ -60,3 +60,17 @@ func TestFetchCachesBeforeOfflineCheck(t *testing.T) {
 		t.Fatalf("requests=%d", requests)
 	}
 }
+
+func TestSlugify(t *testing.T) {
+	tests := map[string]string{
+		"org.mozilla.Firefox.desktop": "firefox",
+		"Visual Studio_Code":          "visual-studio-code",
+		"  déjà vu  ":                 "déjà-vu",
+		"!!!":                         "",
+	}
+	for input, want := range tests {
+		if got := slugcdn.Slugify(input); got != want {
+			t.Errorf("Slugify(%q)=%q want %q", input, got, want)
+		}
+	}
+}
