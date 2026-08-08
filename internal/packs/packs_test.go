@@ -171,6 +171,67 @@ func TestInstallFromArchiveURL(t *testing.T) {
 	}
 }
 
+func TestInstallFromPlainTarURL(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+
+	var archive writeBuffer
+	tw := tar.NewWriter(&archive)
+	body := []byte(`<svg xmlns="http://www.w3.org/2000/svg"/>`)
+	if err := tw.WriteHeader(&tar.Header{Name: "icons/foo.svg", Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write(body); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(archive.Bytes())
+	}))
+	defer srv.Close()
+
+	if err := packs.Install(cfg, packs.InstallOpts{Target: srv.URL + "/plain.tar", Name: "plain", Subdir: "icons"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(packs.Root(), "plain", "icons", "foo.svg")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInstallArchiveFailurePreservesExistingPack(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	existing := filepath.Join(packs.Root(), "existing", "keep.svg")
+	if err := os.MkdirAll(filepath.Dir(existing), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(existing, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte("not a gzip stream"))
+	}))
+	defer srv.Close()
+
+	err := packs.Install(cfg, packs.InstallOpts{Target: srv.URL + "/existing.tar.gz", Name: "existing"})
+	if err == nil {
+		t.Fatal("expected corrupt archive error")
+	}
+	got, err := os.ReadFile(existing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "keep" {
+		t.Fatalf("existing pack changed: %q", got)
+	}
+}
+
 func TestInstallUnknownRecipe(t *testing.T) {
 	err := packs.Install(t.TempDir(), packs.InstallOpts{Target: "nope"})
 	if err == nil {

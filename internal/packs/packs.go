@@ -332,10 +332,10 @@ func installFromArchiveURL(configDir, rawURL string, opts InstallOpts) error {
 			return err
 		}
 	}
-	// Note: prepareInstallRoot runs after a successful download so a failed
-	// fetch never wipes an existing dest.
+	// Note: prepareInstallRoot runs only after the download has been extracted
+	// and validated in staging, so bad input never wipes an existing dest.
 
-	tmp, err := os.CreateTemp("", "appicon-pack-*.tar.gz")
+	tmp, err := os.CreateTemp("", "appicon-pack-*.archive")
 	if err != nil {
 		return err
 	}
@@ -390,13 +390,36 @@ func installFromArchiveURL(configDir, rawURL string, opts InstallOpts) error {
 		return errors.New("archive exceeds 512 MiB limit")
 	}
 
+	if err := os.MkdirAll(filepath.Dir(root), 0o755); err != nil {
+		return err
+	}
+	staging, err := os.MkdirTemp(filepath.Dir(root), ".appicon-pack-*")
+	if err != nil {
+		return err
+	}
+	defer func() { _ = os.RemoveAll(staging) }()
+	compressed := strings.HasSuffix(strings.ToLower(u.Path), ".gz") || strings.HasSuffix(strings.ToLower(u.Path), ".tgz")
+	if err := extractTarInto(tmpPath, staging, compressed); err != nil {
+		return err
+	}
+	if opts.Subdir != "" {
+		stagedSubdir, err := subdirUnderRoot(staging, opts.Subdir)
+		if err != nil {
+			return err
+		}
+		if st, err := os.Stat(stagedSubdir); err != nil || !st.IsDir() {
+			return fmt.Errorf("pack subdir not found: %s", opts.Subdir)
+		}
+	}
 	if err := prepareInstallRoot(root); err != nil {
 		return err
 	}
-	if err := os.MkdirAll(root, 0o755); err != nil {
+	// prepareInstallRoot deliberately leaves an allowed empty custom destination.
+	// Remove only that empty directory so the staged tree can be renamed over it.
+	if err := os.Remove(root); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	if err := extractTarGZInto(tmpPath, root); err != nil {
+	if err := os.Rename(staging, root); err != nil {
 		return err
 	}
 	packPath, err := subdirUnderRoot(root, opts.Subdir)
@@ -413,15 +436,14 @@ const (
 	maxTarTotalBytes  = 512 << 20 // 512 MiB uncompressed total
 )
 
-func extractTarGZInto(archive, dest string) error {
+func extractTarInto(archive, dest string, compressed bool) error {
 	f, err := os.Open(archive)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = f.Close() }()
 	var r io.Reader = f
-	lower := strings.ToLower(archive)
-	if strings.HasSuffix(lower, ".gz") || strings.HasSuffix(lower, ".tgz") {
+	if compressed {
 		gz, err := gzip.NewReader(f)
 		if err != nil {
 			return err
