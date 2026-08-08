@@ -301,6 +301,57 @@ func TestInstallBundleRejectsZipSlip(t *testing.T) {
 	}
 }
 
+func TestInstallBundleLateErrorPreservesExistingPack(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+	existing := filepath.Join(packs.Root(), "existing", "icon.svg")
+	if err := os.MkdirAll(filepath.Dir(existing), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(existing, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf writeBuffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	entries := []struct{ name, body string }{
+		{name: "existing/icon.svg", body: "replacement"},
+		{name: "../late-escape.svg", body: "invalid"},
+	}
+	for _, entry := range entries {
+		if err := tw.WriteHeader(&tar.Header{Name: entry.name, Mode: 0o644, Size: int64(len(entry.body)), Typeflag: tar.TypeReg}); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := tw.Write([]byte(entry.body)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	bundle := filepath.Join(t.TempDir(), "bundle.tar.gz")
+	if err := os.WriteFile(bundle, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := packs.InstallBundle(cfg, bundle); err == nil {
+		t.Fatal("expected late archive validation error")
+	}
+	got, err := os.ReadFile(existing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "original" {
+		t.Fatalf("existing pack was modified: %q", got)
+	}
+}
+
 func TestInstallBundleRejectsAbsoluteEntry(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
