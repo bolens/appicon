@@ -218,7 +218,9 @@ make build
 
 ## Cache
 
-Remote assets live under `$XDG_CACHE_HOME/appicon` (default `~/.cache/appicon`). XDG hits return theme paths directly and are not copied.
+Remote assets live under `$XDG_CACHE_HOME/appicon` (default `~/.cache/appicon`
+on Linux and the OS user cache directory elsewhere). XDG hits return theme
+paths directly and are not copied.
 
 Optional query remaps: `$XDG_CONFIG_HOME/appicon/overrides.json` — manage with:
 

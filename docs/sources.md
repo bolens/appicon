@@ -80,7 +80,7 @@ Primary target is **Linux** (FreeDesktop XDG, Flatpak/Snap data roots, optional 
 
 | Surface | Notes |
 |---------|--------|
-| Config / cache / packs | Honor `XDG_*` when set; otherwise `~/.config`, `~/.cache`, `~/.local/share` on Unix, and OS user dirs on Windows (`UserConfigDir` / `UserCacheDir` / `%LOCALAPPDATA%` for packs) |
+| Config / cache / packs | Honor `XDG_*` when set; otherwise use OS user config/cache dirs. Packs default to `~/.local/share` on Linux, Application Support on macOS, and `%LOCALAPPDATA%` on Windows |
 | Local app lookup | Linux: XDG/Flatpak/Snap/`/usr`; macOS: `.app` bundles with XML `Info.plist` under user/system Applications; Windows: Start Menu `.url` entries with an absolute `IconFile` |
 | Daemon | Unix socket only; `status.daemon_supported` is false on Windows — resolve stays in-process |
 | Home Manager | Linux/systemd; use `environmentFiles` for BYOK secret *values* (never `sops.secrets.*.path` in `environment`) |

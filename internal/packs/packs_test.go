@@ -10,12 +10,40 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/bolens/appicon/internal/packs"
 )
+
+func TestRootUsesPlatformFallback(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", "")
+	var want string
+	switch runtime.GOOS {
+	case "windows":
+		if local := strings.TrimSpace(os.Getenv("LOCALAPPDATA")); local != "" {
+			want = filepath.Join(local, "appicon", "packs")
+		} else if base, err := os.UserConfigDir(); err == nil && base != "" {
+			want = filepath.Join(base, "appicon", "packs")
+		}
+	case "darwin":
+		if base, err := os.UserConfigDir(); err == nil && base != "" {
+			want = filepath.Join(base, "appicon", "packs")
+		}
+	default:
+		if home, err := os.UserHomeDir(); err == nil {
+			want = filepath.Join(home, ".local", "share", "appicon", "packs")
+		}
+	}
+	if want == "" {
+		t.Skip("platform user directory unavailable")
+	}
+	if got := packs.Root(); got != want {
+		t.Fatalf("Root()=%q want %q", got, want)
+	}
+}
 
 func TestInstallUpdateLocalGit(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {

@@ -6,7 +6,9 @@ Part of the [documentation map](README.md). Stages/order: [sources.md](sources.m
 
 ## Layout
 
-Recommended root: `$XDG_DATA_HOME/appicon/packs/<name>/` (default `~/.local/share/appicon/packs/`).
+Recommended root: `$XDG_DATA_HOME/appicon/packs/<name>/` (default
+`~/.local/share/appicon/packs/` on Linux, Application Support on macOS, and
+`%LOCALAPPDATA%\appicon\packs` on Windows).
 
 Resolution (see `internal/pack`):
 

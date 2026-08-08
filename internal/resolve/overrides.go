@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -21,10 +20,8 @@ var ErrOverrideNotFound = errors.New("override not found")
 func ConfigDir() string {
 	base := os.Getenv("XDG_CONFIG_HOME")
 	if base == "" {
-		if runtime.GOOS == "windows" {
-			if d, err := os.UserConfigDir(); err == nil && d != "" {
-				return filepath.Join(d, "appicon")
-			}
+		if d, err := os.UserConfigDir(); err == nil && d != "" {
+			return filepath.Join(d, "appicon")
 		}
 		home, err := os.UserHomeDir()
 		if err != nil {

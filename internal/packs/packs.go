@@ -89,6 +89,11 @@ func Root() string {
 				return filepath.Join(d, "appicon", "packs")
 			}
 		}
+		if runtime.GOOS == "darwin" {
+			if d, err := os.UserConfigDir(); err == nil && d != "" {
+				return filepath.Join(d, "appicon", "packs")
+			}
+		}
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return filepath.Join(os.TempDir(), "appicon", "packs")
