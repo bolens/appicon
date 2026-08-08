@@ -5,6 +5,7 @@ package httpindex
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -453,6 +454,10 @@ func assetRelPath(source, title, theme, assetURL string) string {
 	if theme != "" {
 		name = base + "-" + theme
 	}
+	// The index may repoint a title without changing its display name. Include
+	// the URL identity so a refreshed index cannot serve the previous asset.
+	sum := sha256.Sum256([]byte(assetURL))
+	name += fmt.Sprintf("-%x", sum[:6])
 	return filepath.Join("http", source, name+ext)
 }
 

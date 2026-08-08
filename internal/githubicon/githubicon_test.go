@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 
@@ -96,6 +97,43 @@ func TestContentsWithPAT(t *testing.T) {
 	}
 	if !res2.Cached {
 		t.Fatal("expected cache hit from default repo stem")
+	}
+}
+
+func TestContentsCacheSeparatesRefs(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(r.URL.Query().Get("ref")))
+	}))
+	defer srv.Close()
+
+	c := githubicon.New()
+	c.HTTP = srv.Client()
+	c.APIBaseURL = srv.URL
+	opts := githubicon.Options{Token: "ghp_x"}
+
+	main, err := c.Lookup(context.Background(), "https://github.com/org/repo/blob/main/icon.svg", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dev, err := c.Lookup(context.Background(), "https://github.com/org/repo/blob/dev/icon.svg", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if main.Path == dev.Path {
+		t.Fatalf("refs share cache path %q", main.Path)
+	}
+	mainData, err := os.ReadFile(main.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	devData, err := os.ReadFile(dev.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(mainData) != "main" || string(devData) != "dev" {
+		t.Fatalf("main=%q dev=%q", mainData, devData)
 	}
 }
 

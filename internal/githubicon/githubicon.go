@@ -179,7 +179,11 @@ func (c *Client) lookupContents(ctx context.Context, owner, repo, filePath, ref 
 		return Result{}, ErrAuthRequired
 	}
 	filePath = strings.TrimPrefix(filePath, "/")
-	cacheKey := sanitizeCache(owner + "-" + repo + "-" + strings.ReplaceAll(filePath, "/", "-"))
+	cacheIdentity := owner + "-" + repo + "-" + strings.ReplaceAll(filePath, "/", "-")
+	if ref != "" {
+		cacheIdentity += "-ref-" + ref
+	}
+	cacheKey := sanitizeCache(cacheIdentity)
 	ext := path.Ext(filePath)
 	if ext == "" {
 		ext = ".bin"
