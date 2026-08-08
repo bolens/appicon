@@ -165,6 +165,7 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 	if client == nil {
 		client = New().HTTP
 	}
+	client = clientWithAllowedRedirects(client, c.BaseURL)
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -199,6 +200,24 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 		}
 	}
 	return body, nil
+}
+
+func clientWithAllowedRedirects(client *http.Client, baseOverride string) *http.Client {
+	copy := *client
+	original := client.CheckRedirect
+	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if err := assertAPIHost(req.URL, baseOverride); err != nil {
+			return err
+		}
+		if original != nil {
+			return original(req, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &copy
 }
 
 func (c *Client) base() string {
