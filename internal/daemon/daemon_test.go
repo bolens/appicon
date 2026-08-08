@@ -93,6 +93,38 @@ func startServer(t *testing.T, opts resolve.Options) (socket string, stop contex
 	return socket, cancel
 }
 
+func startOneShotServer(t *testing.T, response daemon.Response) string {
+	t.Helper()
+	socket := filepath.Join(t.TempDir(), "appicon.sock")
+	ln, err := daemon.Listen(socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		defer func() { _ = ln.Close() }()
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		var req daemon.Request
+		if daemon.ReadFrame(conn, &req) != nil {
+			return
+		}
+		_ = daemon.WriteFrame(conn, response)
+	}()
+	t.Cleanup(func() {
+		_ = ln.Close()
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+		}
+	})
+	return socket
+}
+
 func TestProtocolRoundTrip(t *testing.T) {
 	t.Parallel()
 	r, w, err := os.Pipe()
@@ -246,6 +278,35 @@ func TestDaemonResolveAndMiss(t *testing.T) {
 	_, err = c.Resolve(context.Background(), "zzzz-missing-daemon-icon", opts)
 	if !errors.Is(err, resolve.ErrNotFound) {
 		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestClientRejectsMismatchedResolveResponse(t *testing.T) {
+	path := "/wrong/icon.svg"
+	for _, response := range []daemon.Response{
+		{Op: "ping", Query: "wanted", Path: &path},
+		{Op: "resolve", Query: "other", Path: &path},
+	} {
+		socket := startOneShotServer(t, response)
+		client := &daemon.Client{Socket: socket, Timeout: time.Second}
+		if _, err := client.Resolve(context.Background(), "wanted", resolve.Options{}); err == nil || !strings.Contains(err.Error(), "invalid daemon response") {
+			t.Fatalf("response=%+v err=%v", response, err)
+		}
+	}
+}
+
+func TestClientRejectsMalformedBatchResponse(t *testing.T) {
+	queries := []string{"one", "two"}
+	for _, response := range []daemon.Response{
+		{Op: "resolve", Results: []daemon.BatchResult{{Query: "one"}, {Query: "two"}}},
+		{Op: "resolve-batch", Results: []daemon.BatchResult{{Query: "one"}}},
+		{Op: "resolve-batch", Results: []daemon.BatchResult{{Query: "two"}, {Query: "one"}}},
+	} {
+		socket := startOneShotServer(t, response)
+		client := &daemon.Client{Socket: socket, Timeout: time.Second}
+		if _, err := client.ResolveBatch(context.Background(), queries, resolve.Options{}, false); err == nil || !strings.Contains(err.Error(), "invalid daemon") {
+			t.Fatalf("response=%+v err=%v", response, err)
+		}
 	}
 }
 

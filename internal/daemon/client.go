@@ -107,6 +107,12 @@ func (c *Client) ResolveExplain(ctx context.Context, query string, opts resolve.
 	if err := ReadFrame(conn, &resp); err != nil {
 		return resolve.Result{}, err
 	}
+	if resp.Op != "resolve" {
+		return resolve.Result{}, fmt.Errorf("invalid daemon response op %q for resolve", resp.Op)
+	}
+	if resp.Query != query {
+		return resolve.Result{}, fmt.Errorf("invalid daemon response query %q, want %q", resp.Query, query)
+	}
 	return resultFromResponse(resp)
 }
 
@@ -127,11 +133,20 @@ func (c *Client) ResolveBatch(ctx context.Context, queries []string, opts resolv
 	if err := ReadFrame(conn, &resp); err != nil {
 		return nil, err
 	}
+	if resp.Op != "resolve-batch" {
+		return nil, fmt.Errorf("invalid daemon response op %q for resolve-batch", resp.Op)
+	}
 	if resp.Error != nil && len(resp.Results) == 0 {
 		return nil, errors.New(*resp.Error)
 	}
+	if len(resp.Results) != len(queries) {
+		return nil, fmt.Errorf("invalid daemon batch result count %d, want %d", len(resp.Results), len(queries))
+	}
 	out := make([]resolve.BatchItem, 0, len(resp.Results))
-	for _, br := range resp.Results {
+	for i, br := range resp.Results {
+		if br.Query != queries[i] {
+			return nil, fmt.Errorf("invalid daemon batch query %q at index %d, want %q", br.Query, i, queries[i])
+		}
 		item := resolve.BatchItem{Query: br.Query}
 		r := Response{
 			Path:   br.Path,
