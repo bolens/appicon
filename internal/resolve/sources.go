@@ -364,7 +364,7 @@ func ValidateStages(stages []Stage) error {
 			}
 		}
 		if t == "http-index" {
-			if strings.TrimSpace(s.Index) == "" || len(s.Hosts) == 0 {
+			if strings.TrimSpace(s.Index) == "" || !hasNonEmptyString(s.Hosts) {
 				return fmt.Errorf("%w: http-index requires index and hosts", ErrInvalidConfig)
 			}
 		}
@@ -384,6 +384,15 @@ func ValidateStages(stages []Stage) error {
 		}
 	}
 	return nil
+}
+
+func hasNonEmptyString(values []string) bool {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 func validEnvName(name string) bool {
