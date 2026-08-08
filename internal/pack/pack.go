@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/bolens/appicon/internal/userpath"
 )
 
 // ErrNotFound means the pack had no matching icon.
@@ -25,7 +27,7 @@ type Result struct {
 //  2. Exact stem match on *.svg / *.png / *.webp files (recursive, shallow-first)
 //  3. Case-insensitive / hyphen-normalized contains match on stems
 func Lookup(dir, query string) (Result, error) {
-	dir = expandHome(strings.TrimSpace(dir))
+	dir = userpath.ExpandHome(strings.TrimSpace(dir))
 	query = strings.TrimSpace(query)
 	if dir == "" || query == "" {
 		return Result{}, ErrNotFound
@@ -42,23 +44,6 @@ func Lookup(dir, query string) (Result, error) {
 		return Result{Path: path, Title: title}, nil
 	}
 	return Result{}, ErrNotFound
-}
-
-func expandHome(p string) string {
-	if p == "" || p[0] != '~' {
-		return p
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return p
-	}
-	if p == "~" {
-		return home
-	}
-	if strings.HasPrefix(p, "~/") {
-		return filepath.Join(home, p[2:])
-	}
-	return p
 }
 
 func lookupIndex(dir, query string) (path, title string, ok bool) {
