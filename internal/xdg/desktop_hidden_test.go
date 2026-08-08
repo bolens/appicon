@@ -58,13 +58,46 @@ func TestVisibleDesktopPrecedesLowerDuplicate(t *testing.T) {
 	}
 }
 
+func TestNestedDesktopUsesSpecID(t *testing.T) {
+	root := t.TempDir()
+	writeDesktopFixture(t, root, filepath.Join("vendor", "browser.desktop"), "[Desktop Entry]\nName=Nested Browser\nIcon=nested\n")
+	finder := NewFinder(Options{DataDirs: []string{root}})
+
+	for _, query := range []string{"vendor-browser", "vendor-browser.desktop", "Nested Browser"} {
+		entry, ok := finder.findDesktop(query)
+		if !ok || entry.ID != "vendor-browser" || entry.Icon != "nested" {
+			t.Errorf("query %q entry=%+v ok=%v", query, entry, ok)
+		}
+	}
+	entries := finder.ListDesktopEntries()
+	if len(entries) != 1 || entries[0].ID != "vendor-browser" {
+		t.Fatalf("entries=%+v", entries)
+	}
+}
+
+func TestNestedHiddenDesktopMasksLowerPriorityEntry(t *testing.T) {
+	user := t.TempDir()
+	system := t.TempDir()
+	name := filepath.Join("vendor", "masked.desktop")
+	writeDesktopFixture(t, user, name, "[Desktop Entry]\nHidden=true\n")
+	writeDesktopFixture(t, system, name, "[Desktop Entry]\nName=Visible Below\nIcon=visible\n")
+	finder := NewFinder(Options{DataDirs: []string{user, system}})
+
+	if entry, ok := finder.findDesktop("vendor-masked"); ok {
+		t.Fatalf("hidden nested entry resolved: %+v", entry)
+	}
+	if entries := finder.ListDesktopEntries(); len(entries) != 0 {
+		t.Fatalf("hidden nested entry leaked: %+v", entries)
+	}
+}
+
 func writeDesktopFixture(t *testing.T, root, name, body string) {
 	t.Helper()
-	dir := filepath.Join(root, "applications")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	path := filepath.Join(root, "applications", name)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, name), []byte(body), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
