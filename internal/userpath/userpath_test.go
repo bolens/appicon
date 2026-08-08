@@ -10,6 +10,7 @@ import (
 func TestExpandHome(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	tests := map[string]string{
 		"":                     "",
 		"plain/path":           "plain/path",

@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 type nativeApp struct {
@@ -16,11 +17,21 @@ type nativeApp struct {
 	Icon string
 }
 
+type nativeAppIndexEntry struct {
+	signature string
+	apps      []nativeApp
+}
+
+var nativeAppIndex = struct {
+	sync.Mutex
+	entries map[string]nativeAppIndexEntry
+}{entries: map[string]nativeAppIndexEntry{}}
+
 func (f *Finder) findNativeApp(query string) (nativeApp, bool) {
 	q := strings.TrimSpace(query)
 	for _, app := range f.listNativeApps() {
-		bundleName := strings.TrimSuffix(filepath.Base(app.Path), ".app")
-		if strings.EqualFold(q, app.Name) || strings.EqualFold(q, app.ID) || strings.EqualFold(strings.TrimSuffix(q, ".app"), bundleName) {
+		fileName := trimNativeAppExtension(filepath.Base(app.Path))
+		if strings.EqualFold(q, app.Name) || strings.EqualFold(q, app.ID) || strings.EqualFold(trimNativeAppExtension(q), fileName) {
 			return app, true
 		}
 	}
@@ -28,9 +39,21 @@ func (f *Finder) findNativeApp(query string) (nativeApp, bool) {
 }
 
 func (f *Finder) listNativeApps() []nativeApp {
+	key, signature := nativeAppIndexIdentity(f.NativeAppDirs)
+	nativeAppIndex.Lock()
+	defer nativeAppIndex.Unlock()
+	if cached, ok := nativeAppIndex.entries[key]; ok && cached.signature == signature {
+		return append([]nativeApp(nil), cached.apps...)
+	}
+	apps := scanNativeApps(f.NativeAppDirs)
+	nativeAppIndex.entries[key] = nativeAppIndexEntry{signature: signature, apps: append([]nativeApp(nil), apps...)}
+	return apps
+}
+
+func scanNativeApps(roots []string) []nativeApp {
 	var out []nativeApp
 	seen := map[string]struct{}{}
-	for _, root := range f.NativeAppDirs {
+	for _, root := range roots {
 		_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 			if err != nil {
 				return nil
@@ -62,6 +85,46 @@ func (f *Finder) listNativeApps() []nativeApp {
 		})
 	}
 	return out
+}
+
+func trimNativeAppExtension(name string) string {
+	ext := strings.ToLower(filepath.Ext(name))
+	if ext == ".app" || ext == ".url" {
+		return strings.TrimSuffix(name, filepath.Ext(name))
+	}
+	return name
+}
+
+func nativeAppIndexIdentity(roots []string) (string, string) {
+	var key, signature strings.Builder
+	for _, root := range roots {
+		clean := filepath.Clean(root)
+		key.WriteString(clean)
+		key.WriteByte(0)
+		signature.WriteString(clean)
+		if info, err := os.Stat(clean); err == nil {
+			signature.WriteString("|")
+			signature.WriteString(info.ModTime().UTC().String())
+			signature.WriteString("|")
+			signature.WriteString(info.Mode().String())
+			if entries, readErr := os.ReadDir(clean); readErr == nil {
+				for _, entry := range entries {
+					signature.WriteString("|")
+					signature.WriteString(entry.Name())
+					if childInfo, infoErr := entry.Info(); infoErr == nil {
+						signature.WriteString("|")
+						signature.WriteString(childInfo.ModTime().UTC().String())
+						signature.WriteString("|")
+						signature.WriteString(childInfo.Mode().String())
+					}
+				}
+			}
+		} else {
+			signature.WriteString("|missing")
+		}
+		signature.WriteByte(0)
+	}
+	return key.String(), signature.String()
 }
 
 func readAppBundle(bundle string) (nativeApp, bool) {

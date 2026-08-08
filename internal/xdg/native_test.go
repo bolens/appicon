@@ -82,12 +82,14 @@ func TestResolveWindowsInternetShortcutFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := xdg.NewFinder(xdg.Options{NativeAppDirs: []string{root}, DataDirs: []string{t.TempDir()}, IconDirs: []string{t.TempDir()}})
-	res, err := f.Resolve("browser")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if res.Path != icon || res.Desktop != shortcut {
-		t.Fatalf("res=%+v", res)
+	for _, query := range []string{"browser", "Browser.url", "browser.URL"} {
+		res, err := f.Resolve(query)
+		if err != nil {
+			t.Fatalf("query %q: %v", query, err)
+		}
+		if res.Path != icon || res.Desktop != shortcut {
+			t.Fatalf("query %q: res=%+v", query, res)
+		}
 	}
 }
 
