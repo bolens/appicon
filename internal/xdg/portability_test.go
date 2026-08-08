@@ -4,8 +4,41 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 )
+
+func TestDefaultDataDirsRejectsRelativeXDGPaths(t *testing.T) {
+	home := t.TempDir()
+	abs := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
+	t.Setenv("XDG_DATA_HOME", "relative-home")
+	t.Setenv("XDG_DATA_DIRS", strings.Join([]string{"relative-one", abs, "relative-two"}, string(os.PathListSeparator)))
+	dirs := DefaultDataDirs()
+	if want := filepath.Join(home, ".local", "share"); !slices.Contains(dirs, want) {
+		t.Fatalf("default data home missing from %q", dirs)
+	}
+	if !slices.Contains(dirs, abs) {
+		t.Fatalf("absolute XDG_DATA_DIRS entry missing from %q", dirs)
+	}
+	for _, bad := range []string{"relative-home", "relative-one", "relative-two"} {
+		if slices.Contains(dirs, bad) {
+			t.Fatalf("relative path %q accepted in %q", bad, dirs)
+		}
+	}
+}
+
+func TestDefaultDataDirsHonorsAbsoluteDataHome(t *testing.T) {
+	dataHome := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_DATA_DIRS", "")
+	dirs := DefaultDataDirs()
+	if len(dirs) == 0 || dirs[0] != dataHome {
+		t.Fatalf("dirs=%q want first=%q", dirs, dataHome)
+	}
+}
 
 func TestSplitPathListForWindowsSeparator(t *testing.T) {
 	tests := []struct {

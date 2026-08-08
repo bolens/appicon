@@ -12,13 +12,17 @@ import (
 )
 
 func TestConfigDirUsesNativeFallback(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", "")
-	base, err := os.UserConfigDir()
-	if err != nil || base == "" {
-		t.Skipf("user config directory unavailable: %v", err)
-	}
-	if got, want := resolve.ConfigDir(), filepath.Join(base, "appicon"); got != want {
-		t.Fatalf("ConfigDir()=%q want %q", got, want)
+	for _, value := range []string{"", "relative-config"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv("XDG_CONFIG_HOME", value)
+			base, err := os.UserConfigDir()
+			if err != nil || base == "" {
+				t.Skipf("user config directory unavailable: %v", err)
+			}
+			if got, want := resolve.ConfigDir(), filepath.Join(base, "appicon"); got != want {
+				t.Fatalf("ConfigDir()=%q want %q", got, want)
+			}
+		})
 	}
 }
 

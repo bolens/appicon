@@ -18,8 +18,8 @@ var ErrEmptyData = errors.New("refusing to cache empty data")
 
 // Dir returns the cache directory path without creating it.
 func Dir() string {
-	base := os.Getenv("XDG_CACHE_HOME")
-	if base == "" {
+	base := strings.TrimSpace(os.Getenv("XDG_CACHE_HOME"))
+	if !filepath.IsAbs(base) {
 		if d, err := os.UserCacheDir(); err == nil && d != "" {
 			return filepath.Join(d, "appicon")
 		}
