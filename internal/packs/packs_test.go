@@ -751,6 +751,41 @@ func TestInstallRejectsSubdirEscape(t *testing.T) {
 	}
 }
 
+func TestInstallRejectsSymlinkDestination(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("symlink creation may require elevated privileges")
+	}
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	outside := t.TempDir()
+	if err := os.Mkdir(filepath.Join(outside, ".git"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(outside, "keep.txt")
+	if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(packs.Root(), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	dest := filepath.Join(packs.Root(), "linked")
+	if err := os.Symlink(outside, dest); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	err := packs.Install(t.TempDir(), packs.InstallOpts{
+		Target: "file:///nonexistent/linked.git",
+		Name:   "linked",
+	})
+	if err == nil || !strings.Contains(err.Error(), "symlink") {
+		t.Fatalf("err=%v want symlink rejection", err)
+	}
+	data, err := os.ReadFile(marker)
+	if err != nil || string(data) != "keep" {
+		t.Fatalf("outside marker changed: data=%q err=%v", data, err)
+	}
+}
+
 func TestInstallRejectsHomeDest(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())

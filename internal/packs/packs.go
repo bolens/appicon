@@ -260,6 +260,9 @@ func cloneAndRegister(configDir, repo, name, ref, subdir, dest string) error {
 	if err != nil {
 		return err
 	}
+	if err := refuseSymlinkPath(root, root); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(root), 0o755); err != nil {
 		return err
 	}
