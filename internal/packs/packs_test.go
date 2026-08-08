@@ -501,6 +501,66 @@ func TestInstallArchiveURLBlocksMetadataRedirect(t *testing.T) {
 	}
 }
 
+func TestInstallArchiveURLBlocksUnsafeInitialHosts(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+
+	for _, target := range []string{
+		"https://169.254.169.254/pack.tar.gz",
+		"https://169.254.1.2/pack.tar.gz",
+		"https://[fe80::1]/pack.tar.gz",
+		"https://[::]/pack.tar.gz",
+		"https://metadata.google.internal/pack.tar.gz",
+	} {
+		t.Run(target, func(t *testing.T) {
+			err := packs.Install(cfg, packs.InstallOpts{Target: target, Name: "blocked"})
+			if err == nil || !strings.Contains(err.Error(), "host not allowed") {
+				t.Fatalf("target=%s err=%v", target, err)
+			}
+		})
+	}
+}
+
+func TestInstallArchiveURLRejectsRedirectDowngrade(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://127.0.0.1/internal.tar.gz", http.StatusFound)
+	}))
+	defer srv.Close()
+	err := packs.Install(cfg, packs.InstallOpts{Target: srv.URL + "/pack.tar.gz", Name: "downgrade"})
+	if err == nil || !strings.Contains(err.Error(), "redirect not allowed") {
+		t.Fatalf("err=%v", err)
+	}
+}
+
+func TestInstallArchiveURLBlocksPrivateHTTPSRedirect(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	cfg := filepath.Join(os.Getenv("XDG_CONFIG_HOME"), "appicon")
+
+	for _, target := range []string{
+		"https://192.168.1.20/internal.tar.gz",
+		"https://[::1]/internal.tar.gz",
+		"https://[fd00::1]/internal.tar.gz",
+		"https://[fe80::1]/internal.tar.gz",
+	} {
+		t.Run(target, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Redirect(w, r, target, http.StatusFound)
+			}))
+			defer srv.Close()
+			err := packs.Install(cfg, packs.InstallOpts{Target: srv.URL + "/pack.tar.gz", Name: "private"})
+			if err == nil || !strings.Contains(err.Error(), "redirect host not allowed") {
+				t.Fatalf("target=%s err=%v", target, err)
+			}
+		})
+	}
+}
+
 func TestInstallArchiveURLRequiresHTTPS(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())

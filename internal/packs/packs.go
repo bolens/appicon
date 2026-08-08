@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"net/url"
 	"os"
 	"os/exec"
@@ -310,6 +311,9 @@ func installFromArchiveURL(configDir, rawURL string, opts InstallOpts) error {
 	if err != nil || !allowedArchiveFetchURL(u) {
 		return fmt.Errorf("archive URL must be https (http allowed only for loopback): %s", rawURL)
 	}
+	if isBlockedInitialArchiveHost(u.Hostname()) {
+		return fmt.Errorf("archive host not allowed: %s", u.Hostname())
+	}
 	name := opts.Name
 	if name == "" {
 		name = nameFromURL(rawURL)
@@ -346,8 +350,9 @@ func installFromArchiveURL(configDir, rawURL string, opts InstallOpts) error {
 			if len(via) >= 5 {
 				return errors.New("too many redirects")
 			}
-			// Same scheme/host rules as the initial URL (see above).
-			if !allowedArchiveFetchURL(req.URL) {
+			// The loopback HTTP exception is only for an explicitly supplied
+			// initial URL (primarily local development/tests), never redirects.
+			if strings.ToLower(req.URL.Scheme) != "https" {
 				return fmt.Errorf("redirect not allowed: %s", req.URL.String())
 			}
 			if isBlockedRedirectHost(req.URL.Hostname()) {
@@ -653,19 +658,29 @@ func allowedArchiveFetchURL(u *url.URL) bool {
 // isBlockedRedirectHost is a coarse SSRF denylist for cloud metadata / link-local
 // endpoints that a malicious redirect could otherwise reach.
 func isBlockedRedirectHost(host string) bool {
+	if isBlockedInitialArchiveHost(host) {
+		return true
+	}
+	addr, err := netip.ParseAddr(normalizeIPHost(host))
+	return err == nil && (addr.IsLoopback() || addr.IsPrivate())
+}
+
+func isBlockedInitialArchiveHost(host string) bool {
 	h := strings.ToLower(strings.TrimSpace(host))
 	// url.Hostname() usually strips brackets; trim anyway for "[...]".
 	h = strings.TrimPrefix(h, "[")
 	h = strings.TrimSuffix(h, "]")
 	switch h {
-	case "169.254.169.254", "metadata.google.internal", "metadata", "0.0.0.0":
+	case "metadata.google.internal", "metadata":
 		return true
 	}
-	// Link-local / metadata ranges commonly used in cloud SSRF.
-	if strings.HasPrefix(h, "169.254.") {
-		return true
-	}
-	return false
+	addr, err := netip.ParseAddr(normalizeIPHost(h))
+	return err == nil && (addr.IsLinkLocalUnicast() || addr.IsUnspecified())
+}
+
+func normalizeIPHost(host string) string {
+	host, _, _ = strings.Cut(strings.TrimSpace(host), "%")
+	return strings.Trim(host, "[]")
 }
 
 // refuseSymlinkPath walks from root toward target and errors if any component is a symlink.
