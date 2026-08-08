@@ -359,6 +359,7 @@ func (c *Client) download(ctx context.Context, rawURL string, hosts []string, to
 	if client == nil {
 		client = New().HTTP
 	}
+	client = clientWithAllowedRedirects(client, hosts)
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -375,6 +376,24 @@ func (c *Client) download(ctx context.Context, rawURL string, hosts []string, to
 		return nil, fmt.Errorf("http-index: HTTP %d", res.StatusCode)
 	}
 	return body, nil
+}
+
+func clientWithAllowedRedirects(client *http.Client, hosts []string) *http.Client {
+	copy := *client
+	original := client.CheckRedirect
+	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if err := assertAllowedURL(req.URL.String(), hosts); err != nil {
+			return err
+		}
+		if original != nil {
+			return original(req, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &copy
 }
 
 func assertAllowedURL(raw string, hosts []string) error {

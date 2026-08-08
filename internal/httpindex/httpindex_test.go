@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -179,6 +180,60 @@ func TestRejectNonAllowlistedAsset(t *testing.T) {
 	if !errors.Is(err, httpindex.ErrHostNotAllowed) {
 		t.Fatalf("err=%v", err)
 	}
+}
+
+func TestRejectNonAllowlistedIndexRedirect(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "https://localhost/redirected-index.json", http.StatusFound)
+	}))
+	t.Cleanup(srv.Close)
+
+	c := httpindex.New()
+	c.HTTP = srv.Client() // follows redirects unless the client wrapper rejects them
+	_, err := c.Lookup(context.Background(), "Brand", httpindex.Options{
+		Name:     "redirect-index",
+		IndexURL: srv.URL + "/index.json",
+		Hosts:    []string{testURLHost(t, srv.URL)},
+	})
+	if !errors.Is(err, httpindex.ErrHostNotAllowed) {
+		t.Fatalf("err=%v want ErrHostNotAllowed", err)
+	}
+}
+
+func TestRejectNonAllowlistedAssetRedirect(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	var baseURL string
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/index.json":
+			_, _ = w.Write([]byte(`{"Brand":"` + baseURL + `/brand.svg"}`))
+		case "/brand.svg":
+			http.Redirect(w, r, "https://localhost/redirected.svg", http.StatusFound)
+		}
+	}))
+	baseURL = srv.URL
+	t.Cleanup(srv.Close)
+
+	c := httpindex.New()
+	c.HTTP = srv.Client()
+	_, err := c.Lookup(context.Background(), "Brand", httpindex.Options{
+		Name:     "redirect-asset",
+		IndexURL: baseURL + "/index.json",
+		Hosts:    []string{testURLHost(t, srv.URL)},
+	})
+	if !errors.Is(err, httpindex.ErrHostNotAllowed) {
+		t.Fatalf("err=%v want ErrHostNotAllowed", err)
+	}
+}
+
+func testURLHost(t *testing.T, raw string) string {
+	t.Helper()
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u.Hostname()
 }
 
 func TestOfflineRequiresCache(t *testing.T) {
