@@ -125,6 +125,44 @@ func startOneShotServer(t *testing.T, response daemon.Response) string {
 	return socket
 }
 
+func TestClientForwardsEnvironmentOffline(t *testing.T) {
+	t.Setenv("APPICON_OFFLINE", "1")
+	socket := filepath.Join(t.TempDir(), "appicon.sock")
+	ln, err := daemon.Listen(socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	requests := make(chan daemon.Request, 1)
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		defer func() { _ = conn.Close() }()
+		var req daemon.Request
+		if daemon.ReadFrame(conn, &req) != nil {
+			return
+		}
+		requests <- req
+		missing := resolve.ErrNotFound.Error()
+		_ = daemon.WriteFrame(conn, daemon.Response{Op: "resolve", Query: req.Query, Error: &missing})
+	}()
+	t.Cleanup(func() { _ = ln.Close() })
+
+	client := &daemon.Client{Socket: socket, Timeout: time.Second}
+	if _, err := client.Resolve(context.Background(), "missing", resolve.Options{}); !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("err=%v want ErrNotFound", err)
+	}
+	select {
+	case req := <-requests:
+		if !req.Offline {
+			t.Fatal("APPICON_OFFLINE was not forwarded to daemon")
+		}
+	case <-time.After(time.Second):
+		t.Fatal("daemon request not received")
+	}
+}
+
 func TestProtocolRoundTrip(t *testing.T) {
 	t.Parallel()
 	r, w, err := os.Pipe()

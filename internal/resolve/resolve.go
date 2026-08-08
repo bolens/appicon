@@ -105,10 +105,16 @@ func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
 	return res, err
 }
 
+// OfflineEnabled reports whether explicit or process-wide offline mode is active.
+func OfflineEnabled(explicit bool) bool {
+	return explicit || strings.TrimSpace(os.Getenv("APPICON_OFFLINE")) == "1"
+}
+
 func resolvePipeline(ctx context.Context, query string, opts Options) (Result, error) {
 	if err := ctx.Err(); err != nil {
 		return Result{}, err
 	}
+	opts.Offline = OfflineEnabled(opts.Offline)
 	if opts.Format == "" {
 		opts.Format = "svg"
 	}
