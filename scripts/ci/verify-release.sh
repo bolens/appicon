@@ -15,7 +15,7 @@ if [[ ! -f SHA256SUMS ]]; then
   exit 1
 fi
 
-sha256sum --check --ignore-missing SHA256SUMS
+sha256sum --check SHA256SUMS
 
 bundle=SHA256SUMS.sigstore.json
 if [[ -f "$bundle" ]]; then
