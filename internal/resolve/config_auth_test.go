@@ -3,10 +3,46 @@ package resolve_test
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bolens/appicon/internal/resolve"
 )
+
+func TestSourcesAtomicWriteReplacesAndCleansUp(t *testing.T) {
+	dir := t.TempDir()
+	first := resolve.SourcesConfig{Sources: []resolve.Stage{{Type: "xdg"}}}
+	second := resolve.SourcesConfig{Sources: []resolve.Stage{{Type: "glyph"}}}
+	if err := resolve.WriteSourcesConfig(dir, first); err != nil {
+		t.Fatal(err)
+	}
+	if err := resolve.WriteSourcesConfig(dir, second); err != nil {
+		t.Fatal(err)
+	}
+	got, err := resolve.LoadSourcesConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Sources) != 1 || got.Sources[0].Type != "glyph" {
+		t.Fatalf("config=%+v", got)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".sources.json-") {
+			t.Fatalf("temporary file remains: %s", entry.Name())
+		}
+	}
+	st, err := os.Stat(filepath.Join(dir, "sources.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if st.Mode().Perm() != 0o644 {
+		t.Fatalf("mode=%o want 644", st.Mode().Perm())
+	}
+}
 
 func TestLookupTokenEnv(t *testing.T) {
 	t.Setenv("APPICON_TEST_TOKEN", "  secret  ")
