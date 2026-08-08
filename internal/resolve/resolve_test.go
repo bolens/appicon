@@ -231,6 +231,35 @@ func TestResolveClampsSizeToMax(t *testing.T) {
 	}
 }
 
+func TestAPPICONOfflinePreventsRemoteResolution(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	t.Setenv("APPICON_OFFLINE", " 1 ")
+	configDir := t.TempDir()
+	no := false
+	if err := resolve.WriteSourcesConfig(configDir, resolve.SourcesConfig{
+		Sources:   []resolve.Stage{{Type: "svgl"}},
+		File:      &no,
+		Overrides: &no,
+		XDG:       &no,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	requests := 0
+	client := svgl.New()
+	client.HTTP = &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+		requests++
+		return nil, errors.New("unexpected network request")
+	})}
+
+	_, err := resolve.Resolve(context.Background(), "uncached", resolve.Options{ConfigDir: configDir, SVGL: client})
+	if !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("err=%v want ErrNotFound", err)
+	}
+	if requests != 0 {
+		t.Fatalf("requests=%d want 0", requests)
+	}
+}
+
 func TestBehavioralOrderFileBeatsXDGName(t *testing.T) {
 	t.Parallel()
 	opts := xdgFixtureOpts(t)

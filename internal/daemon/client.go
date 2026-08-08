@@ -56,7 +56,7 @@ func requestFromOpts(op, query string, opts resolve.Options, explain bool) Reque
 		Format:  opts.Format,
 		Size:    opts.Size,
 		Theme:   opts.Theme,
-		Offline: opts.Offline,
+		Offline: resolve.OfflineEnabled(opts.Offline),
 		Order:   append([]string(nil), opts.Order...),
 		Explain: explain,
 	}

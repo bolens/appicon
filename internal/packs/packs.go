@@ -195,7 +195,7 @@ func IsArchiveURL(s string) bool {
 
 // Install clones a recipe or URL and registers it as a pack.
 func Install(configDir string, opts InstallOpts) error {
-	if opts.Offline || os.Getenv("APPICON_OFFLINE") == "1" {
+	if resolve.OfflineEnabled(opts.Offline) {
 		return ErrOffline
 	}
 	target := strings.TrimSpace(opts.Target)
@@ -848,7 +848,7 @@ func sanitizeName(name string) string {
 
 // Update refreshes installed recipe clones.
 func Update(configDir, recipeName string, offline bool) error {
-	if offline || os.Getenv("APPICON_OFFLINE") == "1" {
+	if resolve.OfflineEnabled(offline) {
 		return ErrOffline
 	}
 	if _, err := exec.LookPath("git"); err != nil {
