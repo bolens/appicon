@@ -840,6 +840,10 @@ func InstallBundle(configDir, bundlePath string) error {
 }
 
 func installBundle(configDir, bundlePath string, maxTotal int64) error {
+	root := Root()
+	if err := validateBundle(bundlePath, root, maxTotal); err != nil {
+		return err
+	}
 	f, err := os.Open(bundlePath)
 	if err != nil {
 		return err
@@ -851,7 +855,6 @@ func installBundle(configDir, bundlePath string, maxTotal int64) error {
 	}
 	defer func() { _ = gz.Close() }()
 	tr := tar.NewReader(gz)
-	root := Root()
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return err
 	}
@@ -944,4 +947,53 @@ func installBundle(configDir, bundlePath string, maxTotal int64) error {
 		}
 	}
 	return nil
+}
+
+func validateBundle(bundlePath, root string, maxTotal int64) error {
+	f, err := os.Open(bundlePath)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = gz.Close() }()
+	tr := tar.NewReader(gz)
+	var total int64
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			_, err = io.Copy(io.Discard, gz)
+			return err
+		}
+		if err != nil {
+			return err
+		}
+		target, err := safeArchiveJoin(root, hdr.Name)
+		if err != nil {
+			return err
+		}
+		if err := refuseSymlinkPath(root, target); err != nil {
+			return err
+		}
+		if hdr.Typeflag != tar.TypeReg {
+			continue
+		}
+		if hdr.Size > maxTarMemberBytes {
+			return fmt.Errorf("archive member too large: %q", hdr.Name)
+		}
+		if total+hdr.Size > maxTotal {
+			return errors.New("archive uncompressed size exceeds limit")
+		}
+		n, err := io.Copy(io.Discard, io.LimitReader(tr, maxTarMemberBytes+1))
+		if err != nil {
+			return err
+		}
+		if n > maxTarMemberBytes {
+			return fmt.Errorf("archive member too large: %q", hdr.Name)
+		}
+		total += n
+	}
 }
