@@ -51,6 +51,33 @@ func TestWriteAtomicNested(t *testing.T) {
 	}
 }
 
+func TestWriteAtomicReplacesExistingFile(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", root)
+
+	path, err := cache.WriteAtomic("catalog.json", []byte("old and longer"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cache.WriteAtomic("catalog.json", []byte("new")); err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "new" {
+		t.Fatalf("content=%q want new", got)
+	}
+	matches, err := filepath.Glob(filepath.Join(filepath.Dir(path), ".tmp-*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("temporary files remain after replacement: %q", matches)
+	}
+}
+
 func TestWriteAtomicRejectsEscape(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if _, err := cache.WriteAtomic("../escape.txt", []byte("x")); err == nil {
