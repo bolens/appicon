@@ -174,7 +174,14 @@ func Listen(path string) (net.Listener, error) {
 	// Remove stale socket file from a crashed daemon.
 	if fi, err := os.Lstat(path); err == nil {
 		if fi.Mode()&os.ModeSocket != 0 {
-			_ = os.Remove(path)
+			conn, dialErr := net.DialTimeout("unix", path, 100*time.Millisecond)
+			if dialErr == nil {
+				_ = conn.Close()
+				return nil, fmt.Errorf("socket already has an active listener: %s", path)
+			}
+			if err := os.Remove(path); err != nil {
+				return nil, fmt.Errorf("remove stale socket %s: %w", path, err)
+			}
 		} else {
 			return nil, fmt.Errorf("socket path exists and is not a socket: %s", path)
 		}

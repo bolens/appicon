@@ -173,6 +173,63 @@ func TestValidateRejectsAbstract(t *testing.T) {
 	}
 }
 
+func TestListenRefusesActiveSocket(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "appicon.sock")
+	first, err := daemon.Listen(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = first.Close() }()
+	second, err := daemon.Listen(path)
+	if err == nil {
+		_ = second.Close()
+		t.Fatal("second listener replaced active socket")
+	}
+	if !strings.Contains(err.Error(), "active listener") {
+		t.Fatalf("err=%v", err)
+	}
+	conn, err := net.DialTimeout("unix", path, time.Second)
+	if err != nil {
+		t.Fatalf("first listener no longer reachable: %v", err)
+	}
+	_ = conn.Close()
+}
+
+func TestListenReplacesStaleSocket(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "appicon.sock")
+	stale, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unixStale, ok := stale.(*net.UnixListener)
+	if !ok {
+		t.Fatalf("listener=%T", stale)
+	}
+	unixStale.SetUnlinkOnClose(false)
+	if err := stale.Close(); err != nil {
+		t.Fatal(err)
+	}
+	ln, err := daemon.Listen(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = ln.Close()
+}
+
+func TestListenPreservesNonSocketPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "appicon.sock")
+	if err := os.WriteFile(path, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := daemon.Listen(path); err == nil {
+		t.Fatal("non-socket path accepted")
+	}
+	data, err := os.ReadFile(path)
+	if err != nil || string(data) != "keep" {
+		t.Fatalf("path changed: data=%q err=%v", data, err)
+	}
+}
+
 func TestDaemonResolveAndMiss(t *testing.T) {
 	opts := fixtureOpts(t)
 	socket, _ := startServer(t, opts)
