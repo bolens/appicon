@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -126,17 +127,23 @@ func TestQueryCandidatesFromCatalog(t *testing.T) {
 	for _, tc := range []struct {
 		name string
 		data any
+		raw  []byte
 	}{
 		{name: "legacy array", data: []map[string]string{{"title": "CatalogBrand"}}},
 		{name: "wrapped current", data: map[string]any{"fetched_at": "2026-01-01T00:00:00Z", "items": []map[string]string{{"title": "CatalogBrand"}}}},
+		{name: "wrapped with whitespace", raw: []byte(" \n\t{\"items\":[{\"title\":\"CatalogBrand\"}]}\n")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			cacheRoot := t.TempDir()
 			t.Setenv("XDG_CACHE_HOME", cacheRoot)
 			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-			b, err := json.Marshal(tc.data)
-			if err != nil {
-				t.Fatal(err)
+			b := tc.raw
+			if b == nil {
+				var err error
+				b, err = json.Marshal(tc.data)
+				if err != nil {
+					t.Fatal(err)
+				}
 			}
 			dir := resolve.CacheDir()
 			if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -161,23 +168,27 @@ func TestQueryCandidatesFromCatalog(t *testing.T) {
 }
 
 func TestCatalogCandidatesIgnoreMalformedCache(t *testing.T) {
-	t.Setenv("XDG_CACHE_HOME", t.TempDir())
-	dir := resolve.CacheDir()
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(dir, "catalog.json"), []byte(`{"items":`), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if got := resolve.QueryCandidates("", "catalog", 16); len(got) != 0 {
-		t.Fatalf("candidates=%v", got)
-	}
-	suggestion, err := resolve.SuggestOverride("", "catalog", resolve.Options{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(suggestion.Candidates) != 0 {
-		t.Fatalf("suggestion=%+v", suggestion)
+	for _, data := range [][]byte{[]byte(`{"items":`), []byte(" \n\t ")} {
+		t.Run(fmt.Sprintf("%q", data), func(t *testing.T) {
+			t.Setenv("XDG_CACHE_HOME", t.TempDir())
+			dir := resolve.CacheDir()
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "catalog.json"), data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if got := resolve.QueryCandidates("", "catalog", 16); len(got) != 0 {
+				t.Fatalf("candidates=%v", got)
+			}
+			suggestion, err := resolve.SuggestOverride("", "catalog", resolve.Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(suggestion.Candidates) != 0 {
+				t.Fatalf("suggestion=%+v", suggestion)
+			}
+		})
 	}
 }
 
