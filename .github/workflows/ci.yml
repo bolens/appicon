@@ -210,7 +210,7 @@ jobs:
   windows-compile:
     name: Windows compile
     needs: changes
-    if: needs.changes.outputs.go == 'true' || needs.changes.outputs.workflow == 'true'
+    if: needs.changes.outputs.go == 'true' || needs.changes.outputs.workflow == 'true' || needs.changes.outputs.scripts_ci == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -226,6 +226,8 @@ jobs:
           for pkg in $(go list ./...); do
             GOOS=windows GOARCH=amd64 go test -c -o /dev/null "$pkg"
           done
+      - name: Portable release archive contract
+        run: bash scripts/ci/check-release-build.sh
 
   vet-fmt:
     name: Vet + gofmt

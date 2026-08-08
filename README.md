@@ -147,7 +147,7 @@ appicon man | man -l -
 ## Install
 
 ```bash
-ver=v0.2.2
+ver=v0.3.0
 arch=$(uname -m)
 case "$arch" in
   x86_64) arch=amd64 ;;
@@ -155,7 +155,7 @@ case "$arch" in
 esac
 curl -fsSL "https://github.com/bolens/appicon/releases/download/${ver}/appicon_${ver}_linux_${arch}.tar.gz" | tar -xz
 install -m 755 appicon ~/.local/bin/appicon
-appicon version   # → v0.2.2
+appicon version   # → v0.3.0
 ```
 
 Checksums: download `SHA256SUMS` (and optionally `SHA256SUMS.sigstore.json`) from the same release.
