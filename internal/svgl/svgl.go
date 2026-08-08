@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +16,7 @@ import (
 	"unicode"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/limitio"
 )
 
 // ErrNotFound means SVGL had no match for the query.
@@ -252,7 +252,7 @@ func (c *Client) fetchCatalog(ctx context.Context) ([]Item, error) {
 		return nil, err
 	}
 	defer func() { _ = res.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(res.Body, 8<<20))
+	body, err := limitio.ReadAll(res.Body, 8<<20)
 	if err != nil {
 		return nil, err
 	}
@@ -289,7 +289,7 @@ func (c *Client) download(ctx context.Context, rawURL string) ([]byte, error) {
 		return nil, err
 	}
 	defer func() { _ = res.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(res.Body, 2<<20))
+	body, err := limitio.ReadAll(res.Body, 2<<20)
 	if err != nil {
 		return nil, err
 	}

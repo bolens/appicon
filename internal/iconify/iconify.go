@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/limitio"
 )
 
 // ErrNotFound means no Iconify icon matched.
@@ -109,7 +109,11 @@ func (c *Client) download(ctx context.Context, rawURL, allowHost string) ([]byte
 		return nil, err
 	}
 	req.Header.Set("User-Agent", "appicon/0 (+https://github.com/bolens/appicon)")
-	res, err := c.HTTP.Do(req)
+	client := c.HTTP
+	if client == nil {
+		client = New().HTTP
+	}
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +124,7 @@ func (c *Client) download(ctx context.Context, rawURL, allowHost string) ([]byte
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, fmt.Errorf("iconify: HTTP %d", res.StatusCode)
 	}
-	return io.ReadAll(io.LimitReader(res.Body, 2<<20))
+	return limitio.ReadAll(res.Body, 2<<20)
 }
 
 func parseQuery(query string) (prefix, name string, ok bool) {

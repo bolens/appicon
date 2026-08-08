@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"path"
@@ -16,6 +15,7 @@ import (
 	"unicode"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/limitio"
 )
 
 // ErrNotFound means no Noun Project icon matched.
@@ -161,12 +161,16 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 	if err := assertAPIHost(req.URL, c.BaseURL); err != nil {
 		return nil, err
 	}
-	res, err := c.HTTP.Do(req)
+	client := c.HTTP
+	if client == nil {
+		client = New().HTTP
+	}
+	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = res.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(res.Body, 4<<20))
+	body, err := limitio.ReadAll(res.Body, 4<<20)
 	if err != nil {
 		return nil, err
 	}
