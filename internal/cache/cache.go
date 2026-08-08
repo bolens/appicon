@@ -51,7 +51,13 @@ func WriteAtomic(name string, data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := refuseSymlinkPath(dir, filepath.Dir(final)); err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(filepath.Dir(final), 0o755); err != nil {
+		return "", err
+	}
+	if err := refuseSymlinkPath(dir, filepath.Dir(final)); err != nil {
 		return "", err
 	}
 	tmp, err := os.CreateTemp(filepath.Dir(final), ".tmp-*")
@@ -117,6 +123,9 @@ func Read(name string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := refuseSymlinkPath(Dir(), p); err != nil {
+		return nil, err
+	}
 	return os.ReadFile(p)
 }
 
@@ -124,6 +133,9 @@ func Read(name string) ([]byte, error) {
 func Exists(name string) bool {
 	p, err := Path(name)
 	if err != nil {
+		return false
+	}
+	if refuseSymlinkPath(Dir(), p) != nil {
 		return false
 	}
 	st, err := os.Stat(p)
@@ -140,7 +152,13 @@ func WithLock(lockName string, fn func() error) error {
 	if err != nil {
 		return err
 	}
+	if err := refuseSymlinkPath(dir, filepath.Dir(lockPath)); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return err
+	}
+	if err := refuseSymlinkPath(dir, lockPath); err != nil {
 		return err
 	}
 	muValue, _ := processLocks.LoadOrStore(lockPath, new(sync.Mutex))
@@ -162,9 +180,44 @@ func WithLock(lockName string, fn func() error) error {
 
 // Fresh reports whether path's mtime is within ttl.
 func Fresh(path string, ttl time.Duration) bool {
+	if ttl <= 0 {
+		return false
+	}
 	st, err := os.Stat(path)
 	if err != nil {
 		return false
 	}
-	return time.Since(st.ModTime()) < ttl
+	age := time.Since(st.ModTime())
+	return age >= 0 && age < ttl
+}
+
+// refuseSymlinkPath rejects existing symlinks from root through target. Callers
+// use it around parent creation so a cache subdirectory cannot redirect access
+// outside the cache between lexical containment checks and file operations.
+func refuseSymlinkPath(root, target string) error {
+	rel, err := filepath.Rel(root, target)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
+		return fmt.Errorf("cache path escapes root: %q", target)
+	}
+	cur := root
+	if rel == "." {
+		rel = ""
+	}
+	for _, part := range strings.Split(rel, string(os.PathSeparator)) {
+		if part == "" || part == "." {
+			continue
+		}
+		cur = filepath.Join(cur, part)
+		st, statErr := os.Lstat(cur)
+		if os.IsNotExist(statErr) {
+			continue
+		}
+		if statErr != nil {
+			return statErr
+		}
+		if st.Mode()&os.ModeSymlink != 0 {
+			return fmt.Errorf("cache path contains symlink: %q", cur)
+		}
+	}
+	return nil
 }
