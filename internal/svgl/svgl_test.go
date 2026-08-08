@@ -110,6 +110,44 @@ func TestSearchAndFetchCachesAsset(t *testing.T) {
 	}
 }
 
+func TestCatalogRefreshSeparatesChangedAssetURL(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	catalog := `[{"title":"Brand","route":"https://svgl.app/one.svg"}]`
+	c := svgl.New()
+	c.TTL = time.Nanosecond
+	c.HTTP = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		body := catalog
+		if req.URL.Hostname() == "svgl.app" {
+			body = strings.TrimPrefix(req.URL.Path, "/")
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(strings.NewReader(body)),
+			Header:     make(http.Header),
+		}, nil
+	})}
+
+	first, err := c.SearchAndFetch(context.Background(), "Brand", svgl.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	catalog = `[{"title":"Brand","route":"https://svgl.app/two.svg"}]`
+	second, err := c.SearchAndFetch(context.Background(), "Brand", svgl.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Path == second.Path {
+		t.Fatalf("changed URLs share cache path %q", first.Path)
+	}
+	data, err := os.ReadFile(second.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "two.svg" {
+		t.Fatalf("content=%q", data)
+	}
+}
+
 func TestAssetRedirectCannotEscapeAllowlist(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	catalog := []byte(`[{"title":"Redirect","route":"https://svgl.app/redirect.svg"}]`)
