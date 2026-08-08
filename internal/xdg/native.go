@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -102,25 +103,30 @@ func nativeAppIndexIdentity(roots []string) (string, string) {
 		key.WriteString(clean)
 		key.WriteByte(0)
 		signature.WriteString(clean)
-		if info, err := os.Stat(clean); err == nil {
-			signature.WriteString("|")
-			signature.WriteString(info.ModTime().UTC().String())
-			signature.WriteString("|")
-			signature.WriteString(info.Mode().String())
-			if entries, readErr := os.ReadDir(clean); readErr == nil {
-				for _, entry := range entries {
-					signature.WriteString("|")
-					signature.WriteString(entry.Name())
-					if childInfo, infoErr := entry.Info(); infoErr == nil {
-						signature.WriteString("|")
-						signature.WriteString(childInfo.ModTime().UTC().String())
-						signature.WriteString("|")
-						signature.WriteString(childInfo.Mode().String())
-					}
-				}
-			}
-		} else {
+		if _, err := os.Stat(clean); err != nil {
 			signature.WriteString("|missing")
+		} else {
+			_ = filepath.WalkDir(clean, func(path string, d os.DirEntry, walkErr error) error {
+				signature.WriteByte('|')
+				if rel, err := filepath.Rel(clean, path); err == nil {
+					signature.WriteString(rel)
+				} else {
+					signature.WriteString(path)
+				}
+				if walkErr != nil {
+					signature.WriteString("|unreadable")
+					return nil
+				}
+				if info, err := d.Info(); err == nil {
+					signature.WriteByte('|')
+					signature.WriteString(info.ModTime().UTC().String())
+					signature.WriteByte('|')
+					signature.WriteString(info.Mode().String())
+					signature.WriteByte('|')
+					signature.WriteString(strconv.FormatInt(info.Size(), 10))
+				}
+				return nil
+			})
 		}
 		signature.WriteByte(0)
 	}
