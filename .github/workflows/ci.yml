@@ -228,6 +228,8 @@ jobs:
           done
       - name: Portable release archive contract
         run: bash scripts/ci/check-release-build.sh
+      - name: Release verification contract
+        run: bash scripts/ci/check-verify-release.sh
 
   vet-fmt:
     name: Vet + gofmt
