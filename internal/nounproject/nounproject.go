@@ -3,6 +3,7 @@ package nounproject
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -72,15 +73,29 @@ func (c *Client) Lookup(ctx context.Context, query string, opts Options) (Result
 	if query == "" || opts.Key == "" || opts.Secret == "" {
 		return Result{}, ErrNotFound
 	}
-	id, err := c.resolveID(ctx, query, opts)
-	if err != nil {
-		return Result{}, err
+	id, numeric := positiveID(query)
+	if !numeric {
+		if cachedID, ok := readQueryID(query); ok {
+			if result, ok := cachedIcon(cachedID); ok {
+				return result, nil
+			}
+		}
+		var err error
+		id, err = c.resolveID(ctx, query, opts)
+		if err != nil {
+			return Result{}, err
+		}
 	}
 	rel := path.Join("noun-project", strconv.Itoa(id)+".svg")
 	if cache.Exists(rel) {
 		p, err := cache.Path(rel)
 		if err != nil {
 			return Result{}, err
+		}
+		if !numeric {
+			if err := writeQueryID(query, id); err != nil {
+				return Result{}, err
+			}
 		}
 		return Result{Path: p, Cached: true}, nil
 	}
@@ -95,11 +110,52 @@ func (c *Client) Lookup(ctx context.Context, query string, opts Options) (Result
 	if err != nil {
 		return Result{}, err
 	}
+	if !numeric {
+		if err := writeQueryID(query, id); err != nil {
+			return Result{}, err
+		}
+	}
 	return Result{Path: p, Cached: false}, nil
 }
 
+func positiveID(query string) (int, bool) {
+	id, err := strconv.Atoi(query)
+	return id, err == nil && id > 0
+}
+
+func cachedIcon(id int) (Result, bool) {
+	rel := path.Join("noun-project", strconv.Itoa(id)+".svg")
+	if !cache.Exists(rel) {
+		return Result{}, false
+	}
+	p, err := cache.Path(rel)
+	if err != nil {
+		return Result{}, false
+	}
+	return Result{Path: p, Cached: true}, true
+}
+
+func queryIDPath(query string) string {
+	sum := sha256.Sum256([]byte(strings.ToLower(strings.TrimSpace(query))))
+	return path.Join("noun-project", "queries", fmt.Sprintf("%x.id", sum[:16]))
+}
+
+func readQueryID(query string) (int, bool) {
+	data, err := cache.Read(queryIDPath(query))
+	if err != nil {
+		return 0, false
+	}
+	id, ok := positiveID(strings.TrimSpace(string(data)))
+	return id, ok
+}
+
+func writeQueryID(query string, id int) error {
+	_, err := cache.WriteAtomic(queryIDPath(query), []byte(strconv.Itoa(id)+"\n"))
+	return err
+}
+
 func (c *Client) resolveID(ctx context.Context, query string, opts Options) (int, error) {
-	if id, err := strconv.Atoi(query); err == nil && id > 0 {
+	if id, ok := positiveID(query); ok {
 		return id, nil
 	}
 	if opts.Offline {
