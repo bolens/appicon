@@ -2,6 +2,7 @@ package xdg
 
 import (
 	"bufio"
+	"crypto/sha256"
 	"encoding/xml"
 	"io"
 	"os"
@@ -107,23 +108,20 @@ func nativeAppIndexIdentity(roots []string) (string, string) {
 			signature.WriteString("|missing")
 		} else {
 			_ = filepath.WalkDir(clean, func(path string, d os.DirEntry, walkErr error) error {
-				signature.WriteByte('|')
-				if rel, err := filepath.Rel(clean, path); err == nil {
-					signature.WriteString(rel)
-				} else {
-					signature.WriteString(path)
-				}
 				if walkErr != nil {
+					signature.WriteByte('|')
+					signature.WriteString(path)
 					signature.WriteString("|unreadable")
 					return nil
 				}
-				if info, err := d.Info(); err == nil {
-					signature.WriteByte('|')
-					signature.WriteString(info.ModTime().UTC().String())
-					signature.WriteByte('|')
-					signature.WriteString(info.Mode().String())
-					signature.WriteByte('|')
-					signature.WriteString(strconv.FormatInt(info.Size(), 10))
+				if d.IsDir() {
+					appendNativePathSignature(&signature, clean, path, 0)
+					if strings.EqualFold(filepath.Ext(d.Name()), ".app") {
+						appendAppBundleSignature(&signature, clean, path)
+						return filepath.SkipDir
+					}
+				} else if strings.EqualFold(filepath.Ext(d.Name()), ".url") {
+					appendNativePathSignature(&signature, clean, path, 1<<20)
 				}
 				return nil
 			})
@@ -131,6 +129,60 @@ func nativeAppIndexIdentity(roots []string) (string, string) {
 		signature.WriteByte(0)
 	}
 	return key.String(), signature.String()
+}
+
+func appendAppBundleSignature(signature *strings.Builder, root, bundle string) {
+	plist := filepath.Join(bundle, "Contents", "Info.plist")
+	appendNativePathSignature(signature, root, plist, 2<<20)
+	values, err := plistStrings(plist)
+	if err != nil {
+		return
+	}
+	iconName := values["CFBundleIconFile"]
+	if iconName == "" {
+		return
+	}
+	if filepath.Ext(iconName) == "" {
+		iconName += ".icns"
+	}
+	appendNativePathSignature(signature, root, filepath.Join(bundle, "Contents", "Resources", filepath.Base(iconName)), 0)
+}
+
+func appendNativePathSignature(signature *strings.Builder, root, path string, hashLimit int64) {
+	signature.WriteByte('|')
+	if rel, err := filepath.Rel(root, path); err == nil {
+		signature.WriteString(rel)
+	} else {
+		signature.WriteString(path)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		signature.WriteString("|missing")
+		return
+	}
+	signature.WriteByte('|')
+	signature.WriteString(info.ModTime().UTC().String())
+	signature.WriteByte('|')
+	signature.WriteString(info.Mode().String())
+	signature.WriteByte('|')
+	signature.WriteString(strconv.FormatInt(info.Size(), 10))
+	if hashLimit <= 0 || !info.Mode().IsRegular() {
+		return
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		signature.WriteString("|unreadable")
+		return
+	}
+	data, readErr := io.ReadAll(io.LimitReader(f, hashLimit+1))
+	_ = f.Close()
+	if readErr != nil {
+		signature.WriteString("|unreadable")
+		return
+	}
+	sum := sha256.Sum256(data)
+	signature.WriteByte('|')
+	_, _ = signature.Write(sum[:])
 }
 
 func readAppBundle(bundle string) (nativeApp, bool) {
