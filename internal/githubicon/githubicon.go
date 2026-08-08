@@ -100,6 +100,20 @@ func (c *Client) Lookup(ctx context.Context, query string, opts Options) (Result
 		if owner, repo, ok := parseDefaultRepo(opts.Repo); ok {
 			stem := slugcdn.Slugify(query)
 			if stem != "" && !strings.Contains(query, "/") {
+				cacheOpts := opts
+				cacheOpts.Offline = true
+				for _, ext := range []string{".svg", ".png"} {
+					res, err := c.lookupContents(ctx, owner, repo, stem+ext, "", cacheOpts)
+					if err == nil {
+						return res, nil
+					}
+					if !errors.Is(err, ErrNotFound) {
+						return Result{}, err
+					}
+				}
+				if opts.Offline {
+					return Result{}, ErrNotFound
+				}
 				for _, ext := range []string{".svg", ".png"} {
 					res, err := c.lookupContents(ctx, owner, repo, stem+ext, "", opts)
 					if err == nil {
