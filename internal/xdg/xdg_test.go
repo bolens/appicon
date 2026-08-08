@@ -84,15 +84,20 @@ func TestLookupIconExpandsHomePath(t *testing.T) {
 		t.Fatal(err)
 	}
 	f := xdg.NewFinder(xdg.Options{DataDirs: []string{t.TempDir()}, IconDirs: []string{t.TempDir()}})
-	got, err := f.Lookup(filepath.Join("~", "icons", "app.svg"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != icon {
-		t.Fatalf("got=%q want=%q", got, icon)
+	for _, query := range []string{"~/icons/app.svg", `~\icons\app.svg`} {
+		got, err := f.Lookup(query)
+		if err != nil {
+			t.Fatalf("query %q: %v", query, err)
+		}
+		if got != icon {
+			t.Fatalf("query %q: got=%q want=%q", query, got, icon)
+		}
 	}
 	if _, err := f.Lookup(filepath.Join("~", "icons", "missing.svg")); err == nil {
 		t.Fatal("missing home-relative path resolved")
+	}
+	if _, err := f.Lookup("~someone/icons/app.svg"); err == nil {
+		t.Fatal("named-user path unexpectedly resolved")
 	}
 }
 

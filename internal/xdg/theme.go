@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/bolens/appicon/internal/userpath"
 )
 
 var iconExtensions = []string{".png", ".svg", ".xpm"}
@@ -33,13 +35,7 @@ func (f *Finder) lookupIcon(name string) (string, error) {
 	if name == "" {
 		return "", ErrNotFound
 	}
-	if strings.HasPrefix(name, "~"+string(filepath.Separator)) {
-		home, err := os.UserHomeDir()
-		if err != nil || home == "" {
-			return "", ErrNotFound
-		}
-		name = filepath.Join(home, strings.TrimPrefix(name, "~"+string(filepath.Separator)))
-	}
+	name = userpath.ExpandHome(name)
 	// Absolute or home-relative path in Icon=
 	if strings.Contains(name, string(filepath.Separator)) || filepath.IsAbs(name) {
 		if st, err := os.Stat(name); err == nil && !st.IsDir() {
