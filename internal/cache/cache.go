@@ -65,7 +65,7 @@ func WriteAtomic(name string, data []byte) (string, error) {
 	if err := tmp.Close(); err != nil {
 		return "", err
 	}
-	if err := os.Rename(tmpName, final); err != nil {
+	if err := renameReplace(tmpName, final); err != nil {
 		return "", err
 	}
 	return final, nil
