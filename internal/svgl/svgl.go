@@ -3,6 +3,7 @@ package svgl
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -463,7 +464,8 @@ func collapseSpace(s string) string {
 
 var unsafeName = regexp.MustCompile(`[^a-zA-Z0-9._-]+`)
 
-// AssetFileName returns the basename used under cache/svgs/ for a title/theme/URL.
+// AssetFileName returns the readable portion of an asset cache basename.
+// Internal cache paths also include a URL identity hash for invalidation.
 func AssetFileName(title, theme, assetURL string) string {
 	base := strings.ToLower(strings.TrimSpace(title))
 	base = unsafeName.ReplaceAllString(base, "-")
@@ -497,5 +499,9 @@ func assetExtension(rawURL string) string {
 }
 
 func assetRelPath(title, theme, assetURL string) string {
-	return filepath.Join(assetsDir, AssetFileName(title, theme, assetURL))
+	name := AssetFileName(title, theme, assetURL)
+	ext := filepath.Ext(name)
+	stem := strings.TrimSuffix(name, ext)
+	sum := sha256.Sum256([]byte(assetURL))
+	return filepath.Join(assetsDir, fmt.Sprintf("%s-%x%s", stem, sum[:6], ext))
 }
