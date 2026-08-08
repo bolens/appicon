@@ -1,12 +1,17 @@
-# Keep Actions and Go modules current (security updates are also enabled on the repo).
+# Keep Actions and Go modules current.
+# Repository security updates remain enabled independently.
 version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
-      day: monday
-    open-pull-requests-limit: 10
+      day: thursday
+      time: "05:17"
+      timezone: America/Denver
+    cooldown:
+      default-days: 7
+    open-pull-requests-limit: 3
     groups:
       github-actions:
         patterns:
@@ -16,8 +21,15 @@ updates:
     directory: /
     schedule:
       interval: weekly
-      day: monday
-    open-pull-requests-limit: 10
+      day: tuesday
+      time: "05:37"
+      timezone: America/Denver
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    open-pull-requests-limit: 3
     groups:
       go-modules:
         patterns:
@@ -26,8 +38,16 @@ updates:
   - package-ecosystem: npm
     directory: /
     schedule:
-      interval: monthly
-    open-pull-requests-limit: 5
+      interval: weekly
+      day: wednesday
+      time: "05:47"
+      timezone: America/Denver
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+      semver-minor-days: 7
+      semver-patch-days: 3
+    open-pull-requests-limit: 3
     groups:
       npm-dev:
         patterns:
