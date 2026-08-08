@@ -89,6 +89,47 @@ func TestWriteAtomicRejectsEscape(t *testing.T) {
 	}
 }
 
+func TestWriteAtomicRejectsSymlinkDirectory(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", base)
+	root, err := cache.Root()
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := t.TempDir()
+	if err := os.Symlink(outside, filepath.Join(root, "redirect")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := cache.WriteAtomic("redirect/escaped", []byte("secret")); err == nil {
+		t.Fatal("expected symlink directory rejection")
+	}
+	if _, err := os.Stat(filepath.Join(outside, "escaped")); !os.IsNotExist(err) {
+		t.Fatalf("outside file created: %v", err)
+	}
+}
+
+func TestReadAndExistsRejectSymlinkFile(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", base)
+	root, err := cache.Root()
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "secret")
+	if err := os.WriteFile(outside, []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(root, "linked")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	if _, err := cache.Read("linked"); err == nil {
+		t.Fatal("expected symlink file rejection")
+	}
+	if cache.Exists("linked") {
+		t.Fatal("symlink must not count as a cached file")
+	}
+}
+
 func TestPathReadExistsRejectEscape(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	if _, err := cache.Path("../escape.txt"); err == nil {
@@ -121,6 +162,16 @@ func TestFresh(t *testing.T) {
 	if cache.Fresh(p, time.Hour) {
 		t.Fatal("expected stale")
 	}
+	if cache.Fresh(p, 0) {
+		t.Fatal("zero TTL must be stale")
+	}
+	future := time.Now().Add(time.Hour)
+	if err := os.Chtimes(p, future, future); err != nil {
+		t.Fatal(err)
+	}
+	if cache.Fresh(p, 2*time.Hour) {
+		t.Fatal("future mtime must not be fresh")
+	}
 }
 
 func TestWithLock(t *testing.T) {
@@ -149,6 +200,29 @@ func TestWithLockRejectsTraversal(t *testing.T) {
 	}
 	if called {
 		t.Fatal("lock callback ran for invalid path")
+	}
+}
+
+func TestWithLockRejectsSymlink(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", base)
+	root, err := cache.Root()
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "outside.lock")
+	if err := os.Symlink(outside, filepath.Join(root, "linked.lock")); err != nil {
+		t.Skipf("symlinks unavailable: %v", err)
+	}
+	called := false
+	if err := cache.WithLock("linked.lock", func() error {
+		called = true
+		return nil
+	}); err == nil {
+		t.Fatal("expected symlink lock rejection")
+	}
+	if called {
+		t.Fatal("lock callback ran for symlink")
 	}
 }
 
