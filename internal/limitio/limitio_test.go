@@ -25,3 +25,10 @@ func TestReadAllRejectsNegativeLimit(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+func TestReadAllMaximumLimitDoesNotOverflow(t *testing.T) {
+	data, err := limitio.ReadAll(strings.NewReader("payload"), int64(^uint(0)>>1))
+	if err != nil || string(data) != "payload" {
+		t.Fatalf("data=%q err=%v", data, err)
+	}
+}
