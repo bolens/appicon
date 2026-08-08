@@ -28,8 +28,10 @@ release workflow, which waits for CI on that exact commit, builds Linux amd64
 and arm64 archives, publishes checksums and a keyless signature bundle, and
 creates the GitHub release.
 
-Wait for both the Release and Packs Bundle workflows. Then download all release
-assets and verify them:
+Wait for both the Release and Packs Bundle workflows. Confirm the optional
+`appicon-packs-bundle.tar.gz` appears in `gh release view vX.Y.Z`; the bundle
+workflow waits for publication and must fail rather than silently skip the
+attachment. Then download all release assets and verify them:
 
 ```bash
 gh release download vX.Y.Z --dir /tmp/appicon-vX.Y.Z
