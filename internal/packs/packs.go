@@ -291,7 +291,13 @@ func cloneAndRegister(configDir, repo, name, ref, subdir, dest string) error {
 			if err2 := cmd.Run(); err2 != nil {
 				return fmt.Errorf("git clone: %w", err)
 			}
-			_ = gitUpdate(root, ref)
+			if err3 := gitUpdate(root, ref); err3 != nil {
+				checkoutErr := fmt.Errorf("git checkout %q: %w", ref, err3)
+				if cleanupErr := os.RemoveAll(root); cleanupErr != nil {
+					return errors.Join(checkoutErr, fmt.Errorf("remove incomplete clone: %w", cleanupErr))
+				}
+				return checkoutErr
+			}
 		}
 	}
 	packPath, err := subdirUnderRoot(root, subdir)
