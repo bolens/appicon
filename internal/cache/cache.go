@@ -133,7 +133,13 @@ func WithLock(lockName string, fn func() error) error {
 	if err != nil {
 		return err
 	}
-	lockPath := filepath.Join(dir, lockName)
+	lockPath, err := contain(dir, lockName)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
+		return err
+	}
 	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		return err

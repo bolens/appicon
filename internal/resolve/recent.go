@@ -31,9 +31,11 @@ func RecordRecent(query string) {
 	}
 	recentMu.Lock()
 	defer recentMu.Unlock()
-	rf := readRecentLocked()
-	rf.Queries = prependUnique(rf.Queries, q, recentLimit)
-	_ = writeRecentLocked(rf)
+	_ = cache.WithLock("recent.lock", func() error {
+		rf := readRecentLocked()
+		rf.Queries = prependUnique(rf.Queries, q, recentLimit)
+		return writeRecentLocked(rf)
+	})
 }
 
 // RecordMiss appends a miss query for override suggest --from-misses.
@@ -44,9 +46,11 @@ func RecordMiss(query string) {
 	}
 	recentMu.Lock()
 	defer recentMu.Unlock()
-	rf := readRecentLocked()
-	rf.Misses = prependUnique(rf.Misses, q, recentLimit)
-	_ = writeRecentLocked(rf)
+	_ = cache.WithLock("recent.lock", func() error {
+		rf := readRecentLocked()
+		rf.Misses = prependUnique(rf.Misses, q, recentLimit)
+		return writeRecentLocked(rf)
+	})
 }
 
 // RecentQueries returns recent successful resolve queries (newest first).
@@ -76,14 +80,12 @@ func readRecentLocked() recentFile {
 }
 
 func writeRecentLocked(rf recentFile) error {
-	if err := os.MkdirAll(filepath.Dir(recentPath()), 0o755); err != nil {
-		return err
-	}
 	b, err := json.MarshalIndent(rf, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(recentPath(), append(b, '\n'), 0o644)
+	_, err = cache.WriteAtomic("recent.json", append(b, '\n'))
+	return err
 }
 
 func prependUnique(list []string, item string, limit int) []string {
