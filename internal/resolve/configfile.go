@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -27,15 +28,35 @@ func DecodeConfigData(data []byte, v any) error {
 		return fmt.Errorf("%w: empty config", ErrInvalidConfig)
 	}
 	if data[0] == '{' || data[0] == '[' {
-		if err := json.Unmarshal(data, v); err != nil {
+		decoder := json.NewDecoder(bytes.NewReader(data))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(v); err != nil {
 			return fmt.Errorf("%w: %v", ErrInvalidConfig, err)
+		}
+		if err := requireConfigEOF(decoder.Decode(new(any))); err != nil {
+			return err
 		}
 		return nil
 	}
-	if err := yaml.Unmarshal(data, v); err != nil {
+	decoder := yaml.NewDecoder(bytes.NewReader(data))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(v); err != nil {
 		return fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 	}
+	if err := requireConfigEOF(decoder.Decode(new(any))); err != nil {
+		return err
+	}
 	return nil
+}
+
+func requireConfigEOF(err error) error {
+	if err == io.EOF {
+		return nil
+	}
+	if err == nil {
+		return fmt.Errorf("%w: multiple config documents", ErrInvalidConfig)
+	}
+	return fmt.Errorf("%w: %v", ErrInvalidConfig, err)
 }
 
 // EncodeConfigData marshals v as JSON or YAML.

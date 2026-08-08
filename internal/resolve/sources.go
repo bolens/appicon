@@ -171,11 +171,11 @@ func normalizeConfigStages(cfg SourcesConfig) ([]Stage, error) {
 	listed := map[string]bool{}
 	sawEntries := len(cfg.Sources) > 0
 	for _, s := range cfg.Sources {
-		if s.Enabled != nil && !*s.Enabled {
-			continue
-		}
 		t := strings.ToLower(strings.TrimSpace(s.Type))
 		if t == "" {
+			return nil, fmt.Errorf("%w: source type is required", ErrInvalidConfig)
+		}
+		if s.Enabled != nil && !*s.Enabled {
 			continue
 		}
 		if _, ok := knownTypes[t]; !ok {
@@ -184,6 +184,9 @@ func normalizeConfigStages(cfg SourcesConfig) ([]Stage, error) {
 		s.Type = t
 		if t == "dir" {
 			s.Type = "pack"
+		}
+		if err := ValidateStages([]Stage{s}); err != nil {
+			return nil, err
 		}
 		user = append(user, s)
 		listed[s.Type] = true
