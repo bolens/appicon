@@ -1,6 +1,7 @@
 package xdg_test
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -46,6 +47,51 @@ func TestLookupIconExactSize(t *testing.T) {
 	}
 	if filepath.Base(filepath.Dir(path)) != "apps" || filepath.Base(filepath.Dir(filepath.Dir(path))) != "48x48" {
 		t.Fatalf("expected 48x48/apps icon, got %s", path)
+	}
+}
+
+func TestLookupIconAcceptsKnownExtension(t *testing.T) {
+	t.Parallel()
+	f := testFinder(t, 48, "hicolor")
+	withoutExt, err := f.Lookup("firefox")
+	if err != nil {
+		t.Fatal(err)
+	}
+	withExt, err := f.Lookup("firefox.PNG")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if withExt != withoutExt {
+		t.Fatalf("with extension=%q without=%q", withExt, withoutExt)
+	}
+	if _, err := f.Lookup("firefox.unknown"); err == nil {
+		t.Fatal("unknown extension unexpectedly stripped")
+	}
+	if _, err := f.Lookup(".png"); err == nil {
+		t.Fatal("extension-only name unexpectedly resolved")
+	}
+}
+
+func TestLookupIconExpandsHomePath(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	icon := filepath.Join(home, "icons", "app.svg")
+	if err := os.MkdirAll(filepath.Dir(icon), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(icon, []byte("<svg/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	f := xdg.NewFinder(xdg.Options{DataDirs: []string{t.TempDir()}, IconDirs: []string{t.TempDir()}})
+	got, err := f.Lookup(filepath.Join("~", "icons", "app.svg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != icon {
+		t.Fatalf("got=%q want=%q", got, icon)
+	}
+	if _, err := f.Lookup(filepath.Join("~", "icons", "missing.svg")); err == nil {
+		t.Fatal("missing home-relative path resolved")
 	}
 }
 
