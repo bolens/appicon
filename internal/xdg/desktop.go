@@ -16,6 +16,7 @@ type DesktopEntry struct {
 	Icon           string
 	StartupWMClass string
 	Exec           string
+	Hidden         bool
 }
 
 func parseDesktopFile(path string) (DesktopEntry, error) {
@@ -68,6 +69,8 @@ func parseDesktopFile(path string) (DesktopEntry, error) {
 			if e.Exec == "" {
 				e.Exec = val
 			}
+		case "Hidden":
+			e.Hidden = strings.EqualFold(val, "true")
 		}
 	}
 	if err := sc.Err(); err != nil {
@@ -111,6 +114,7 @@ func (f *Finder) findDesktop(query string) (DesktopEntry, bool) {
 		steamNeedle = "steam://rungameid/" + appID
 	}
 
+	seenIDs := map[string]struct{}{}
 	for _, dir := range f.applicationDirs() {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
@@ -126,6 +130,13 @@ func (f *Finder) findDesktop(query string) (DesktopEntry, bool) {
 				continue
 			}
 			idLower := strings.ToLower(desk.ID)
+			if _, seen := seenIDs[idLower]; seen {
+				continue
+			}
+			seenIDs[idLower] = struct{}{}
+			if desk.Hidden {
+				continue
+			}
 			if !foundID && (idLower == idQuery || strings.ToLower(ent.Name()) == qLower) {
 				byID = desk
 				foundID = true
@@ -197,6 +208,9 @@ func (f *Finder) ListDesktopEntries() []DesktopEntry {
 				continue
 			}
 			seen[key] = struct{}{}
+			if desk.Hidden {
+				continue
+			}
 			out = append(out, desk)
 		}
 	}
