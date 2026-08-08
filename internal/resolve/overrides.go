@@ -1,6 +1,7 @@
 package resolve
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+
+	"github.com/bolens/appicon/internal/cache"
 )
 
 // ErrOverrideNotFound means the key is absent from overrides config.
@@ -81,15 +84,17 @@ func SetOverride(configDir, query, target string) error {
 	if key == "" || target == "" {
 		return errors.New("override set requires <query> <target>")
 	}
-	m, err := readOverridesFile(configDir)
-	if err != nil {
-		return err
-	}
-	if m == nil {
-		m = map[string]string{}
-	}
-	m[key] = target
-	return writeOverridesFile(configDir, m)
+	return withOverridesLock(configDir, func() error {
+		m, err := readOverridesFile(configDir)
+		if err != nil {
+			return err
+		}
+		if m == nil {
+			m = map[string]string{}
+		}
+		m[key] = target
+		return writeOverridesFile(configDir, m)
+	})
 }
 
 // RemoveOverride deletes a key from overrides config.
@@ -98,18 +103,20 @@ func RemoveOverride(configDir, query string) error {
 	if key == "" {
 		return errors.New("override rm requires a query key")
 	}
-	m, err := readOverridesFile(configDir)
-	if err != nil {
-		return err
-	}
-	if m == nil {
-		return ErrOverrideNotFound
-	}
-	if _, ok := m[key]; !ok {
-		return ErrOverrideNotFound
-	}
-	delete(m, key)
-	return writeOverridesFile(configDir, m)
+	return withOverridesLock(configDir, func() error {
+		m, err := readOverridesFile(configDir)
+		if err != nil {
+			return err
+		}
+		if m == nil {
+			return ErrOverrideNotFound
+		}
+		if _, ok := m[key]; !ok {
+			return ErrOverrideNotFound
+		}
+		delete(m, key)
+		return writeOverridesFile(configDir, m)
+	})
 }
 
 // SortedOverrideKeys returns map keys in lexicographic order.
@@ -260,26 +267,35 @@ func ImportOverrides(configDir string, data []byte, merge bool) (int, error) {
 		}
 		incoming[k] = v
 	}
-	if !merge {
-		if err := writeOverridesFile(configDir, incoming); err != nil {
-			return 0, err
+	err := withOverridesLock(configDir, func() error {
+		if !merge {
+			return writeOverridesFile(configDir, incoming)
 		}
-		return len(incoming), nil
-	}
-	cur, err := readOverridesFile(configDir)
+		cur, err := readOverridesFile(configDir)
+		if err != nil {
+			return err
+		}
+		if cur == nil {
+			cur = map[string]string{}
+		}
+		for k, v := range incoming {
+			cur[k] = v
+		}
+		return writeOverridesFile(configDir, cur)
+	})
 	if err != nil {
 		return 0, err
 	}
-	if cur == nil {
-		cur = map[string]string{}
-	}
-	for k, v := range incoming {
-		cur[k] = v
-	}
-	if err := writeOverridesFile(configDir, cur); err != nil {
-		return 0, err
-	}
 	return len(incoming), nil
+}
+
+func withOverridesLock(configDir string, fn func() error) error {
+	dir, err := filepath.Abs(configDirOr(configDir))
+	if err != nil {
+		return err
+	}
+	sum := sha256.Sum256([]byte(dir))
+	return cache.WithLock(fmt.Sprintf("config/overrides-%x.lock", sum[:8]), fn)
 }
 
 func applyOverrides(query, configDir string) string {

@@ -2,12 +2,50 @@ package resolve_test
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/bolens/appicon/internal/resolve"
 )
+
+func TestConcurrentSetOverridePreservesAllKeys(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	const count = 32
+	var wg sync.WaitGroup
+	errs := make(chan error, count)
+	for i := 0; i < count; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			errs <- resolve.SetOverride(dir, fmt.Sprintf("key-%02d", i), fmt.Sprintf("value-%02d", i))
+		}(i)
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := resolve.ListOverrides(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != count {
+		t.Fatalf("got %d overrides, want %d: %v", len(got), count, got)
+	}
+	matches, err := filepath.Glob(filepath.Join(dir, ".overrides.json-*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(matches) != 0 {
+		t.Fatalf("temporary files remain: %v", matches)
+	}
+}
 
 func TestOverrideCRUD(t *testing.T) {
 	dir := t.TempDir()
