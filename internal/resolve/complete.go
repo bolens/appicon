@@ -1,6 +1,7 @@
 package resolve
 
 import (
+	"bytes"
 	"encoding/json"
 	"sort"
 	"strings"
@@ -79,10 +80,14 @@ func readCatalogTitleEntries() []catalogTitleEntry {
 	if err != nil {
 		return nil
 	}
+	b = bytes.TrimSpace(b)
+	if len(b) == 0 {
+		return nil
+	}
 	var wrapped struct {
 		Items []catalogTitleEntry `json:"items"`
 	}
-	if len(b) > 0 && b[0] == '{' {
+	if b[0] == '{' {
 		if json.Unmarshal(b, &wrapped) != nil {
 			return nil
 		}
