@@ -61,13 +61,14 @@ func TestExistsRejectsEmptyArtifact(t *testing.T) {
 }
 
 func TestDirUsesNativeFallback(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", "")
+	base, err := os.UserCacheDir()
+	if err != nil || base == "" {
+		t.Skipf("user cache directory unavailable: %v", err)
+	}
 	for _, value := range []string{"", "relative-cache"} {
 		t.Run(value, func(t *testing.T) {
 			t.Setenv("XDG_CACHE_HOME", value)
-			base, err := os.UserCacheDir()
-			if err != nil || base == "" {
-				t.Skipf("user cache directory unavailable: %v", err)
-			}
 			if got, want := cache.Dir(), filepath.Join(base, "appicon"); got != want {
 				t.Fatalf("Dir()=%q want %q", got, want)
 			}
