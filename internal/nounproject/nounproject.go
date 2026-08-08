@@ -3,6 +3,7 @@ package nounproject
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -149,7 +150,11 @@ func (c *Client) downloadIcon(ctx context.Context, id int, opts Options) ([]byte
 	if err := c.authorize(req, opts); err != nil {
 		return nil, err
 	}
-	return c.do(req)
+	body, err := c.do(req)
+	if err != nil {
+		return nil, err
+	}
+	return decodeIconPayload(body)
 }
 
 func (c *Client) authorize(req *http.Request, opts Options) error {
@@ -181,23 +186,29 @@ func (c *Client) do(req *http.Request) ([]byte, error) {
 	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, fmt.Errorf("noun-project: HTTP %d", res.StatusCode)
 	}
-	// Download endpoint may return JSON with base64 or raw SVG.
+	return body, nil
+}
+
+func decodeIconPayload(body []byte) ([]byte, error) {
 	trimmed := strings.TrimSpace(string(body))
 	if strings.HasPrefix(trimmed, "{") {
 		var wrap struct {
 			Base64EncodedFile string `json:"base64_encoded_file"`
-			SVGURL            string `json:"svg_url"`
 		}
-		if err := json.Unmarshal(body, &wrap); err == nil && wrap.Base64EncodedFile != "" {
-			// Not used commonly; keep raw if decode fails later — treat as miss if empty SVG.
+		if err := json.Unmarshal(body, &wrap); err != nil {
+			return nil, fmt.Errorf("noun-project: invalid download response: %w", err)
+		}
+		if strings.TrimSpace(wrap.Base64EncodedFile) == "" {
 			return nil, ErrNotFound
 		}
+		decoded, err := base64.StdEncoding.DecodeString(strings.TrimSpace(wrap.Base64EncodedFile))
+		if err != nil {
+			return nil, fmt.Errorf("noun-project: invalid base64 download: %w", err)
+		}
+		body = decoded
 	}
 	if !looksLikeSVG(body) && !looksLikePNG(body) {
-		// Some APIs return the file bytes directly as SVG.
-		if len(body) == 0 {
-			return nil, ErrNotFound
-		}
+		return nil, ErrNotFound
 	}
 	return body, nil
 }

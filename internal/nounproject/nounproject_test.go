@@ -2,9 +2,12 @@ package nounproject_test
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -72,6 +75,64 @@ func TestSearchThenDownload(t *testing.T) {
 	}
 	if res.Path == "" {
 		t.Fatal("empty")
+	}
+}
+
+func TestLookupDecodesWrappedDownload(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`)
+	encoded := base64.StdEncoding.EncodeToString(svg)
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"base64_encoded_file":"` + encoded + `"}`))
+	}))
+	defer srv.Close()
+	c := nounproject.New()
+	c.HTTP = srv.Client()
+	c.BaseURL = srv.URL
+
+	res, err := c.Lookup(context.Background(), "42", nounproject.Options{Key: "key", Secret: "secret"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := os.ReadFile(res.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(svg) {
+		t.Fatalf("cached payload=%q want %q", got, svg)
+	}
+}
+
+func TestLookupRejectsInvalidDownloadPayloads(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+	}{
+		{name: "empty", body: ""},
+		{name: "non image", body: "not an image"},
+		{name: "missing wrapped file", body: `{}`},
+		{name: "invalid base64", body: `{"base64_encoded_file":"%%%"}`},
+		{name: "decoded non image", body: `{"base64_encoded_file":"` + base64.StdEncoding.EncodeToString([]byte("nope")) + `"}`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cacheHome := t.TempDir()
+			t.Setenv("XDG_CACHE_HOME", cacheHome)
+			srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = w.Write([]byte(tt.body))
+			}))
+			defer srv.Close()
+			c := nounproject.New()
+			c.HTTP = srv.Client()
+			c.BaseURL = srv.URL
+
+			if _, err := c.Lookup(context.Background(), "42", nounproject.Options{Key: "key", Secret: "secret"}); err == nil {
+				t.Fatal("invalid payload accepted")
+			}
+			if _, err := os.Stat(filepath.Join(cacheHome, "appicon", "noun-project", "42.svg")); !os.IsNotExist(err) {
+				t.Fatalf("invalid payload cached: %v", err)
+			}
+		})
 	}
 }
 
