@@ -3,6 +3,7 @@ package packs_test
 import (
 	"archive/tar"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"testing"
 
 	"github.com/bolens/appicon/internal/packs"
+	"github.com/bolens/appicon/internal/resolve"
 )
 
 func TestRootUsesPlatformFallback(t *testing.T) {
@@ -561,6 +563,76 @@ func TestInstallBundleLateErrorPreservesExistingPack(t *testing.T) {
 	}
 	if string(got) != "original" {
 		t.Fatalf("existing pack was modified: %q", got)
+	}
+}
+
+func TestInstallBundleInvalidConfigPreservesExistingPack(t *testing.T) {
+	dataHome := t.TempDir()
+	configDir := t.TempDir()
+	t.Setenv("XDG_DATA_HOME", dataHome)
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	existing := filepath.Join(packs.Root(), "existing", "icon.svg")
+	if err := os.MkdirAll(filepath.Dir(existing), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(existing, []byte("original"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "sources.json"), []byte(`{"sources":[{"type":"unknown"}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf writeBuffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	body := "replacement"
+	if err := tw.WriteHeader(&tar.Header{Name: "existing/icon.svg", Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write([]byte(body)); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	bundle := filepath.Join(t.TempDir(), "bundle.tar.gz")
+	if err := os.WriteFile(bundle, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := packs.InstallBundle(configDir, bundle); !errors.Is(err, resolve.ErrInvalidConfig) {
+		t.Fatalf("err=%v want ErrInvalidConfig", err)
+	}
+	got, err := os.ReadFile(existing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "original" {
+		t.Fatalf("existing pack was modified: %q", got)
+	}
+}
+
+func TestInstallRejectsInvalidConfigBeforeNetwork(t *testing.T) {
+	configDir := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	if err := os.WriteFile(filepath.Join(configDir, "sources.json"), []byte(`{"sources":[{"type":"unknown"}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	requests := 0
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		requests++
+	}))
+	defer srv.Close()
+
+	err := packs.Install(configDir, packs.InstallOpts{Target: srv.URL + "/pack.tar.gz"})
+	if !errors.Is(err, resolve.ErrInvalidConfig) {
+		t.Fatalf("err=%v want ErrInvalidConfig", err)
+	}
+	if requests != 0 {
+		t.Fatalf("requests=%d want 0", requests)
 	}
 }
 
