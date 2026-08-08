@@ -368,6 +368,12 @@ func ValidateStages(stages []Stage) error {
 				return fmt.Errorf("%w: http-index requires index and hosts", ErrInvalidConfig)
 			}
 		}
+		if s.TokenEnv != "" && !validEnvName(s.TokenEnv) {
+			return fmt.Errorf("%w: token_env must be a portable environment variable name", ErrInvalidConfig)
+		}
+		if s.SecretEnv != "" && !validEnvName(s.SecretEnv) {
+			return fmt.Errorf("%w: secret_env must be a portable environment variable name", ErrInvalidConfig)
+		}
 		if t == "logo-dev" && strings.TrimSpace(s.TokenEnv) == "" {
 			return fmt.Errorf("%w: logo-dev requires token_env", ErrInvalidConfig)
 		}
@@ -378,4 +384,20 @@ func ValidateStages(stages []Stage) error {
 		}
 	}
 	return nil
+}
+
+func validEnvName(name string) bool {
+	if name == "" || !isEnvNameStart(name[0]) {
+		return false
+	}
+	for i := 1; i < len(name); i++ {
+		if !isEnvNameStart(name[i]) && (name[i] < '0' || name[i] > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+func isEnvNameStart(c byte) bool {
+	return c == '_' || c >= 'A' && c <= 'Z' || c >= 'a' && c <= 'z'
 }

@@ -36,7 +36,8 @@ When sources config is missing:
 
 ## BYOK credentials
 
-Secrets are **never** stored in sources/overrides files. Use env var **names** only:
+Secrets are **never** stored in sources/overrides files. Use portable env var
+**names** only (`[A-Za-z_][A-Za-z0-9_]*`):
 
 | Field | Meaning |
 |-------|---------|
