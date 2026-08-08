@@ -174,3 +174,26 @@ func TestValidateLogoDevAndNoun(t *testing.T) {
 		t.Fatal("noun-project needs secret_env")
 	}
 }
+
+func TestValidateCredentialEnvironmentNames(t *testing.T) {
+	valid := []resolve.Stage{
+		{Type: "logo-dev", TokenEnv: "LOGO_DEV_TOKEN_2"},
+		{Type: "noun-project", TokenEnv: "_NOUN_KEY", SecretEnv: "NOUN_SECRET"},
+		{Type: "github", TokenEnv: "GITHUB_TOKEN"},
+	}
+	if err := resolve.ValidateStages(valid); err != nil {
+		t.Fatalf("valid names rejected: %v", err)
+	}
+	for _, stage := range []resolve.Stage{
+		{Type: "logo-dev", TokenEnv: "1TOKEN"},
+		{Type: "noun-project", TokenEnv: "NOUN-KEY", SecretEnv: "SECRET"},
+		{Type: "noun-project", TokenEnv: "KEY", SecretEnv: "SECRET=value"},
+		{Type: "github", TokenEnv: "TØKEN"},
+		{Type: "github", TokenEnv: " GITHUB_TOKEN "},
+		{Type: "http-index", Index: "https://icons.example/index.json", Hosts: []string{"icons.example"}, TokenEnv: "BAD NAME"},
+	} {
+		if err := resolve.ValidateStages([]resolve.Stage{stage}); !errors.Is(err, resolve.ErrInvalidConfig) {
+			t.Errorf("stage=%+v err=%v want ErrInvalidConfig", stage, err)
+		}
+	}
+}

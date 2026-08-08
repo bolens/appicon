@@ -65,10 +65,12 @@
         "enabled": { "type": "boolean" },
         "token_env": {
           "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
           "description": "Environment variable name holding API token/key (never the secret itself)"
         },
         "secret_env": {
           "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
           "description": "Environment variable name holding OAuth1 consumer secret (noun-project)"
         },
         "base": {
