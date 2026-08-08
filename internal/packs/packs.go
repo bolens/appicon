@@ -406,22 +406,57 @@ func installFromArchiveURL(configDir, rawURL string, opts InstallOpts) error {
 			return fmt.Errorf("pack subdir not found: %s", opts.Subdir)
 		}
 	}
-	if err := prepareInstallRoot(root); err != nil {
-		return err
-	}
-	// prepareInstallRoot deliberately leaves an allowed empty custom destination.
-	// Remove only that empty directory so the staged tree can be renamed over it.
-	if err := os.Remove(root); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	if err := os.Rename(staging, root); err != nil {
-		return err
-	}
 	packPath, err := subdirUnderRoot(root, opts.Subdir)
 	if err != nil {
 		return err
 	}
-	return Add(configDir, name, packPath)
+	return replaceInstallRoot(root, staging, func() error {
+		return Add(configDir, name, packPath)
+	})
+}
+
+// replaceInstallRoot swaps a validated staged tree into place and restores the
+// previous destination if registration fails.
+func replaceInstallRoot(root, staging string, register func() error) error {
+	if err := checkInstallRoot(root); err != nil {
+		return err
+	}
+	backup, err := os.MkdirTemp(filepath.Dir(root), ".appicon-backup-*")
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(backup); err != nil {
+		return err
+	}
+	hadRoot := false
+	if _, err := os.Lstat(root); err == nil {
+		if err := os.Rename(root, backup); err != nil {
+			return err
+		}
+		hadRoot = true
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	restore := func() {
+		_ = os.RemoveAll(root)
+		if hadRoot {
+			_ = os.Rename(backup, root)
+		}
+	}
+	if err := os.Rename(staging, root); err != nil {
+		restore()
+		return err
+	}
+	if err := register(); err != nil {
+		restore()
+		return err
+	}
+	if hadRoot {
+		if err := os.RemoveAll(backup); err != nil {
+			return fmt.Errorf("remove install backup: %w", err)
+		}
+	}
+	return nil
 }
 
 // Uncompressed limits (download cap above is compressed). Per-member + total
@@ -579,6 +614,16 @@ func rejectDangerousInstallRoot(root string) error {
 // prepareInstallRoot clears root when it is under packs.Root(); otherwise it
 // refuses to wipe a non-empty tree outside the packs data directory.
 func prepareInstallRoot(root string) error {
+	if err := checkInstallRoot(root); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(root); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
+}
+
+func checkInstallRoot(root string) error {
 	packsRoot := filepath.Clean(Root())
 	root = filepath.Clean(root)
 	under, err := pathContained(packsRoot, root)
@@ -586,9 +631,6 @@ func prepareInstallRoot(root string) error {
 		return err
 	}
 	if under {
-		if err := os.RemoveAll(root); err != nil && !os.IsNotExist(err) {
-			return err
-		}
 		return nil
 	}
 	st, err := os.Stat(root)
