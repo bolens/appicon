@@ -1,18 +1,42 @@
 package daemon_test
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"errors"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/bolens/appicon/internal/daemon"
 	"github.com/bolens/appicon/internal/resolve"
 )
+
+type shortWriter struct {
+	w   io.Writer
+	max int
+}
+
+func (w shortWriter) Write(p []byte) (int, error) {
+	if len(p) > w.max {
+		p = p[:w.max]
+	}
+	return w.w.Write(p)
+}
+
+type zeroWriter struct{}
+
+func (zeroWriter) Write([]byte) (int, error) { return 0, nil }
+
+type overreportWriter struct{}
+
+func (overreportWriter) Write(p []byte) (int, error) { return len(p) + 1, nil }
 
 func fixtureOpts(t *testing.T) resolve.Options {
 	t.Helper()
@@ -89,6 +113,53 @@ func TestProtocolRoundTrip(t *testing.T) {
 	}
 	if got.Op != "ping" {
 		t.Fatalf("op=%q", got.Op)
+	}
+}
+
+func TestProtocolWriteHandlesShortWrites(t *testing.T) {
+	var buf bytes.Buffer
+	if err := daemon.WriteFrame(shortWriter{w: &buf, max: 1}, daemon.Request{Op: "ping"}); err != nil {
+		t.Fatal(err)
+	}
+	var got daemon.Request
+	if err := daemon.ReadFrame(&buf, &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Op != "ping" {
+		t.Fatalf("op=%q", got.Op)
+	}
+}
+
+func TestProtocolWriteRejectsZeroProgressAndOversize(t *testing.T) {
+	if err := daemon.WriteFrame(zeroWriter{}, daemon.Request{Op: "ping"}); !errors.Is(err, io.ErrShortWrite) {
+		t.Fatalf("zero writer err=%v", err)
+	}
+	if err := daemon.WriteFrame(overreportWriter{}, daemon.Request{Op: "ping"}); !errors.Is(err, io.ErrShortWrite) {
+		t.Fatalf("overreport writer err=%v", err)
+	}
+	tooLarge := daemon.Request{Query: strings.Repeat("x", daemon.MaxFrame)}
+	if err := daemon.WriteFrame(io.Discard, tooLarge); err == nil || !strings.Contains(err.Error(), "too large") {
+		t.Fatalf("oversize err=%v", err)
+	}
+}
+
+func TestProtocolReadRejectsInvalidAndTruncatedFrames(t *testing.T) {
+	for _, size := range []uint32{0, daemon.MaxFrame + 1} {
+		var frame bytes.Buffer
+		if err := binary.Write(&frame, binary.BigEndian, size); err != nil {
+			t.Fatal(err)
+		}
+		if err := daemon.ReadFrame(&frame, &daemon.Request{}); err == nil {
+			t.Fatalf("size %d accepted", size)
+		}
+	}
+	var truncated bytes.Buffer
+	if err := binary.Write(&truncated, binary.BigEndian, uint32(5)); err != nil {
+		t.Fatal(err)
+	}
+	truncated.WriteString("{}")
+	if err := daemon.ReadFrame(&truncated, &daemon.Request{}); !errors.Is(err, io.ErrUnexpectedEOF) {
+		t.Fatalf("truncated err=%v", err)
 	}
 }
 
