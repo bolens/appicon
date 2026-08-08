@@ -118,6 +118,9 @@ func (c *Client) ResolveExplain(ctx context.Context, query string, opts resolve.
 
 // ResolveBatch dials the daemon and resolves multiple queries in one frame.
 func (c *Client) ResolveBatch(ctx context.Context, queries []string, opts resolve.Options, explain bool) ([]resolve.BatchItem, error) {
+	if len(queries) > MaxBatchQueries {
+		return nil, fmt.Errorf("resolve-batch query count %d exceeds limit %d", len(queries), MaxBatchQueries)
+	}
 	conn, err := c.dial(ctx)
 	if err != nil {
 		return nil, err

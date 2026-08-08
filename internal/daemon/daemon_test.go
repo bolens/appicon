@@ -348,6 +348,49 @@ func TestClientRejectsMalformedBatchResponse(t *testing.T) {
 	}
 }
 
+func TestDaemonBatchQueryLimit(t *testing.T) {
+	opts := fixtureOpts(t)
+	socket, stop := startServer(t, opts)
+	defer stop()
+
+	conn, err := net.Dial("unix", socket)
+	if err != nil {
+		t.Fatal(err)
+	}
+	queries := make([]string, daemon.MaxBatchQueries+1)
+	if err := daemon.WriteFrame(conn, daemon.Request{Op: "resolve-batch", Queries: queries}); err != nil {
+		t.Fatal(err)
+	}
+	var resp daemon.Response
+	if err := daemon.ReadFrame(conn, &resp); err != nil {
+		t.Fatal(err)
+	}
+	_ = conn.Close()
+	if resp.Error == nil || !strings.Contains(*resp.Error, "exceeds limit") || len(resp.Results) != 0 {
+		t.Fatalf("response=%+v", resp)
+	}
+
+	client := &daemon.Client{Socket: socket, Timeout: time.Second}
+	if _, err := client.ResolveBatch(context.Background(), queries, opts, false); err == nil || !strings.Contains(err.Error(), "exceeds limit") {
+		t.Fatalf("client err=%v", err)
+	}
+}
+
+func TestDaemonBatchAcceptsExactQueryLimit(t *testing.T) {
+	opts := fixtureOpts(t)
+	socket, stop := startServer(t, opts)
+	defer stop()
+	queries := make([]string, daemon.MaxBatchQueries)
+	client := &daemon.Client{Socket: socket, Timeout: 5 * time.Second}
+	items, err := client.ResolveBatch(context.Background(), queries, opts, false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(items) != daemon.MaxBatchQueries {
+		t.Fatalf("items=%d want %d", len(items), daemon.MaxBatchQueries)
+	}
+}
+
 func TestTryResolveFallbackWhenMissing(t *testing.T) {
 	t.Setenv("APPICON_SOCKET", filepath.Join(t.TempDir(), "nope.sock"))
 	t.Setenv("APPICON_NO_DAEMON", "")

@@ -19,6 +19,8 @@ import (
 const (
 	// MaxFrame is the maximum JSON payload size (1 MiB).
 	MaxFrame = 1 << 20
+	// MaxBatchQueries bounds work amplification from one daemon frame.
+	MaxBatchQueries = 256
 	// SocketName is the basename under XDG_RUNTIME_DIR.
 	SocketName = "appicon.sock"
 )

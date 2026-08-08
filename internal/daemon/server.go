@@ -113,6 +113,10 @@ func (s *Server) handleResolve(ctx context.Context, conn net.Conn, req Request) 
 }
 
 func (s *Server) handleResolveBatch(ctx context.Context, conn net.Conn, req Request) error {
+	if len(req.Queries) > MaxBatchQueries {
+		msg := fmt.Sprintf("resolve-batch query count %d exceeds limit %d", len(req.Queries), MaxBatchQueries)
+		return WriteFrame(conn, Response{Op: "resolve-batch", Error: &msg})
+	}
 	opts := s.mergeOpts(req)
 	resp := Response{
 		Op:      "resolve-batch",
