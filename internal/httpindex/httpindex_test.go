@@ -83,6 +83,55 @@ func TestLookupMapIndexCaches(t *testing.T) {
 	}
 }
 
+func TestLookupRefreshSeparatesChangedAssetURL(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	index := `{"Brand":"https://icons.example/one.svg"}`
+	mux := http.NewServeMux()
+	mux.HandleFunc("/index.json", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(index))
+	})
+	mux.HandleFunc("/one.svg", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("one"))
+	})
+	mux.HandleFunc("/two.svg", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("two"))
+	})
+	srv := httptest.NewServer(mux)
+	t.Cleanup(srv.Close)
+
+	c := httpindex.New()
+	c.TTL = time.Nanosecond
+	c.HTTP = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		u := *req.URL
+		u.Scheme = "http"
+		u.Host = srv.Listener.Addr().String()
+		req2 := req.Clone(req.Context())
+		req2.URL = &u
+		return http.DefaultTransport.RoundTrip(req2)
+	})}
+	opts := httpindex.Options{Name: "changing", IndexURL: "https://icons.example/index.json", Hosts: []string{"icons.example"}}
+
+	first, err := c.Lookup(context.Background(), "Brand", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	index = `{"Brand":"https://icons.example/two.svg"}`
+	second, err := c.Lookup(context.Background(), "Brand", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Path == second.Path {
+		t.Fatalf("changed URLs share cache path %q", first.Path)
+	}
+	data, err := os.ReadFile(second.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "two" {
+		t.Fatalf("content=%q", data)
+	}
+}
+
 func TestLookupThemeVariants(t *testing.T) {
 	index := `{"Cool Brand":{"light":"https://icons.example/brand-light.svg","dark":"https://icons.example/brand-dark.svg"}}`
 	c, base := startServer(t, index, `<svg xmlns="http://www.w3.org/2000/svg"/>`)
