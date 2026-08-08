@@ -238,14 +238,8 @@ func (c *Client) setAuth(req *http.Request, token string) {
 func (c *Client) download(ctx context.Context, rawURL, token string) ([]byte, error) {
 	u, err := url.Parse(rawURL)
 	// HTTPS only — API/blob URLs must not downgrade to cleartext HTTP.
-	if err != nil || u.Scheme != "https" {
+	if err != nil || !c.allowedURL(u) {
 		return nil, ErrNotFound
-	}
-	host := strings.ToLower(u.Hostname())
-	if c.BaseURL == "" && c.APIBaseURL == "" {
-		if _, ok := allowedHosts[host]; !ok {
-			return nil, ErrNotFound
-		}
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
@@ -260,6 +254,7 @@ func (c *Client) doBytes(req *http.Request) ([]byte, error) {
 	if client == nil {
 		client = New().HTTP
 	}
+	client = c.clientWithAllowedRedirects(client)
 	res, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -275,6 +270,41 @@ func (c *Client) doBytes(req *http.Request) ([]byte, error) {
 		return nil, fmt.Errorf("github: HTTP %d", res.StatusCode)
 	}
 	return limitio.ReadAll(res.Body, 4<<20)
+}
+
+func (c *Client) clientWithAllowedRedirects(client *http.Client) *http.Client {
+	copy := *client
+	original := client.CheckRedirect
+	copy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		if !c.allowedURL(req.URL) {
+			return ErrNotFound
+		}
+		if original != nil {
+			return original(req, via)
+		}
+		if len(via) >= 10 {
+			return errors.New("stopped after 10 redirects")
+		}
+		return nil
+	}
+	return &copy
+}
+
+func (c *Client) allowedURL(u *url.URL) bool {
+	if u == nil || u.Scheme != "https" {
+		return false
+	}
+	host := strings.ToLower(u.Hostname())
+	if _, ok := allowedHosts[host]; ok {
+		return true
+	}
+	for _, base := range []string{c.BaseURL, c.APIBaseURL} {
+		bu, err := url.Parse(base)
+		if err == nil && bu.Scheme == "https" && strings.EqualFold(bu.Hostname(), host) {
+			return true
+		}
+	}
+	return false
 }
 
 func (c *Client) apiBase() string {
