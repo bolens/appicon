@@ -43,7 +43,8 @@ Flags: `--name`, `--path` (destination), `--subdir` (pack root inside clone; mus
 
 - Default destination is under `$XDG_DATA_HOME/appicon/packs/`. Only that tree is wiped on reinstall.
 - Custom `--path` / MCP `path` outside the packs data dir is allowed only when the directory is missing or empty (refuses `/`, `.`, and `$HOME`).
-- Archive extracts: no symlink/hardlink members; refuse writing through existing symlink parents; per-file 32 MiB and total 512 MiB uncompressed caps; files written as `0644`.
+- Pack `index.json` reads are capped at 4 MiB; ambiguous case/whitespace-colliding keys are ignored in favor of deterministic filename lookup.
+- Archive extracts: no symlink/hardlink members; refuse writing through existing symlink parents; 10,000-entry, per-file 32 MiB, and total 512 MiB uncompressed caps; files written as `0644`.
 - Non-loopback archive URLs must be HTTPS; direct metadata/link-local targets are blocked. Redirects remain HTTPS and cannot target metadata, link-local, loopback, or private IPs (IPv4 or IPv6).
 
 | Recipe | Upstream | Pack subdir |

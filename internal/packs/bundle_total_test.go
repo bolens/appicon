@@ -6,6 +6,7 @@ import (
 	"compress/gzip"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -40,6 +41,49 @@ func TestInstallBundleEnforcesTotalSize(t *testing.T) {
 				t.Fatal(err)
 			}
 		})
+	}
+}
+
+func TestArchiveEntryCountBoundary(t *testing.T) {
+	count := 0
+	if err := countArchiveEntry(&count, 2); err != nil {
+		t.Fatal(err)
+	}
+	if err := countArchiveEntry(&count, 2); err != nil {
+		t.Fatalf("exact limit rejected: %v", err)
+	}
+	if err := countArchiveEntry(&count, 2); err == nil || !strings.Contains(err.Error(), "entry count exceeds limit") {
+		t.Fatalf("one-over err=%v", err)
+	}
+}
+
+func TestInstallBundleRejectsTooManyEntries(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	var buf bytes.Buffer
+	gz := gzip.NewWriter(&buf)
+	tw := tar.NewWriter(gz)
+	for i := 0; i <= maxTarEntries; i++ {
+		name := "pack/dir-" + strconv.Itoa(i) + "/"
+		if err := tw.WriteHeader(&tar.Header{Name: name, Mode: 0o755, Typeflag: tar.TypeDir}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	bundle := filepath.Join(t.TempDir(), "too-many.tar.gz")
+	if err := os.WriteFile(bundle, buf.Bytes(), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := InstallBundle(t.TempDir(), bundle)
+	if err == nil || !strings.Contains(err.Error(), "entry count exceeds limit") {
+		t.Fatalf("err=%v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(Root(), "pack")); !os.IsNotExist(statErr) {
+		t.Fatalf("over-limit bundle was materialized: %v", statErr)
 	}
 }
 

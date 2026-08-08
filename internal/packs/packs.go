@@ -475,6 +475,7 @@ func replaceInstallRoot(root, staging string, register func() error) error {
 const (
 	maxTarMemberBytes = 32 << 20  // 32 MiB per archive member
 	maxTarTotalBytes  = 512 << 20 // 512 MiB uncompressed total
+	maxTarEntries     = 10_000    // cap inode/CPU exhaustion from empty members
 )
 
 func extractTarInto(archive, dest string, compressed bool) error {
@@ -494,12 +495,16 @@ func extractTarInto(archive, dest string, compressed bool) error {
 	}
 	tr := tar.NewReader(r)
 	var total int64
+	entries := 0
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
+			return err
+		}
+		if err := countArchiveEntry(&entries, maxTarEntries); err != nil {
 			return err
 		}
 		target, err := safeArchiveJoin(dest, hdr.Name)
@@ -936,12 +941,16 @@ func installBundle(configDir, bundlePath string, maxTotal int64) error {
 	}
 	registered := map[string]string{}
 	var total int64
+	entries := 0
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
 			break
 		}
 		if err != nil {
+			return err
+		}
+		if err := countArchiveEntry(&entries, maxTarEntries); err != nil {
 			return err
 		}
 		target, err := safeArchiveJoin(root, hdr.Name)
@@ -1038,6 +1047,7 @@ func validateBundle(bundlePath, root string, maxTotal int64) error {
 	defer func() { _ = gz.Close() }()
 	tr := tar.NewReader(gz)
 	var total int64
+	entries := 0
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -1045,6 +1055,9 @@ func validateBundle(bundlePath, root string, maxTotal int64) error {
 			return err
 		}
 		if err != nil {
+			return err
+		}
+		if err := countArchiveEntry(&entries, maxTarEntries); err != nil {
 			return err
 		}
 		target, err := safeArchiveJoin(root, hdr.Name)
@@ -1072,4 +1085,12 @@ func validateBundle(bundlePath, root string, maxTotal int64) error {
 		}
 		total += n
 	}
+}
+
+func countArchiveEntry(count *int, limit int) error {
+	*count++
+	if *count > limit {
+		return fmt.Errorf("archive entry count exceeds limit %d", limit)
+	}
+	return nil
 }
