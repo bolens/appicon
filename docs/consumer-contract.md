@@ -54,7 +54,7 @@ Plain (non-JSON) mode: one path line per hit; misses print hints on stderr and c
 - Hot paths (e.g. Waybar dock ticks) should use `--offline` after a one-shot online `prefetch` (optionally `prefetch --from-desktop`).
 - `resolve` / `prefetch` dial `$XDG_RUNTIME_DIR/appicon.sock` when present; fall back in-process. `--local` / `APPICON_NO_DAEMON=1` skip the dial.
 - Daemon is Unix-only (`status.daemon_supported`); Windows always resolves in-process.
-- Daemon frames carry `order`, `explain`, miss `hint`, and `resolve-batch` (`queries`) — same allowlists/cache as the CLI.
+- Daemon frames carry `order`, `explain`, miss `hint`, and `resolve-batch` (`queries`) — same allowlists/cache as the CLI. A daemon batch is limited to 256 queries per frame.
 - `status` may include `credentials` (BYOK env readiness) and platform fields (`goos`/`goarch`).
 
 ## Theme
