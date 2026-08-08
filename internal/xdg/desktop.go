@@ -116,19 +116,12 @@ func (f *Finder) findDesktop(query string) (DesktopEntry, bool) {
 
 	seenIDs := map[string]struct{}{}
 	for _, dir := range f.applicationDirs() {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			continue
-		}
-		for _, ent := range entries {
-			if ent.IsDir() || !strings.HasSuffix(ent.Name(), ".desktop") {
-				continue
-			}
-			path := filepath.Join(dir, ent.Name())
+		for _, path := range desktopFilePaths(dir) {
 			desk, err := parseDesktopFile(path)
 			if err != nil {
 				continue
 			}
+			desk.ID = desktopFileID(dir, path)
 			idLower := strings.ToLower(desk.ID)
 			if _, seen := seenIDs[idLower]; seen {
 				continue
@@ -137,7 +130,7 @@ func (f *Finder) findDesktop(query string) (DesktopEntry, bool) {
 			if desk.Hidden {
 				continue
 			}
-			if !foundID && (idLower == idQuery || strings.ToLower(ent.Name()) == qLower) {
+			if !foundID && (idLower == idQuery || strings.EqualFold(filepath.Base(path), q)) {
 				byID = desk
 				foundID = true
 			}
@@ -190,19 +183,12 @@ func (f *Finder) ListDesktopEntries() []DesktopEntry {
 	var out []DesktopEntry
 	seen := map[string]struct{}{}
 	for _, dir := range f.applicationDirs() {
-		entries, err := os.ReadDir(dir)
-		if err != nil {
-			continue
-		}
-		for _, ent := range entries {
-			if ent.IsDir() || !strings.HasSuffix(ent.Name(), ".desktop") {
-				continue
-			}
-			path := filepath.Join(dir, ent.Name())
+		for _, path := range desktopFilePaths(dir) {
 			desk, err := parseDesktopFile(path)
 			if err != nil {
 				continue
 			}
+			desk.ID = desktopFileID(dir, path)
 			key := strings.ToLower(desk.ID)
 			if _, ok := seen[key]; ok {
 				continue
@@ -215,6 +201,32 @@ func (f *Finder) ListDesktopEntries() []DesktopEntry {
 		}
 	}
 	return out
+}
+
+func desktopFilePaths(root string) []string {
+	var paths []string
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			if path == root {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !d.IsDir() && strings.HasSuffix(strings.ToLower(d.Name()), ".desktop") {
+			paths = append(paths, path)
+		}
+		return nil
+	})
+	return paths
+}
+
+func desktopFileID(root, path string) string {
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		rel = filepath.Base(path)
+	}
+	id := strings.ReplaceAll(filepath.ToSlash(rel), "/", "-")
+	return strings.TrimSuffix(id, filepath.Ext(id))
 }
 
 // PrefetchQueriesFromDesktop derives unique resolve queries from installed .desktop files.
