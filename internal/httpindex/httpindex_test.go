@@ -3,12 +3,15 @@ package httpindex_test
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -81,6 +84,84 @@ func TestLookupMapIndexCaches(t *testing.T) {
 	}
 	if !res2.Cached || res2.Path != res1.Path {
 		t.Fatalf("cache miss: %+v", res2)
+	}
+}
+
+func TestLookupSeparatesSameNameIndexURLs(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	c := httpindex.New()
+	c.HTTP = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var body string
+		switch req.URL.Path {
+		case "/one/index.json":
+			body = `{"Brand":"https://icons.example/one.svg"}`
+		case "/two/index.json":
+			body = `{"Brand":"https://icons.example/two.svg"}`
+		case "/one.svg":
+			body = "one"
+		case "/two.svg":
+			body = "two"
+		default:
+			return &http.Response{StatusCode: http.StatusNotFound, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body)), Header: make(http.Header)}, nil
+	})}
+	base := httpindex.Options{Name: "shared", Hosts: []string{"icons.example"}}
+	oneOpts := base
+	oneOpts.IndexURL = "https://icons.example/one/index.json"
+	twoOpts := base
+	twoOpts.IndexURL = "https://icons.example/two/index.json"
+	one, err := c.Lookup(context.Background(), "Brand", oneOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	two, err := c.Lookup(context.Background(), "Brand", twoOpts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if one.Path == two.Path {
+		t.Fatalf("different index URLs shared asset %q", one.Path)
+	}
+	for path, want := range map[string]string{one.Path: "one", two.Path: "two"} {
+		data, err := os.ReadFile(path)
+		if err != nil || string(data) != want {
+			t.Fatalf("path=%q data=%q err=%v want=%q", path, data, err, want)
+		}
+	}
+}
+
+func TestConcurrentLookupFetchesIndexOnce(t *testing.T) {
+	c, base := startServer(t, `{"Brand":"https://icons.example/brand.svg"}`, `<svg/>`)
+	transport := c.HTTP.Transport
+	var indexRequests atomic.Int32
+	c.HTTP.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if req.URL.Path == "/index.json" {
+			indexRequests.Add(1)
+			time.Sleep(20 * time.Millisecond)
+		}
+		return transport.RoundTrip(req)
+	})
+	opts := httpindex.Options{Name: "concurrent", IndexURL: base + "/index.json", Hosts: []string{"icons.example"}}
+	const workers = 12
+	var wg sync.WaitGroup
+	errs := make(chan error, workers)
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, err := c.Lookup(context.Background(), "Brand", opts)
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if got := indexRequests.Load(); got != 1 {
+		t.Fatalf("index requests=%d want 1", got)
 	}
 }
 
