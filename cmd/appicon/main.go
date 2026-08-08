@@ -346,7 +346,9 @@ func emitResolveOne(ctx context.Context, query string, opts resolve.Options, asJ
 		enc := json.NewEncoder(stdout)
 		enc.SetEscapeHTML(false)
 		payload := resolvePayload(query, opts, res, err, explain)
-		_ = enc.Encode(payload)
+		if encodeErr := enc.Encode(payload); encodeErr != nil {
+			return encodeErr
+		}
 		if err != nil {
 			if !explain && hint != "" {
 				_, _ = fmt.Fprintf(stderr, "appicon: %s\n", hint)
@@ -386,7 +388,9 @@ func emitResolveBatch(ctx context.Context, queries []string, opts resolve.Option
 		}
 		enc := json.NewEncoder(stdout)
 		enc.SetEscapeHTML(false)
-		_ = enc.Encode(map[string]any{"results": results})
+		if err := enc.Encode(map[string]any{"results": results}); err != nil {
+			return err
+		}
 		return first
 	}
 	for _, it := range items {
@@ -486,7 +490,9 @@ Examples:
 	if *asJSON {
 		enc := json.NewEncoder(stdout)
 		enc.SetEscapeHTML(false)
-		_ = enc.Encode(map[string]any{"results": results})
+		if err := enc.Encode(map[string]any{"results": results}); err != nil {
+			return err
+		}
 	}
 	return first
 }
