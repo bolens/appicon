@@ -50,7 +50,7 @@
         },
         "path": {
           "type": "string",
-          "description": "pack directory, or github default owner/repo root"
+          "description": "pack/dir: absolute or ~/ directory; github: default owner/repo root"
         },
         "name": { "type": "string" },
         "index": {

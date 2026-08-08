@@ -119,6 +119,9 @@ func TestEffectiveStagesRejectInvalidEnabledStages(t *testing.T) {
 	tests := []resolve.Stage{
 		{},
 		{Type: "pack"},
+		{Type: "pack", Path: "relative/icons"},
+		{Type: "dir", Path: "."},
+		{Type: "pack", Path: "~other/icons"},
 		{Type: "http-index", Index: "https://example.com/index.json"},
 		{Type: "http-index", Index: "https://example.com/index.json", Hosts: []string{"", " \t"}},
 		{Type: "logo-dev"},
@@ -137,6 +140,17 @@ func TestEffectiveStagesRejectInvalidEnabledStages(t *testing.T) {
 	}
 	if len(stages) == 0 {
 		t.Fatal("disabled-only config should retain defaults")
+	}
+}
+
+func TestValidatePackPaths(t *testing.T) {
+	valid := []resolve.Stage{
+		{Type: "pack", Path: t.TempDir()},
+		{Type: "pack", Path: "~/icons"},
+		{Type: "github", Path: "owner/repository"},
+	}
+	if err := resolve.ValidateStages(valid); err != nil {
+		t.Fatalf("valid paths rejected: %v", err)
 	}
 }
 

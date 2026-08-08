@@ -112,6 +112,10 @@ a local pack, or an override for those applications.
 }
 ```
 
+Pack and legacy `dir` stage paths must be absolute or use the portable
+`~/...` home shorthand. Relative and named-user (`~alice/...`) paths are
+rejected so resolution cannot change with the CLI or daemon working directory.
+
 ## CLI
 
 ```bash
