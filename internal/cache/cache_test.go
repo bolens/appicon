@@ -122,6 +122,9 @@ func TestReadAndExistsRejectSymlinkFile(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, "linked")); err != nil {
 		t.Skipf("symlinks unavailable: %v", err)
 	}
+	if _, err := cache.Path("linked"); err == nil {
+		t.Fatal("expected symlink path rejection")
+	}
 	if _, err := cache.Read("linked"); err == nil {
 		t.Fatal("expected symlink file rejection")
 	}
