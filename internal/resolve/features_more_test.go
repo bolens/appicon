@@ -6,6 +6,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 
 	"github.com/bolens/appicon/internal/resolve"
@@ -122,33 +123,61 @@ func TestEffectiveThemeAPPICONOverridesGTK(t *testing.T) {
 }
 
 func TestQueryCandidatesFromCatalog(t *testing.T) {
-	cache := t.TempDir()
-	t.Setenv("XDG_CACHE_HOME", cache)
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	catalog := []map[string]string{{"title": "CatalogBrand"}}
-	b, _ := json.Marshal(catalog)
-	if err := os.MkdirAll(filepath.Join(cache, "appicon"), 0o755); err != nil {
-		// cache.Dir() may already be XDG_CACHE_HOME/appicon
-		_ = err
+	for _, tc := range []struct {
+		name string
+		data any
+	}{
+		{name: "legacy array", data: []map[string]string{{"title": "CatalogBrand"}}},
+		{name: "wrapped current", data: map[string]any{"fetched_at": "2026-01-01T00:00:00Z", "items": []map[string]string{{"title": "CatalogBrand"}}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cacheRoot := t.TempDir()
+			t.Setenv("XDG_CACHE_HOME", cacheRoot)
+			t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+			b, err := json.Marshal(tc.data)
+			if err != nil {
+				t.Fatal(err)
+			}
+			dir := resolve.CacheDir()
+			if err := os.MkdirAll(dir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(dir, "catalog.json"), b, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			cands := resolve.QueryCandidates("", "Cat", 16)
+			if !slices.Contains(cands, "CatalogBrand") {
+				t.Fatalf("cands=%v", cands)
+			}
+			suggestion, err := resolve.SuggestOverride("", "Catalog", resolve.Options{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Contains(suggestion.Candidates, "CatalogBrand") {
+				t.Fatalf("suggestion=%+v", suggestion)
+			}
+		})
 	}
-	// resolve.CacheDir uses cache package which joins appicon under XDG_CACHE_HOME
+}
+
+func TestCatalogCandidatesIgnoreMalformedCache(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	dir := resolve.CacheDir()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(dir, "catalog.json"), b, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "catalog.json"), []byte(`{"items":`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	cands := resolve.QueryCandidates("", "Cat", 16)
-	found := false
-	for _, c := range cands {
-		if c == "CatalogBrand" {
-			found = true
-			break
-		}
+	if got := resolve.QueryCandidates("", "catalog", 16); len(got) != 0 {
+		t.Fatalf("candidates=%v", got)
 	}
-	if !found {
-		t.Fatalf("cands=%v", cands)
+	suggestion, err := resolve.SuggestOverride("", "catalog", resolve.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(suggestion.Candidates) != 0 {
+		t.Fatalf("suggestion=%+v", suggestion)
 	}
 }
 
