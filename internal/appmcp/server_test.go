@@ -15,6 +15,7 @@ import (
 	"testing"
 
 	"github.com/bolens/appicon/internal/appmcp"
+	"github.com/bolens/appicon/internal/cache"
 	"github.com/bolens/appicon/internal/packs"
 	"github.com/bolens/appicon/internal/resolve"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -307,6 +308,50 @@ func TestMCPVersionAndCacheStats(t *testing.T) {
 	}
 }
 
+func TestMCPCachePruneAndClear(t *testing.T) {
+	session := connect(t, fixtureXDG(t))
+	rasterPath, err := cache.WriteAtomic("raster/test.png", []byte("png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	orphanPath, err := cache.WriteAtomic("svgs/orphan.svg", []byte("svg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "cache_prune"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.IsError {
+		t.Fatalf("prune error: %+v", res)
+	}
+	sc, ok := res.StructuredContent.(map[string]any)
+	if !ok || sc["removed_files"] != float64(2) {
+		t.Fatalf("prune=%#v", res.StructuredContent)
+	}
+	for _, path := range []string{rasterPath, orphanPath} {
+		if _, err := os.Stat(path); !os.IsNotExist(err) {
+			t.Fatalf("path still exists: %s err=%v", path, err)
+		}
+	}
+
+	cachePath, err := cache.WriteAtomic("glyph/test.svg", []byte("svg"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err = session.CallTool(context.Background(), &mcp.CallToolParams{Name: "cache_clear"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sc, ok = res.StructuredContent.(map[string]any)
+	if !ok || sc["cleared"] != true {
+		t.Fatalf("clear=%#v", res.StructuredContent)
+	}
+	if _, err := os.Stat(cachePath); !os.IsNotExist(err) {
+		t.Fatalf("cache path still exists: err=%v", err)
+	}
+}
+
 func TestMCPPrefetch(t *testing.T) {
 	session := connect(t, fixtureXDG(t))
 	res, err := session.CallTool(context.Background(), &mcp.CallToolParams{
@@ -358,12 +403,35 @@ func TestMCPOverrideCRUD(t *testing.T) {
 	if sc["target"] != "firefox" {
 		t.Fatalf("%v", sc)
 	}
+	listRes, err := session.CallTool(context.Background(), &mcp.CallToolParams{Name: "override_list"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	listSC, ok := listRes.StructuredContent.(map[string]any)
+	if !ok {
+		t.Fatalf("structured=%T", listRes.StructuredContent)
+	}
+	overrides, ok := listSC["overrides"].(map[string]any)
+	if !ok || overrides["my-browser"] != "firefox" {
+		t.Fatalf("list=%v", listSC)
+	}
 	_, err = session.CallTool(context.Background(), &mcp.CallToolParams{
 		Name:      "override_rm",
 		Arguments: map[string]any{"query": "my-browser"},
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	missing, err := session.CallTool(context.Background(), &mcp.CallToolParams{
+		Name:      "override_rm",
+		Arguments: map[string]any{"query": "my-browser"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	missingSC, ok := missing.StructuredContent.(map[string]any)
+	if !ok || missingSC["ok"] != false {
+		t.Fatalf("missing remove=%#v", missing.StructuredContent)
 	}
 }
 
