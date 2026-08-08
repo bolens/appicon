@@ -82,7 +82,15 @@ func WriteAtomic(name string, data []byte) (string, error) {
 
 // Path returns an absolute path under the cache root without creating it.
 func Path(name string) (string, error) {
-	return contain(Dir(), name)
+	root := Dir()
+	p, err := contain(root, name)
+	if err != nil {
+		return "", err
+	}
+	if err := refuseSymlinkPath(root, p); err != nil {
+		return "", err
+	}
+	return p, nil
 }
 
 // contain joins name under root, rejecting absolute paths and ".." escapes.
