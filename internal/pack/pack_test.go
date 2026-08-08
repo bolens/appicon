@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/bolens/appicon/internal/pack"
@@ -31,6 +32,42 @@ func TestLookupIndex(t *testing.T) {
 	}
 	if res.Title != "My Brand" {
 		t.Fatalf("title=%q", res.Title)
+	}
+}
+
+func TestLookupIndexRejectsOversizedData(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "hit.svg"), []byte("<svg/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	data := `{"target":"hit.svg","padding":"` + strings.Repeat("x", (4<<20)+1) + `"}`
+	if err := os.WriteFile(filepath.Join(dir, "index.json"), []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pack.Lookup(dir, "target"); !errors.Is(err, pack.ErrNotFound) {
+		t.Fatalf("oversized index err=%v", err)
+	}
+}
+
+func TestLookupIndexRejectsNormalizedKeyCollision(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	for _, name := range []string{"one.svg", "two.svg", "brand.svg"} {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte("<svg/>"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	index := `{"Brand":"one.svg"," brand ":"two.svg"}`
+	if err := os.WriteFile(filepath.Join(dir, "index.json"), []byte(index), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := pack.Lookup(dir, "brand")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := filepath.Join(dir, "brand.svg"); res.Path != want {
+		t.Fatalf("path=%q want deterministic fallback %q", res.Path, want)
 	}
 }
 
@@ -139,6 +176,50 @@ func TestLookupByFilename(t *testing.T) {
 	}
 	if res.Path != svg {
 		t.Fatalf("normalized path=%q", res.Path)
+	}
+}
+
+func TestLookupByFilenamePrefersShallowMatch(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "a", "brand.svg")
+	root := filepath.Join(dir, "brand.svg")
+	if err := os.MkdirAll(filepath.Dir(nested), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{nested, root} {
+		if err := os.WriteFile(path, []byte("<svg/>"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	res, err := pack.Lookup(dir, "brand")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Path != root {
+		t.Fatalf("path=%q want shallow %q", res.Path, root)
+	}
+}
+
+func TestLookupFuzzyPrefersShallowMatch(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	nested := filepath.Join(dir, "a", "nested-brand-icon.svg")
+	root := filepath.Join(dir, "root-brand-icon.svg")
+	if err := os.MkdirAll(filepath.Dir(nested), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{nested, root} {
+		if err := os.WriteFile(path, []byte("<svg/>"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	res, err := pack.Lookup(dir, "brand")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Path != root {
+		t.Fatalf("path=%q want shallow %q", res.Path, root)
 	}
 }
 

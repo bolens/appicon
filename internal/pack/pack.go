@@ -8,11 +8,14 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/bolens/appicon/internal/limitio"
 	"github.com/bolens/appicon/internal/userpath"
 )
 
 // ErrNotFound means the pack had no matching icon.
 var ErrNotFound = errors.New("pack icon not found")
+
+const maxIndexBytes = 4 << 20
 
 // Result is a successful pack lookup.
 type Result struct {
@@ -47,7 +50,12 @@ func Lookup(dir, query string) (Result, error) {
 }
 
 func lookupIndex(dir, query string) (path, title string, ok bool) {
-	data, err := os.ReadFile(filepath.Join(dir, "index.json"))
+	f, err := os.Open(filepath.Join(dir, "index.json"))
+	if err != nil {
+		return "", "", false
+	}
+	defer func() { _ = f.Close() }()
+	data, err := limitio.ReadAll(f, maxIndexBytes)
 	if err != nil {
 		return "", "", false
 	}
@@ -55,18 +63,28 @@ func lookupIndex(dir, query string) (path, title string, ok bool) {
 	if err := json.Unmarshal(data, &idx); err != nil {
 		return "", "", false
 	}
-	q := strings.ToLower(query)
+	q := strings.ToLower(strings.TrimSpace(query))
+	var matchKey, matchRel string
 	for k, rel := range idx {
-		if strings.ToLower(k) != q {
+		if strings.ToLower(strings.TrimSpace(k)) != q {
 			continue
 		}
-		p, err := containedPath(dir, rel)
-		if err != nil {
-			continue
+		if matchKey != "" {
+			// Case/whitespace-colliding identifiers are ambiguous. Ignore the
+			// index for this query and fall back to deterministic filenames.
+			return "", "", false
 		}
-		if isContainedRegularFile(dir, p) {
-			return p, k, true
-		}
+		matchKey, matchRel = k, rel
+	}
+	if matchKey == "" {
+		return "", "", false
+	}
+	p, err := containedPath(dir, matchRel)
+	if err != nil {
+		return "", "", false
+	}
+	if isContainedRegularFile(dir, p) {
+		return p, strings.TrimSpace(matchKey), true
 	}
 	return "", "", false
 }
@@ -133,10 +151,10 @@ func lookupFiles(dir, query string) (path, title string, ok bool) {
 		return "", "", false
 	}
 	var (
-		exactPath, exactTitle string
-		fuzzyPath, fuzzyTitle string
-		foundExact            bool
-		foundFuzzy            bool
+		exactPath, exactTitle, exactRel string
+		fuzzyPath, fuzzyTitle, fuzzyRel string
+		foundExact                      bool
+		foundFuzzy                      bool
 	)
 	_ = filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
@@ -151,14 +169,22 @@ func lookupFiles(dir, query string) (path, title string, ok bool) {
 		}
 		stem := strings.TrimSuffix(d.Name(), filepath.Ext(d.Name()))
 		stemNorm := normalize(stem)
-		if stemNorm == qNorm {
-			exactPath, exactTitle = p, stem
-			foundExact = true
-			return filepath.SkipAll
+		rel, relErr := filepath.Rel(dir, p)
+		if relErr != nil {
+			return nil
 		}
-		if !foundFuzzy && (strings.Contains(stemNorm, qNorm) || strings.Contains(qNorm, stemNorm)) {
-			fuzzyPath, fuzzyTitle = p, stem
-			foundFuzzy = true
+		if stemNorm == qNorm {
+			if !foundExact || shallowerPath(rel, exactRel) {
+				exactPath, exactTitle, exactRel = p, stem, rel
+				foundExact = true
+			}
+			return nil
+		}
+		if strings.Contains(stemNorm, qNorm) || strings.Contains(qNorm, stemNorm) {
+			if !foundFuzzy || shallowerPath(rel, fuzzyRel) {
+				fuzzyPath, fuzzyTitle, fuzzyRel = p, stem, rel
+				foundFuzzy = true
+			}
 		}
 		return nil
 	})
@@ -169,6 +195,14 @@ func lookupFiles(dir, query string) (path, title string, ok bool) {
 		return fuzzyPath, fuzzyTitle, true
 	}
 	return "", "", false
+}
+
+func shallowerPath(candidate, current string) bool {
+	candidate = filepath.ToSlash(candidate)
+	current = filepath.ToSlash(current)
+	candidateDepth := strings.Count(candidate, "/")
+	currentDepth := strings.Count(current, "/")
+	return candidateDepth < currentDepth || candidateDepth == currentDepth && candidate < current
 }
 
 func normalize(s string) string {
