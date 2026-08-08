@@ -64,6 +64,9 @@ Example — remaps and a personal pack before path/XDG/SVGL:
 }
 ```
 
+Local pack paths must be absolute or start with `~/`; working-directory-relative
+and named-user paths are rejected.
+
 CDN stages (`simple-icons` / `dashboard-icons`) are separate from **local** `pack install` clones of the same upstreams. Do not point `http-index` at third-party CDNs unless you control the allowlist and accept their terms.
 
 ## Overrides

@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/bolens/appicon/internal/cache"
+	"github.com/bolens/appicon/internal/userpath"
 )
 
 // ErrInvalidConfig means sources config is invalid.
@@ -359,8 +360,12 @@ func ValidateStages(stages []Stage) error {
 			return fmt.Errorf("%w: unknown type %q", ErrInvalidConfig, s.Type)
 		}
 		if t == "pack" || t == "dir" {
-			if strings.TrimSpace(s.Path) == "" {
+			packPath := strings.TrimSpace(s.Path)
+			if packPath == "" {
 				return fmt.Errorf("%w: pack requires path", ErrInvalidConfig)
+			}
+			if !filepath.IsAbs(userpath.ExpandHome(packPath)) {
+				return fmt.Errorf("%w: pack path must be absolute or start with ~/", ErrInvalidConfig)
 			}
 		}
 		if t == "http-index" {
