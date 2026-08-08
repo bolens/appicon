@@ -1,13 +1,16 @@
 package svgl_test
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -104,6 +107,70 @@ func TestSearchAndFetchCachesAsset(t *testing.T) {
 	}
 	if res2.Path != res1.Path {
 		t.Fatalf("path changed %q → %q", res1.Path, res2.Path)
+	}
+}
+
+func TestAssetRedirectCannotEscapeAllowlist(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	catalog := []byte(`[{"title":"Redirect","route":"https://svgl.app/redirect.svg"}]`)
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/":
+			_, _ = w.Write(catalog)
+		case "/redirect.svg":
+			http.Redirect(w, r, "https://evil.example/icon.svg", http.StatusFound)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	c := svgl.New()
+	c.APIBase = srv.URL
+	c.HTTP = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			u := *req.URL
+			if u.Hostname() == "svgl.app" {
+				u.Scheme = "https"
+				u.Host = srv.Listener.Addr().String()
+			}
+			rewritten := req.Clone(req.Context())
+			rewritten.URL = &u
+			return srv.Client().Transport.RoundTrip(rewritten)
+		}),
+	}
+	_, err := c.SearchAndFetch(context.Background(), "Redirect", svgl.Options{})
+	if !errors.Is(err, svgl.ErrHostNotAllowed) {
+		t.Fatalf("err=%v want ErrHostNotAllowed", err)
+	}
+}
+
+func TestAssetRedirectPreservesClientPolicy(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	catalog := []byte(`[{"title":"Redirect","route":"https://svgl.app/redirect.svg"}]`)
+	called := false
+	c := svgl.New()
+	c.APIBase = "https://api.svgl.app"
+	c.HTTP = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.URL.Hostname() == "api.svgl.app" {
+				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(bytes.NewReader(catalog)), Header: make(http.Header)}, nil
+			}
+			return &http.Response{
+				StatusCode: http.StatusFound,
+				Body:       io.NopCloser(strings.NewReader("")),
+				Header:     http.Header{"Location": []string{"https://svgl.app/final.svg"}},
+			}, nil
+		}),
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			called = true
+			return http.ErrUseLastResponse
+		},
+	}
+	_, err := c.SearchAndFetch(context.Background(), "Redirect", svgl.Options{})
+	if err == nil || !strings.Contains(err.Error(), "HTTP 302") {
+		t.Fatalf("err=%v", err)
+	}
+	if !called {
+		t.Fatal("custom redirect policy was not called")
 	}
 }
 
