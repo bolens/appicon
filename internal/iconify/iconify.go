@@ -3,6 +3,7 @@ package iconify
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"net/http"
@@ -73,7 +74,9 @@ func (c *Client) Lookup(ctx context.Context, query string, opts Options) (Result
 	if err != nil {
 		return Result{}, err
 	}
-	rel := path.Join("iconify", prefix+"-"+name+".svg")
+	identity := base + "/" + prefix + "/" + name
+	sum := sha256.Sum256([]byte(identity))
+	rel := path.Join("iconify", fmt.Sprintf("%s-%s-%x.svg", prefix, name, sum[:6]))
 	if cache.Exists(rel) {
 		p, err := cache.Path(rel)
 		if err != nil {
