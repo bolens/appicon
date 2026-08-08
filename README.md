@@ -264,9 +264,11 @@ Canonical map (update the listed source of truth when behavior changes): **[docs
 | Agents | [AGENTS.md](AGENTS.md) |
 | Contributing | [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Changelog | [CHANGELOG.md](CHANGELOG.md) |
+| Release playbook | [docs/releasing.md](docs/releasing.md) |
 | Nix / AUR / systemd | [nix/README.md](nix/README.md), [packaging/aur/README.md](packaging/aur/README.md), [contrib/systemd/README.md](contrib/systemd/README.md) |
 
-To cut a release locally (no push): `bash scripts/ci/cut-release.sh v0.2.2`.
+Release preparation, tagging, verification, packaging refresh, and local
+installation: **[docs/releasing.md](docs/releasing.md)**.
 
 ## License
 

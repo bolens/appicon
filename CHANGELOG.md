@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-08-08
+
+### Added
+
+- Installed-app icon discovery for macOS XML `Info.plist` app bundles and Windows `.url` shortcuts
+- Portable home-relative path expansion, Windows icon search roots, file extensions, and HiDPI icon variants
+- Coverage for CDN/glyph fallbacks, MCP cache and override operations, daemon framing, platform paths, native metadata, and download limits
+
+### Changed
+
+- Remote caches now include complete provider identity, URL, repository path/ref, and configurable endpoint data to prevent cross-source collisions
+- Remote response bodies are bounded before caching; cache locks, recent-miss writes, configuration writes, overrides, and raster output use safer serialized or atomic replacement
+- CLI JSON and plain output paths now propagate write failures
+- Daemon framing handles partial writes and listener cleanup preserves active replacement sockets
+- Pack queries reject empty normalized names
+- CI covers the bounded-read package and fails closed when checking Nix secret configuration
+
 ## [0.2.2] — 2026-07-14
 
 ### Security

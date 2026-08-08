@@ -16,6 +16,7 @@ Hub for appicon docs. Prefer editing the **source of truth** column when behavio
 | [../AGENTS.md](../AGENTS.md) | Rules for coding agents / MCP usage |
 | [../CONTRIBUTING.md](../CONTRIBUTING.md) | Dev loop, checks, PR expectations |
 | [../CHANGELOG.md](../CHANGELOG.md) | User-facing release notes |
+| [releasing.md](releasing.md) | PR, tag, verification, packaging, and local-install release playbook |
 | [../nix/README.md](../nix/README.md) | Flake attrs, Home Manager, `vendorHash` |
 | [../packaging/aur/README.md](../packaging/aur/README.md) | AUR PKGBUILD publish checklist |
 | [../contrib/systemd/README.md](../contrib/systemd/README.md) | User socket unit install |
