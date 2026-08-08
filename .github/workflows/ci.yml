@@ -182,6 +182,7 @@ jobs:
           - ./internal/glyph
           - ./internal/httpindex
           - ./internal/iconify
+          - ./internal/limitio
           - ./internal/logodev
           - ./internal/nounproject
           - ./internal/pack
