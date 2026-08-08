@@ -44,6 +44,18 @@ func TestJSONCommandsPropagateOutputErrors(t *testing.T) {
 	}
 }
 
+func TestPlainResolvePropagatesOutputErrors(t *testing.T) {
+	xdgEnv(t)
+	for _, args := range [][]string{
+		{"resolve", "--offline", "--order", "glyph", "one"},
+		{"resolve", "--offline", "--order", "glyph", "one", "two"},
+	} {
+		if err := run(args, failingWriter{}, io.Discard); !errors.Is(err, errOutput) {
+			t.Errorf("args=%v err=%v", args, err)
+		}
+	}
+}
+
 func xdgEnv(t *testing.T) (share, flatpak, cache string) {
 	t.Helper()
 	_, file, _, ok := runtime.Caller(0)
