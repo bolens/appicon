@@ -152,9 +152,30 @@ func readOverridesFile(configDir string) (map[string]string, error) {
 	if err := DecodeConfigData(data, &raw); err != nil {
 		return nil, fmt.Errorf("overrides: %w", err)
 	}
+	out, err := normalizeOverrides(raw)
+	if err != nil {
+		return nil, fmt.Errorf("overrides: %w", err)
+	}
+	return out, nil
+}
+
+func normalizeOverrides(raw map[string]string) (map[string]string, error) {
 	out := make(map[string]string, len(raw))
-	for k, v := range raw {
-		out[strings.ToLower(k)] = v
+	keys := make([]string, 0, len(raw))
+	for key := range raw {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, original := range keys {
+		key := strings.ToLower(strings.TrimSpace(original))
+		value := strings.TrimSpace(raw[original])
+		if key == "" || value == "" {
+			return nil, fmt.Errorf("%w: override keys and targets must be non-empty", ErrInvalidConfig)
+		}
+		if _, exists := out[key]; exists {
+			return nil, fmt.Errorf("%w: duplicate override key %q after normalization", ErrInvalidConfig, key)
+		}
+		out[key] = value
 	}
 	return out, nil
 }
@@ -258,16 +279,11 @@ func ImportOverrides(configDir string, data []byte, merge bool) (int, error) {
 	if err := DecodeConfigData(data, &raw); err != nil {
 		return 0, err
 	}
-	incoming := make(map[string]string, len(raw))
-	for k, v := range raw {
-		k = strings.ToLower(strings.TrimSpace(k))
-		v = strings.TrimSpace(v)
-		if k == "" || v == "" {
-			continue
-		}
-		incoming[k] = v
+	incoming, err := normalizeOverrides(raw)
+	if err != nil {
+		return 0, err
 	}
-	err := withOverridesLock(configDir, func() error {
+	err = withOverridesLock(configDir, func() error {
 		if !merge {
 			return writeOverridesFile(configDir, incoming)
 		}
