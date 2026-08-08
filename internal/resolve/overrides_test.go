@@ -102,3 +102,44 @@ func TestOverrideGetMissing(t *testing.T) {
 		t.Fatalf("err=%v", err)
 	}
 }
+
+func TestOverridesNormalizeManualEntries(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "overrides.json"), []byte(`{"  My App  ":"  target-app  "}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := resolve.ListOverrides(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got["my app"] != "target-app" {
+		t.Fatalf("overrides=%v", got)
+	}
+}
+
+func TestOverridesRejectAmbiguousNormalizedKeys(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "overrides.json"), []byte(`{"Code":"one"," code ":"two"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolve.ListOverrides(dir); !errors.Is(err, resolve.ErrInvalidConfig) {
+		t.Fatalf("err=%v want ErrInvalidConfig", err)
+	}
+}
+
+func TestImportOverridesRejectsEmptyEntriesWithoutWriting(t *testing.T) {
+	dir := t.TempDir()
+	if err := resolve.SetOverride(dir, "keep", "existing"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := resolve.ImportOverrides(dir, []byte(`{"new":""}`), true); !errors.Is(err, resolve.ErrInvalidConfig) {
+		t.Fatalf("err=%v want ErrInvalidConfig", err)
+	}
+	got, err := resolve.ListOverrides(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got["keep"] != "existing" {
+		t.Fatalf("overrides changed after rejected import: %v", got)
+	}
+}
