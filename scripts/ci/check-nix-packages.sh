@@ -71,15 +71,16 @@ else
   echo "PASS: systemd user units in packages.nix"
 fi
 
-# Binary package must pin release checksums (linux amd64 + arm64).
-if ! grep -q 'sha256-Abo54xqsHPhar8FnctWsKfRHCsAPud4n5YJrswJqWbI=' "$PACKAGES_NIX"; then
-  echo "FAIL: appicon-bin amd64 hash missing/outdated in nix/packages.nix" >&2
-  fail=1
-fi
-if ! grep -q 'sha256-wZTyepTCRph8DQAdVxwqRmnaCOnB+kLvqiOtkwhC2Cw=' "$PACKAGES_NIX"; then
-  echo "FAIL: appicon-bin arm64 hash missing/outdated in nix/packages.nix" >&2
-  fail=1
-fi
+# Binary packages must pin syntactically valid SRI hashes. Cross-file equality
+# with AUR release hashes is checked by check-packaging-versions.sh.
+for system in x86_64-linux aarch64-linux; do
+  if ! grep -qE "${system}[[:space:]]*=[[:space:]]*\"sha256-[A-Za-z0-9+/]{43}=\";" "$PACKAGES_NIX"; then
+    echo "FAIL: appicon-bin ${system} SRI hash missing/invalid in nix/packages.nix" >&2
+    fail=1
+  else
+    echo "PASS: appicon-bin ${system} SRI hash"
+  fi
+done
 
 if [ "$fail" -ne 0 ]; then
   exit 1
