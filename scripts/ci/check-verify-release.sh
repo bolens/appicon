@@ -11,6 +11,19 @@ printf 'two' > "$fixture/two.tar.gz"
 (cd "$fixture" && sha256sum one.tar.gz two.tar.gz > SHA256SUMS)
 bash "$ROOT/scripts/ci/verify-release.sh" "$fixture" >/dev/null
 
+# Stock macOS provides shasum rather than GNU sha256sum. Use an isolated PATH
+# to exercise that branch while delegating the fixture hash to the host tool.
+fallback_bin="$fixture/fallback-bin"
+mkdir -p "$fallback_bin"
+printf '%s\n' '#!/bin/sh' 'shift 2' 'exec /usr/bin/sha256sum "$@"' > "$fallback_bin/shasum"
+chmod +x "$fallback_bin/shasum"
+PATH="$fallback_bin" /bin/bash "$ROOT/scripts/ci/verify-release.sh" "$fixture" >/dev/null
+
+if PATH="$fixture/empty-path" /bin/bash "$ROOT/scripts/ci/verify-release.sh" "$fixture" >/dev/null 2>&1; then
+  echo "release verification accepted a missing checksum tool" >&2
+  exit 1
+fi
+
 mv "$fixture/two.tar.gz" "$fixture/two.missing"
 if bash "$ROOT/scripts/ci/verify-release.sh" "$fixture" >/dev/null 2>&1; then
   echo "release verification accepted a missing archive" >&2
@@ -23,4 +36,4 @@ if bash "$ROOT/scripts/ci/verify-release.sh" "$fixture" >/dev/null 2>&1; then
   echo "release verification accepted a corrupt archive" >&2
   exit 1
 fi
-echo "ok: release verification rejects incomplete/corrupt assets"
+echo "ok: release verification is portable and rejects incomplete/corrupt assets"
