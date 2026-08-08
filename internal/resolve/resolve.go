@@ -106,6 +106,9 @@ func Resolve(ctx context.Context, query string, opts Options) (Result, error) {
 }
 
 func resolvePipeline(ctx context.Context, query string, opts Options) (Result, error) {
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
 	if opts.Format == "" {
 		opts.Format = "svg"
 	}
@@ -134,6 +137,9 @@ func resolvePipeline(ctx context.Context, query string, opts Options) (Result, e
 
 	tried := make([]string, 0, len(stages))
 	for _, src := range stages {
+		if err := ctx.Err(); err != nil {
+			return Result{Tried: tried}, err
+		}
 		label := FormatStage(src)
 		switch src.Type {
 		case "overrides":
