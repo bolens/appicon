@@ -1,6 +1,7 @@
 package cache_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"sync"
@@ -28,6 +29,32 @@ func TestWriteAtomic(t *testing.T) {
 	}
 	if string(got) != "hi" {
 		t.Fatalf("content=%q", got)
+	}
+}
+
+func TestWriteAtomicRejectsEmptyData(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", base)
+	if _, err := cache.WriteAtomic("empty.svg", nil); !errors.Is(err, cache.ErrEmptyData) {
+		t.Fatalf("err=%v want ErrEmptyData", err)
+	}
+	if _, err := os.Stat(filepath.Join(base, "appicon", "empty.svg")); !os.IsNotExist(err) {
+		t.Fatalf("empty artifact created: %v", err)
+	}
+}
+
+func TestExistsRejectsEmptyArtifact(t *testing.T) {
+	base := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", base)
+	root, err := cache.Root()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "empty.svg"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if cache.Exists("empty.svg") {
+		t.Fatal("empty artifact counted as cache hit")
 	}
 }
 
