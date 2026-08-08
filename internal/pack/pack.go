@@ -64,12 +64,30 @@ func lookupIndex(dir, query string) (path, title string, ok bool) {
 		if err != nil {
 			continue
 		}
-		// Lstat + IsRegular: refuse symlinks and directories (Stat would follow links).
-		if st, err := os.Lstat(p); err == nil && st.Mode().IsRegular() {
+		if isContainedRegularFile(dir, p) {
 			return p, k, true
 		}
 	}
 	return "", "", false
+}
+
+// isContainedRegularFile rejects a symlink at the leaf or in any path
+// component. Lexical containment alone does not stop "icons -> /outside".
+func isContainedRegularFile(root, target string) bool {
+	st, err := os.Lstat(target)
+	if err != nil || !st.Mode().IsRegular() {
+		return false
+	}
+	realRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return false
+	}
+	realTarget, err := filepath.EvalSymlinks(target)
+	if err != nil {
+		return false
+	}
+	rel, err := filepath.Rel(realRoot, realTarget)
+	return err == nil && rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))
 }
 
 // containedPath joins root and a relative index entry, rejecting absolute paths,
@@ -122,6 +140,9 @@ func lookupFiles(dir, query string) (path, title string, ok bool) {
 	)
 	_ = filepath.WalkDir(dir, func(p string, d os.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
+			return nil
+		}
+		if d.Type()&os.ModeSymlink != 0 || !isContainedRegularFile(dir, p) {
 			return nil
 		}
 		ext := strings.ToLower(filepath.Ext(d.Name()))
