@@ -50,11 +50,18 @@ fi
 
 # Guard against the sops secret-path footgun: no active assignment of
 # config.sops.secrets.*.path into environment (comments/docs may warn about it).
-if grep -E '^\s+[A-Za-Z_][A-Za-Z0-9_]*\s*=\s*config\.sops\.secrets\.' "$ROOT/nix/home-manager.nix"; then
+sops_assignment_re='^[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=[[:space:]]*config\.sops\.secrets\.'
+if grep -qE "$sops_assignment_re" "$ROOT/nix/home-manager.nix"; then
   echo "FAIL: home-manager.nix must not assign config.sops.secrets.* into environment (use environmentFiles + templates)" >&2
   fail=1
 else
-  echo "PASS: HM no sops.secrets assignment in environment"
+  grep_status=$?
+  if [ "$grep_status" -gt 1 ]; then
+    echo "FAIL: could not check home-manager.nix for sops secret assignments" >&2
+    fail=1
+  else
+    echo "PASS: HM no sops.secrets assignment in environment"
+  fi
 fi
 
 if ! grep -q 'lib/systemd/user' "$PACKAGES_NIX"; then
