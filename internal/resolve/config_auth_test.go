@@ -120,6 +120,7 @@ func TestEffectiveStagesRejectInvalidEnabledStages(t *testing.T) {
 		{},
 		{Type: "pack"},
 		{Type: "http-index", Index: "https://example.com/index.json"},
+		{Type: "http-index", Index: "https://example.com/index.json", Hosts: []string{"", " \t"}},
 		{Type: "logo-dev"},
 		{Type: "noun-project", TokenEnv: "KEY"},
 	}
