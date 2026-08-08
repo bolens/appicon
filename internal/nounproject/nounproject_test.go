@@ -54,7 +54,9 @@ func TestSearchThenDownload(t *testing.T) {
 	t.Setenv("XDG_CACHE_HOME", t.TempDir())
 	_ = cache.Dir()
 
+	requests := 0
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
 		switch {
 		case r.URL.Path == "/v2/icon" && r.URL.Query().Get("query") == "cat":
 			_, _ = w.Write([]byte(`{"icons":[{"id":7}]}`))
@@ -75,6 +77,70 @@ func TestSearchThenDownload(t *testing.T) {
 	}
 	if res.Path == "" {
 		t.Fatal("empty")
+	}
+	cached, err := c.Lookup(context.Background(), " CAT ", nounproject.Options{Key: "k", Secret: "s", Offline: true})
+	if err != nil {
+		t.Fatalf("offline cache lookup: %v", err)
+	}
+	if !cached.Cached || cached.Path != res.Path {
+		t.Fatalf("cached result=%+v first=%+v", cached, res)
+	}
+	if requests != 2 {
+		t.Fatalf("requests=%d want 2; warm cache contacted provider", requests)
+	}
+}
+
+func TestSearchIgnoresCorruptOrStaleQueryCache(t *testing.T) {
+	tests := []struct {
+		name       string
+		corruptMap bool
+		removeIcon bool
+	}{
+		{name: "corrupt mapping", corruptMap: true},
+		{name: "missing icon", removeIcon: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cacheHome := t.TempDir()
+			t.Setenv("XDG_CACHE_HOME", cacheHome)
+			requests := 0
+			srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				if r.URL.Path == "/v2/icon" {
+					_, _ = w.Write([]byte(`{"icons":[{"id":7}]}`))
+					return
+				}
+				_, _ = w.Write([]byte(`<svg xmlns="http://www.w3.org/2000/svg"></svg>`))
+			}))
+			defer srv.Close()
+			c := nounproject.New()
+			c.HTTP = srv.Client()
+			c.BaseURL = srv.URL
+			res, err := c.Lookup(context.Background(), "cat", nounproject.Options{Key: "k", Secret: "s"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if tt.corruptMap {
+				matches, err := filepath.Glob(filepath.Join(cacheHome, "appicon", "noun-project", "queries", "*.id"))
+				if err != nil || len(matches) != 1 {
+					t.Fatalf("query mappings=%q err=%v", matches, err)
+				}
+				if err := os.WriteFile(matches[0], []byte("invalid\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tt.removeIcon {
+				if err := os.Remove(res.Path); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := c.Lookup(context.Background(), "cat", nounproject.Options{Key: "k", Secret: "s", Offline: true}); !errors.Is(err, nounproject.ErrNotFound) {
+				t.Fatalf("err=%v want ErrNotFound", err)
+			}
+			if requests != 2 {
+				t.Fatalf("requests=%d want 2; offline lookup contacted provider", requests)
+			}
+		})
 	}
 }
 
