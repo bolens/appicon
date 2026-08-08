@@ -154,7 +154,7 @@ func Exists(name string) bool {
 	return err == nil && st.Mode().IsRegular() && st.Size() > 0
 }
 
-// WithLock runs fn while holding an exclusive flock on lockName under Root.
+// WithLock runs fn while holding an exclusive OS file lock under Root.
 func WithLock(lockName string, fn func() error) error {
 	dir, err := Root()
 	if err != nil {

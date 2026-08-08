@@ -1,8 +1,10 @@
 package cache_test
 
 import (
+	"bytes"
 	"errors"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -295,5 +297,81 @@ func TestWithLockSerializesGoroutines(t *testing.T) {
 	wg.Wait()
 	if maxSeen != 1 {
 		t.Fatalf("maximum concurrent callbacks=%d want 1", maxSeen)
+	}
+}
+
+func TestWithLockSerializesProcesses(t *testing.T) {
+	if os.Getenv("APPICON_LOCK_HELPER") == "1" {
+		ready := os.Getenv("APPICON_LOCK_READY")
+		release := os.Getenv("APPICON_LOCK_RELEASE")
+		if err := cache.WithLock("process.lock", func() error {
+			if err := os.WriteFile(ready, []byte("ready"), 0o600); err != nil {
+				return err
+			}
+			deadline := time.Now().Add(5 * time.Second)
+			for time.Now().Before(deadline) {
+				if _, err := os.Stat(release); err == nil {
+					return nil
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+			return errors.New("timed out waiting for lock release")
+		}); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+
+	base := t.TempDir()
+	ready := filepath.Join(base, "ready")
+	release := filepath.Join(base, "release")
+	cmd := exec.Command(os.Args[0], "-test.run=^TestWithLockSerializesProcesses$")
+	cmd.Env = append(os.Environ(),
+		"APPICON_LOCK_HELPER=1",
+		"APPICON_LOCK_READY="+ready,
+		"APPICON_LOCK_RELEASE="+release,
+		"XDG_CACHE_HOME="+base,
+	)
+	var childOutput bytes.Buffer
+	cmd.Stdout = &childOutput
+	cmd.Stderr = &childOutput
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = cmd.Process.Kill() })
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(ready); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("child did not acquire lock: %s", childOutput.String())
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	t.Setenv("XDG_CACHE_HOME", base)
+	acquired := make(chan error, 1)
+	go func() {
+		acquired <- cache.WithLock("process.lock", func() error { return nil })
+	}()
+	select {
+	case err := <-acquired:
+		t.Fatalf("parent acquired child-held lock early: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if err := os.WriteFile(release, []byte("release"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-acquired:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("parent did not acquire released lock")
+	}
+	if err := cmd.Wait(); err != nil {
+		t.Fatalf("child: %v\n%s", err, childOutput.String())
 	}
 }
