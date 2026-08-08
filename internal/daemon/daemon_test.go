@@ -341,6 +341,9 @@ func TestDaemonResolveBatchExplain(t *testing.T) {
 	if len(items[0].Result.Tried) == 0 {
 		t.Fatalf("expected tried: %+v", items[0])
 	}
+	if items[0].Result.Hint == "" {
+		t.Fatalf("expected daemon hint: %+v", items[0])
+	}
 }
 
 func TestTryResolveExplainUsesDaemon(t *testing.T) {
