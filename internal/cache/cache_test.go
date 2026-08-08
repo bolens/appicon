@@ -108,3 +108,18 @@ func TestWithLock(t *testing.T) {
 		t.Fatal("fn not run")
 	}
 }
+
+func TestWithLockRejectsTraversal(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	called := false
+	err := cache.WithLock("../outside.lock", func() error {
+		called = true
+		return nil
+	})
+	if err == nil {
+		t.Fatal("expected traversal error")
+	}
+	if called {
+		t.Fatal("lock callback ran for invalid path")
+	}
+}
