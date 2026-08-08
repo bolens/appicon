@@ -118,6 +118,35 @@ func TestLookupMissing(t *testing.T) {
 	}
 }
 
+func TestLookupRejectsEmptyNormalizedQuery(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "first.svg"), []byte("<svg/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	for _, query := range []string{"---", "_", "_-_-_", " \t "} {
+		if res, err := pack.Lookup(dir, query); !errors.Is(err, pack.ErrNotFound) {
+			t.Errorf("query=%q res=%+v err=%v", query, res, err)
+		}
+	}
+}
+
+func TestLookupFuzzyNonEmptyQuery(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	want := filepath.Join(dir, "my-cool-application.svg")
+	if err := os.WriteFile(want, []byte("<svg/>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	res, err := pack.Lookup(dir, "cool app")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Path != want {
+		t.Fatalf("path=%q want=%q", res.Path, want)
+	}
+}
+
 func TestLookupIgnoresBrokenIndexEntry(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()

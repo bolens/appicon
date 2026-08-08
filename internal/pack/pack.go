@@ -126,6 +126,9 @@ var packExts = map[string]struct{}{
 
 func lookupFiles(dir, query string) (path, title string, ok bool) {
 	qNorm := normalize(query)
+	if qNorm == "" {
+		return "", "", false
+	}
 	var (
 		exactPath, exactTitle string
 		fuzzyPath, fuzzyTitle string
