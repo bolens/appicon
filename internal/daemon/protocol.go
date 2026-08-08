@@ -132,11 +132,24 @@ func WriteFrame(w io.Writer, v any) error {
 	}
 	var hdr [4]byte
 	binary.BigEndian.PutUint32(hdr[:], uint32(len(payload)))
-	if _, err := w.Write(hdr[:]); err != nil {
+	if err := writeFull(w, hdr[:]); err != nil {
 		return err
 	}
-	_, err = w.Write(payload)
-	return err
+	return writeFull(w, payload)
+}
+
+func writeFull(w io.Writer, data []byte) error {
+	for len(data) > 0 {
+		n, err := w.Write(data)
+		if err != nil {
+			return err
+		}
+		if n <= 0 || n > len(data) {
+			return io.ErrShortWrite
+		}
+		data = data[n:]
+	}
+	return nil
 }
 
 // ReadFrame reads one length-prefixed JSON object into dest.
