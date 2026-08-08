@@ -259,6 +259,57 @@ func TestInstallArchiveFailurePreservesExistingPack(t *testing.T) {
 	}
 }
 
+func TestInstallArchiveRegistrationFailureRestoresExistingPack(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	configDir := t.TempDir()
+	existing := filepath.Join(packs.Root(), "existing", "keep.svg")
+	if err := os.MkdirAll(filepath.Dir(existing), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(existing, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "sources.json"), []byte(`{"unknown":true}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var archive writeBuffer
+	gz := gzip.NewWriter(&archive)
+	tw := tar.NewWriter(gz)
+	body := []byte("replacement")
+	if err := tw.WriteHeader(&tar.Header{Name: "new.svg", Mode: 0o644, Size: int64(len(body)), Typeflag: tar.TypeReg}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := tw.Write(body); err != nil {
+		t.Fatal(err)
+	}
+	if err := tw.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := gz.Close(); err != nil {
+		t.Fatal(err)
+	}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(archive.Bytes())
+	}))
+	defer srv.Close()
+
+	err := packs.Install(configDir, packs.InstallOpts{Target: srv.URL + "/existing.tar.gz", Name: "existing"})
+	if err == nil {
+		t.Fatal("expected source registration error")
+	}
+	got, err := os.ReadFile(existing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != "keep" {
+		t.Fatalf("existing pack changed: %q", got)
+	}
+	if _, err := os.Stat(filepath.Join(filepath.Dir(existing), "new.svg")); !os.IsNotExist(err) {
+		t.Fatalf("replacement remains after rollback: %v", err)
+	}
+}
+
 func TestInstallUnknownRecipe(t *testing.T) {
 	err := packs.Install(t.TempDir(), packs.InstallOpts{Target: "nope"})
 	if err == nil {
