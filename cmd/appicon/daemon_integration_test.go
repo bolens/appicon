@@ -108,7 +108,7 @@ func TestCLIPrefetchViaDaemon(t *testing.T) {
 
 func TestCLIResolveBatchViaDaemon(t *testing.T) {
 	startTestDaemon(t)
-	out, _, err := captureRun("resolve", "--json", "--offline", "org.example.Test", "zzzz-batch-daemon")
+	out, _, err := captureRun("resolve", "--json", "--explain", "--offline", "org.example.Test", "zzzz-batch-daemon")
 	if !errors.Is(err, resolve.ErrNotFound) {
 		t.Fatalf("err=%v", err)
 	}
@@ -119,5 +119,9 @@ func TestCLIResolveBatchViaDaemon(t *testing.T) {
 	results, ok := payload["results"].([]any)
 	if !ok || len(results) != 2 {
 		t.Fatalf("%v", payload)
+	}
+	miss, ok := results[1].(map[string]any)
+	if !ok || miss["hint"] == "" {
+		t.Fatalf("missing daemon batch hint: %v", results[1])
 	}
 }

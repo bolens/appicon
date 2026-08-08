@@ -141,6 +141,7 @@ func (c *Client) ResolveBatch(ctx context.Context, queries []string, opts resolv
 			Cached: br.Cached,
 			Error:  br.Error,
 			Tried:  br.Tried,
+			Hint:   br.Hint,
 		}
 		item.Result, item.Err = resultFromResponse(r)
 		out = append(out, item)
