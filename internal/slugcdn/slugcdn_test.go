@@ -5,6 +5,8 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
@@ -59,6 +61,56 @@ func TestFetchCachesBeforeOfflineCheck(t *testing.T) {
 	}
 	if requests != 1 {
 		t.Fatalf("requests=%d", requests)
+	}
+}
+
+func TestFetchRejectsNonAllowlistedRedirect(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "https://localhost/redirected.svg", http.StatusFound)
+	}))
+	t.Cleanup(srv.Close)
+	u, err := url.Parse(srv.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c := &slugcdn.Client{HTTP: srv.Client()}
+	_, err = c.Fetch(context.Background(), slugcdn.Options{
+		Namespace: "redirect",
+		URL:       srv.URL + "/icon.svg",
+		Hosts:     []string{u.Hostname()},
+	})
+	if !errors.Is(err, slugcdn.ErrHostNotAllowed) {
+		t.Fatalf("err=%v want ErrHostNotAllowed", err)
+	}
+}
+
+func TestFetchPreservesCustomRedirectPolicy(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	called := false
+	c := &slugcdn.Client{HTTP: &http.Client{
+		Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusFound,
+				Body:       io.NopCloser(strings.NewReader("")),
+				Header:     http.Header{"Location": []string{"https://cdn.example/final.svg"}},
+			}, nil
+		}),
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			called = true
+			return http.ErrUseLastResponse
+		},
+	}}
+	_, err := c.Fetch(context.Background(), slugcdn.Options{
+		Namespace: "redirect-policy",
+		URL:       "https://cdn.example/icon.svg",
+		Hosts:     []string{"cdn.example"},
+	})
+	if err == nil || !strings.Contains(err.Error(), "HTTP 302") {
+		t.Fatalf("err=%v", err)
+	}
+	if !called {
+		t.Fatal("custom redirect policy was not called")
 	}
 }
 
