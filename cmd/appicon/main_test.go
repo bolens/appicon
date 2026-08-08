@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,6 +16,33 @@ import (
 
 	"github.com/bolens/appicon/internal/resolve"
 )
+
+var errOutput = errors.New("output failed")
+
+type failingWriter struct{}
+
+func (failingWriter) Write([]byte) (int, error) { return 0, errOutput }
+
+func TestJSONCommandsPropagateOutputErrors(t *testing.T) {
+	xdgEnv(t)
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{name: "resolve one", args: []string{"resolve", "--json", "--offline", "--order", "glyph", "one"}},
+		{name: "resolve batch", args: []string{"resolve", "--json", "--offline", "--order", "glyph", "one", "two"}},
+		{name: "prefetch", args: []string{"prefetch", "--json", "--offline", "--order", "glyph", "one"}},
+		{name: "miss prefers output error", args: []string{"resolve", "--json", "--offline", "--order", "xdg", "missing-output-test"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := run(tt.args, failingWriter{}, io.Discard)
+			if !errors.Is(err, errOutput) {
+				t.Fatalf("err=%v", err)
+			}
+		})
+	}
+}
 
 func xdgEnv(t *testing.T) (share, flatpak, cache string) {
 	t.Helper()
