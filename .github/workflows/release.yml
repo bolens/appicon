@@ -59,25 +59,7 @@ jobs:
       - name: Build
         run: |
           set -euo pipefail
-          ver="${GITHUB_REF_NAME}"
-          mkdir -p dist
-          for pair in amd64 arm64; do
-            out="dist/appicon_${ver}_linux_${pair}"
-            mkdir -p "${out}"
-            GOOS=linux GOARCH="${pair}" CGO_ENABLED=0 \
-              go build -ldflags "-X github.com/bolens/appicon/internal/version.Version=${ver}" \
-              -o "${out}/appicon" ./cmd/appicon
-            mkdir -p "${out}/completions" "${out}/man/man1" "${out}/contrib/systemd"
-            cp internal/completion/appicon.bash "${out}/completions/"
-            cp internal/completion/appicon.zsh "${out}/completions/"
-            cp internal/completion/appicon.fish "${out}/completions/"
-            cp internal/completion/appicon.1 "${out}/man/man1/"
-            cp contrib/systemd/appicon.service contrib/systemd/appicon.socket contrib/systemd/README.md \
-              "${out}/contrib/systemd/"
-            tar -C "${out}" -czf "dist/appicon_${ver}_linux_${pair}.tar.gz" appicon completions man contrib
-            rm -rf "${out}"
-          done
-          (cd dist && sha256sum ./*.tar.gz > SHA256SUMS)
+          bash scripts/ci/build-release.sh "${GITHUB_REF_NAME}" dist
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2

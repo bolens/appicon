@@ -15,7 +15,7 @@ ACTIONLINT_VERSION ?= 1.7.7
 .PHONY: help build test vet fmt check check-fast lint \
 	check-gitleaks check-actionlint check-markdownlint check-govulncheck \
 	check-docs-crosslinks check-consumer-smoke check-aur-publish \
-	check-ci-path-filters check-nix-packages check-packaging-versions \
+	check-ci-path-filters check-nix-packages check-packaging-versions check-release-build \
 	build-packaging clean
 
 help:
@@ -91,6 +91,9 @@ check-nix-packages:
 check-packaging-versions:
 	bash scripts/ci/check-packaging-versions.sh
 
+check-release-build:
+	bash scripts/ci/check-release-build.sh
+
 build-packaging:
 	bash scripts/ci/build-packaging.sh
 
@@ -106,6 +109,7 @@ check: check-fast
 	@$(MAKE) check-ci-path-filters
 	@$(MAKE) check-nix-packages
 	@$(MAKE) check-packaging-versions
+	@$(MAKE) check-release-build
 
 clean:
 	rm -rf bin/ dist/ coverage.out coverage.html
