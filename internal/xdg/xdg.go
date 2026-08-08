@@ -17,9 +17,10 @@ type Options struct {
 	Size      int
 	IconTheme string // empty = GTK_THEME / hicolor
 	// ColorScheme is dark|light|"" — prefer name-dark / name-light icon variants when set.
-	ColorScheme string
-	DataDirs    []string
-	IconDirs    []string
+	ColorScheme   string
+	DataDirs      []string
+	IconDirs      []string
+	NativeAppDirs []string // optional native application roots (macOS .app / Windows .url)
 }
 
 // Result is a successful XDG resolve.
@@ -31,21 +32,23 @@ type Result struct {
 
 // Finder looks up icons against configurable XDG roots (injectable for tests).
 type Finder struct {
-	Size        int
-	IconTheme   string
-	ColorScheme string
-	DataDirs    []string
-	IconDirs    []string
+	Size          int
+	IconTheme     string
+	ColorScheme   string
+	DataDirs      []string
+	IconDirs      []string
+	NativeAppDirs []string
 }
 
 // NewFinder builds a Finder from Options, filling defaults for empty fields.
 func NewFinder(opts Options) *Finder {
 	f := &Finder{
-		Size:        opts.Size,
-		IconTheme:   opts.IconTheme,
-		ColorScheme: strings.ToLower(strings.TrimSpace(opts.ColorScheme)),
-		DataDirs:    append([]string(nil), opts.DataDirs...),
-		IconDirs:    append([]string(nil), opts.IconDirs...),
+		Size:          opts.Size,
+		IconTheme:     opts.IconTheme,
+		ColorScheme:   strings.ToLower(strings.TrimSpace(opts.ColorScheme)),
+		DataDirs:      append([]string(nil), opts.DataDirs...),
+		IconDirs:      append([]string(nil), opts.IconDirs...),
+		NativeAppDirs: append([]string(nil), opts.NativeAppDirs...),
 	}
 	if f.Size <= 0 {
 		f.Size = 48
@@ -55,6 +58,9 @@ func NewFinder(opts Options) *Finder {
 	}
 	if len(f.IconDirs) == 0 {
 		f.IconDirs = DefaultIconDirs(f.DataDirs)
+	}
+	if len(f.NativeAppDirs) == 0 {
+		f.NativeAppDirs = defaultNativeAppDirs()
 	}
 	return f
 }
@@ -183,6 +189,9 @@ func (f *Finder) Resolve(query string) (Result, error) {
 	query = strings.TrimSpace(query)
 	if query == "" {
 		return Result{}, ErrNotFound
+	}
+	if app, ok := f.findNativeApp(query); ok {
+		return Result{Path: app.Icon, IconName: app.Name, Desktop: app.Path}, nil
 	}
 
 	if desk, ok := f.findDesktop(query); ok && desk.Icon != "" {

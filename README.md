@@ -31,7 +31,7 @@ XDG, SVGL (cache-first), local packs, opt-in CDN/github/BYOK/glyph stages, PNG r
 
 **Consumer contract:** exit `0` / `1` (miss) / `2` (error); stable `resolve --json` fields (single object or `{results:[…]}` batch) — [docs/consumer-contract.md](docs/consumer-contract.md), schemas [docs/resolve-result.schema.json](docs/resolve-result.schema.json) / [docs/resolve-batch-result.schema.json](docs/resolve-batch-result.schema.json). Misses are supported (callers keep glyphs). Auth-skipped BYOK stages show as `stage(auth)` in `--explain` `tried`. Treat appicon like optional peers such as `zscroll` / `cava`: never require the binary for a working bar.
 
-**Portability:** Primary target is Linux (XDG, Flatpak/Snap roots, systemd daemon). macOS/Windows build and run in-process resolve; config/cache fall back to OS user dirs when `XDG_*` are unset. Daemon refuses on Windows (`daemon_supported=false` in `status`).
+**Portability:** Primary target is Linux (XDG, Flatpak/Snap roots, systemd daemon). The local `xdg` stage also discovers macOS `.app` bundle icons from XML `Info.plist` metadata and Windows `.url` shortcuts with an absolute `IconFile`; binary plist, Windows `.lnk`, and embedded EXE icon extraction are not supported. Config/cache fall back to OS user dirs when `XDG_*` are unset. Daemon refuses on Windows (`daemon_supported=false` in `status`).
 
 **PNG note:** `resolve --format png` prefers `resvg` or `rsvg-convert` on `PATH`, otherwise a pure-Go [oksvg](https://github.com/srwiley/oksvg) fallback. Rasterized files are cached under `$XDG_CACHE_HOME/appicon/raster/`. Pixel size defaults to `48` and is capped at **512** (`--size` / MCP `size` values above that are clamped).
 
