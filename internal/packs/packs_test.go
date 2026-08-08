@@ -625,6 +625,55 @@ func TestInstallRejectsHomeDest(t *testing.T) {
 	}
 }
 
+func TestInstallRejectsPackRootDestWithoutRemovingPacks(t *testing.T) {
+	t.Setenv("XDG_DATA_HOME", t.TempDir())
+	configDir := t.TempDir()
+	marker := filepath.Join(packs.Root(), "keep", "icon.svg")
+	if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	err := packs.Install(configDir, packs.InstallOpts{
+		Target: "https://example.com/pack.tar.gz",
+		Name:   "pack",
+		Dest:   packs.Root(),
+	})
+	if err == nil || !strings.Contains(err.Error(), "packs root") {
+		t.Fatalf("err=%v", err)
+	}
+	if got, err := os.ReadFile(marker); err != nil || string(got) != "keep" {
+		t.Fatalf("existing pack changed: got=%q err=%v", got, err)
+	}
+}
+
+func TestInstallRejectsDotNamesWithoutRemovingPacks(t *testing.T) {
+	for _, name := range []string{".", ".."} {
+		t.Run(name, func(t *testing.T) {
+			t.Setenv("XDG_DATA_HOME", t.TempDir())
+			marker := filepath.Join(packs.Root(), "keep", "icon.svg")
+			if err := os.MkdirAll(filepath.Dir(marker), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(marker, []byte("keep"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			err := packs.Install(t.TempDir(), packs.InstallOpts{
+				Target: "https://example.com/pack.tar.gz",
+				Name:   name,
+			})
+			if err == nil || !strings.Contains(err.Error(), "invalid pack name") {
+				t.Fatalf("err=%v", err)
+			}
+			if got, err := os.ReadFile(marker); err != nil || string(got) != "keep" {
+				t.Fatalf("existing pack changed: got=%q err=%v", got, err)
+			}
+		})
+	}
+}
+
 func TestInstallRejectsNonEmptyOutsideDest(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())

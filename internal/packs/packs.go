@@ -581,6 +581,9 @@ func safeArchiveJoin(root, entry string) (string, error) {
 func resolveInstallRoot(name, dest string) (string, error) {
 	root := strings.TrimSpace(dest)
 	if root == "" {
+		if name == "." || name == ".." {
+			return "", fmt.Errorf("invalid pack name %q", name)
+		}
 		root = filepath.Join(Root(), name)
 	} else {
 		root = userpath.ExpandHome(root)
@@ -601,6 +604,9 @@ func rejectDangerousInstallRoot(root string) error {
 	// Never wipe "/" or the current working directory by accident.
 	if root == string(os.PathSeparator) || root == "." {
 		return fmt.Errorf("refusing install destination %q", root)
+	}
+	if packsRoot, err := filepath.Abs(Root()); err == nil && root == filepath.Clean(packsRoot) {
+		return fmt.Errorf("refusing install destination %q (packs root)", root)
 	}
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		home = filepath.Clean(home)
