@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
 
@@ -72,5 +73,42 @@ func TestSlugify(t *testing.T) {
 		if got := slugcdn.Slugify(input); got != want {
 			t.Errorf("Slugify(%q)=%q want %q", input, got, want)
 		}
+	}
+}
+
+func TestFetchSeparatesSameFilenameURLs(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	c := &slugcdn.Client{HTTP: &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Body:       io.NopCloser(strings.NewReader(r.URL.Path)),
+			Header:     make(http.Header),
+		}, nil
+	})}}
+	one, err := c.Fetch(context.Background(), slugcdn.Options{
+		Namespace: "test", URL: "https://cdn.example/v1/icon.svg", Hosts: []string{"cdn.example"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	two, err := c.Fetch(context.Background(), slugcdn.Options{
+		Namespace: "test", URL: "https://cdn.example/v2/icon.svg", Hosts: []string{"cdn.example"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if one.Path == two.Path {
+		t.Fatalf("different URLs share cache path %q", one.Path)
+	}
+	oneData, err := os.ReadFile(one.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	twoData, err := os.ReadFile(two.Path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(oneData) != "/v1/icon.svg" || string(twoData) != "/v2/icon.svg" {
+		t.Fatalf("one=%q two=%q", oneData, twoData)
 	}
 }
