@@ -205,7 +205,8 @@ func (f *Finder) ListDesktopEntries() []DesktopEntry {
 
 // PrefetchQueriesFromDesktop derives unique resolve queries from installed .desktop files.
 func PrefetchQueriesFromDesktop(opts Options) []string {
-	entries := ListDesktopEntries(opts)
+	finder := NewFinder(opts)
+	entries := finder.ListDesktopEntries()
 	seen := map[string]struct{}{}
 	var out []string
 	add := func(s string) {
@@ -234,6 +235,10 @@ func PrefetchQueriesFromDesktop(opts Options) []string {
 			continue
 		}
 		add(e.Icon)
+	}
+	for _, app := range finder.listNativeApps() {
+		add(app.Name)
+		add(app.ID)
 	}
 	return out
 }

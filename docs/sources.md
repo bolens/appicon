@@ -22,7 +22,7 @@ When sources config is missing:
 |------|---------------|--------|
 | `file` | yes | Query is an existing non-directory file |
 | `overrides` | no | Remaps query via overrides config, then continues |
-| `xdg` | yes | FreeDesktop themes / `.desktop` / pixmaps |
+| `xdg` | yes | Local installed apps: FreeDesktop themes / `.desktop` / pixmaps, macOS `.app`, Windows `.url` |
 | `pack` / `dir` | yes | Local pack directory (`dir` is an alias of `pack`) |
 | `svgl` | yes | SVGL (default remote) |
 | `simple-icons` | yes | Opt-in jsDelivr Simple Icons CDN |
@@ -80,9 +80,13 @@ Primary target is **Linux** (FreeDesktop XDG, Flatpak/Snap data roots, optional 
 | Surface | Notes |
 |---------|--------|
 | Config / cache / packs | Honor `XDG_*` when set; otherwise `~/.config`, `~/.cache`, `~/.local/share` on Unix, and OS user dirs on Windows (`UserConfigDir` / `UserCacheDir` / `%LOCALAPPDATA%` for packs) |
-| XDG icon lookup | Flatpak/Snap/`/usr` defaults are Linux-only |
+| Local app lookup | Linux: XDG/Flatpak/Snap/`/usr`; macOS: `.app` bundles with XML `Info.plist` under user/system Applications; Windows: Start Menu `.url` entries with an absolute `IconFile` |
 | Daemon | Unix socket only; `status.daemon_supported` is false on Windows — resolve stays in-process |
 | Home Manager | Linux/systemd; use `environmentFiles` for BYOK secret *values* (never `sops.secrets.*.path` in `environment`) |
+
+Binary macOS plists, Windows `.lnk` parsing, and icons embedded in `.exe`/DLL
+resources are not returned as image paths. Use an adjacent `.icns`/`.ico`/`.png`,
+a local pack, or an override for those applications.
 
 ## Compatibility
 
