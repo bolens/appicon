@@ -138,35 +138,30 @@ func Add(configDir, name, dir string) error {
 	if name == "" || dir == "" {
 		return errors.New("pack add requires <name> <dir>")
 	}
-	cfg, err := resolve.LoadSourcesConfig(configDir)
-	if err != nil {
-		return err
-	}
 	abs := dir
 	if !filepath.IsAbs(abs) {
 		if a, err := filepath.Abs(abs); err == nil {
 			abs = a
 		}
 	}
-	for _, s := range cfg.Sources {
-		t := strings.ToLower(s.Type)
-		if (t == "pack" || t == "dir") && filepath.Clean(userpath.ExpandHome(s.Path)) == filepath.Clean(abs) {
-			return nil
+	return resolve.UpdateSourcesConfig(configDir, func(cfg *resolve.SourcesConfig) error {
+		for _, s := range cfg.Sources {
+			t := strings.ToLower(s.Type)
+			if (t == "pack" || t == "dir") && filepath.Clean(userpath.ExpandHome(s.Path)) == filepath.Clean(abs) {
+				return nil
+			}
 		}
-	}
-	if len(cfg.Sources) == 0 {
-		cfg.Sources = []resolve.Stage{
-			{Type: "file"},
-			{Type: "overrides"},
-			{Type: "xdg"},
-			{Type: "svgl"},
+		if len(cfg.Sources) == 0 {
+			cfg.Sources = []resolve.Stage{
+				{Type: "file"},
+				{Type: "overrides"},
+				{Type: "xdg"},
+				{Type: "svgl"},
+			}
 		}
-	}
-	cfg.Sources = append(cfg.Sources, resolve.Stage{Type: "pack", Name: name, Path: abs})
-	if err := resolve.ValidateStages(cfg.Sources); err != nil {
-		return err
-	}
-	return resolve.WriteSourcesConfig(configDir, cfg)
+		cfg.Sources = append(cfg.Sources, resolve.Stage{Type: "pack", Name: name, Path: abs})
+		return nil
+	})
 }
 
 // IsURL reports whether s looks like a remote pack install target.

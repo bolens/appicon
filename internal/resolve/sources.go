@@ -2,12 +2,15 @@
 package resolve
 
 import (
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/bolens/appicon/internal/cache"
 )
 
 // ErrInvalidConfig means sources config is invalid.
@@ -147,6 +150,31 @@ func WriteSourcesConfigFormat(configDir string, cfg SourcesConfig, format string
 		return err
 	}
 	return writeAtomic(path, data)
+}
+
+// UpdateSourcesConfig serializes a read-modify-write transaction for sources.
+// The callback must not call UpdateSourcesConfig recursively for the same dir.
+func UpdateSourcesConfig(configDir string, update func(*SourcesConfig) error) error {
+	dir, err := filepath.Abs(configDirOr(configDir))
+	if err != nil {
+		return err
+	}
+	sum := sha256.Sum256([]byte(dir))
+	return cache.WithLock(fmt.Sprintf("config/sources-%x.lock", sum[:8]), func() error {
+		cfg, err := LoadSourcesConfig(configDir)
+		if err != nil {
+			return err
+		}
+		if err := update(&cfg); err != nil {
+			return err
+		}
+		if len(cfg.Sources) > 0 {
+			if err := ValidateStages(cfg.Sources); err != nil {
+				return err
+			}
+		}
+		return WriteSourcesConfig(configDir, cfg)
+	})
 }
 
 // EffectiveStages returns the resolve pipeline after compat rules.

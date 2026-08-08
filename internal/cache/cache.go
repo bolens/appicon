@@ -7,8 +7,11 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
+
+var processLocks sync.Map
 
 // Dir returns the cache directory path without creating it.
 func Dir() string {
@@ -140,6 +143,10 @@ func WithLock(lockName string, fn func() error) error {
 	if err := os.MkdirAll(filepath.Dir(lockPath), 0o755); err != nil {
 		return err
 	}
+	muValue, _ := processLocks.LoadOrStore(lockPath, new(sync.Mutex))
+	mu := muValue.(*sync.Mutex)
+	mu.Lock()
+	defer mu.Unlock()
 	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o644)
 	if err != nil {
 		return err

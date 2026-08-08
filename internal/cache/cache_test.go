@@ -3,6 +3,7 @@ package cache_test
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
@@ -148,5 +149,36 @@ func TestWithLockRejectsTraversal(t *testing.T) {
 	}
 	if called {
 		t.Fatal("lock callback ran for invalid path")
+	}
+}
+
+func TestWithLockSerializesGoroutines(t *testing.T) {
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	const workers = 20
+	var (
+		wg      sync.WaitGroup
+		inside  int
+		maxSeen int
+	)
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			if err := cache.WithLock("shared.lock", func() error {
+				inside++
+				if inside > maxSeen {
+					maxSeen = inside
+				}
+				time.Sleep(time.Millisecond)
+				inside--
+				return nil
+			}); err != nil {
+				t.Errorf("WithLock: %v", err)
+			}
+		}()
+	}
+	wg.Wait()
+	if maxSeen != 1 {
+		t.Fatalf("maximum concurrent callbacks=%d want 1", maxSeen)
 	}
 }

@@ -3,6 +3,7 @@ package packs_test
 import (
 	"archive/tar"
 	"compress/gzip"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -10,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/bolens/appicon/internal/packs"
@@ -71,6 +73,31 @@ func TestInstallUpdateLocalGit(t *testing.T) {
 	}
 	if err := packs.Install(cfg, packs.InstallOpts{Target: "simple-icons", Offline: true}); err != packs.ErrOffline {
 		t.Fatalf("offline want ErrOffline got %v", err)
+	}
+}
+
+func TestAddConcurrentPreservesAllPacks(t *testing.T) {
+	configDir := t.TempDir()
+	packRoot := t.TempDir()
+	const workers = 20
+	var wg sync.WaitGroup
+	for i := range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			name := fmt.Sprintf("pack-%02d", i)
+			if err := packs.Add(configDir, name, filepath.Join(packRoot, name)); err != nil {
+				t.Errorf("Add(%s): %v", name, err)
+			}
+		}()
+	}
+	wg.Wait()
+	list, err := packs.List(configDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != workers {
+		t.Fatalf("pack count=%d want %d", len(list), workers)
 	}
 }
 
