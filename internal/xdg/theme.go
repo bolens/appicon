@@ -33,6 +33,13 @@ func (f *Finder) lookupIcon(name string) (string, error) {
 	if name == "" {
 		return "", ErrNotFound
 	}
+	if strings.HasPrefix(name, "~"+string(filepath.Separator)) {
+		home, err := os.UserHomeDir()
+		if err != nil || home == "" {
+			return "", ErrNotFound
+		}
+		name = filepath.Join(home, strings.TrimPrefix(name, "~"+string(filepath.Separator)))
+	}
 	// Absolute or home-relative path in Icon=
 	if strings.Contains(name, string(filepath.Separator)) || filepath.IsAbs(name) {
 		if st, err := os.Stat(name); err == nil && !st.IsDir() {
@@ -44,6 +51,7 @@ func (f *Finder) lookupIcon(name string) (string, error) {
 		}
 		return "", ErrNotFound
 	}
+	name = trimIconExtension(name)
 
 	for _, candidate := range iconNameCandidates(name, f.ColorScheme) {
 		if path, err := f.lookupIconExact(candidate); err == nil {
@@ -51,6 +59,20 @@ func (f *Finder) lookupIcon(name string) (string, error) {
 		}
 	}
 	return "", ErrNotFound
+}
+
+func trimIconExtension(name string) string {
+	ext := strings.ToLower(filepath.Ext(name))
+	for _, candidate := range iconExtensions {
+		if ext == candidate {
+			stem := strings.TrimSuffix(name, filepath.Ext(name))
+			if stem != "" {
+				return stem
+			}
+			return name
+		}
+	}
+	return name
 }
 
 func iconNameCandidates(name, colorScheme string) []string {
