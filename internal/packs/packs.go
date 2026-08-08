@@ -202,6 +202,9 @@ func Install(configDir string, opts InstallOpts) error {
 	if target == "" {
 		return errors.New("pack install requires <recipe|url>")
 	}
+	if err := validateInstallConfig(configDir); err != nil {
+		return err
+	}
 	if IsArchiveURL(target) {
 		return installFromArchiveURL(configDir, target, opts)
 	}
@@ -925,6 +928,9 @@ func installBundle(configDir, bundlePath string, maxTotal int64) error {
 	if err := validateBundle(bundlePath, root, maxTotal); err != nil {
 		return err
 	}
+	if err := validateInstallConfig(configDir); err != nil {
+		return err
+	}
 	f, err := os.Open(bundlePath)
 	if err != nil {
 		return err
@@ -1032,6 +1038,11 @@ func installBundle(configDir, bundlePath string, maxTotal int64) error {
 		}
 	}
 	return nil
+}
+
+func validateInstallConfig(configDir string) error {
+	_, _, err := resolve.LoadEffectiveStages(configDir, nil)
+	return err
 }
 
 func validateBundle(bundlePath, root string, maxTotal int64) error {
