@@ -49,5 +49,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Soft-fail if the release is not published yet; main release workflow may race.
-          gh release upload "${GITHUB_REF_NAME}" appicon-packs-bundle.tar.gz --clobber || true
+          set -euo pipefail
+          for _ in $(seq 1 90); do
+            published=$(gh release view "${GITHUB_REF_NAME}" --json isDraft \
+              --jq 'select(.isDraft == false) | .isDraft' 2>/dev/null || true)
+            if [ "$published" = false ]; then
+              gh release upload "${GITHUB_REF_NAME}" appicon-packs-bundle.tar.gz --clobber
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "release ${GITHUB_REF_NAME} was not published within 15 minutes" >&2
+          exit 1
