@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-08-08
+
+### Added
+
+- Portable release archives for macOS arm64 and Windows amd64, with cross-platform checksum generation and release verification
+- Release contract tests that validate archive contents, version metadata, complete asset sets, and corrupt-asset rejection
+- Nested Linux desktop-entry discovery and hidden-entry handling
+
+### Changed
+
+- Resolution remains cache-first across GitHub, Noun Project, and catalog-backed sources, including global offline mode and canceled requests
+- Cache, catalog, configuration, and pack operations use stronger locking, atomic replacement, path containment, symlink checks, and rollback behavior across platforms
+- Pack and bundle installs preflight configuration and hostile archive input, cap entries and expansion, validate git refs and subdirectories, and protect pack roots and destinations
+- Remote providers enforce redirect allowlists and validate cached/downloaded artifacts, response identity, credential environment names, and configurable hosts
+- Native app discovery uses platform-specific paths and scoped fingerprints, with portable XDG fallbacks and cache invalidation for nested applications
+- Daemon batch requests and deterministic pack lookups are bounded; daemon responses validate request identity and preserve miss hints
+
+### Fixed
+
+- Wrapped Noun Project downloads, current catalog decoding, URL extension sanitization, and repointed SVGL asset invalidation
+- Windows cache locking and file replacement, macOS checksum portability, and release asset completeness checks
+
 ## [0.3.0] — 2026-08-08
 
 ### Added
