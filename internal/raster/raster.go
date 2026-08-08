@@ -34,16 +34,33 @@ func SVGToPNG(svgPath, pngPath string, size int) error {
 	}
 
 	if _, err := exec.LookPath("resvg"); err == nil {
-		if err := runResvg(svgPath, pngPath, size); err == nil {
+		if err := renderAtomic(pngPath, func(tmpPath string) error { return runResvg(svgPath, tmpPath, size) }); err == nil {
 			return nil
 		}
 	}
 	if _, err := exec.LookPath("rsvg-convert"); err == nil {
-		if err := runRsvgConvert(svgPath, pngPath, size); err == nil {
+		if err := renderAtomic(pngPath, func(tmpPath string) error { return runRsvgConvert(svgPath, tmpPath, size) }); err == nil {
 			return nil
 		}
 	}
 	return oksvgToPNG(svgPath, pngPath, size)
+}
+
+func renderAtomic(pngPath string, render func(string) error) error {
+	tmp, err := os.CreateTemp(filepath.Dir(pngPath), ".tmp-*.png")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return err
+	}
+	defer func() { _ = os.Remove(tmpPath) }()
+	if err := render(tmpPath); err != nil {
+		return err
+	}
+	return renameReplace(tmpPath, pngPath)
 }
 
 func runResvg(svgPath, pngPath string, size int) error {
@@ -79,19 +96,15 @@ func oksvgToPNG(svgPath, pngPath string, size int) error {
 	rgba := image.NewRGBA(image.Rect(0, 0, size, size))
 	icon.Draw(rasterx.NewDasher(size, size, rasterx.NewScannerGV(size, size, rgba, rgba.Bounds())), 1)
 
-	tmp, err := os.CreateTemp(filepath.Dir(pngPath), ".tmp-*.png")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }()
-
-	if err := png.Encode(tmp, rgba); err != nil {
-		_ = tmp.Close()
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tmpName, pngPath)
+	return renderAtomic(pngPath, func(tmpPath string) error {
+		tmp, err := os.OpenFile(tmpPath, os.O_WRONLY|os.O_TRUNC, 0o600)
+		if err != nil {
+			return err
+		}
+		if err := png.Encode(tmp, rgba); err != nil {
+			_ = tmp.Close()
+			return err
+		}
+		return tmp.Close()
+	})
 }
