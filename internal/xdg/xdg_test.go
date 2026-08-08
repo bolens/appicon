@@ -75,6 +75,7 @@ func TestLookupIconAcceptsKnownExtension(t *testing.T) {
 func TestLookupIconExpandsHomePath(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	icon := filepath.Join(home, "icons", "app.svg")
 	if err := os.MkdirAll(filepath.Dir(icon), 0o755); err != nil {
 		t.Fatal(err)
