@@ -772,6 +772,9 @@ func TestInstallRejectsSymlinkDestination(t *testing.T) {
 	if err := os.Symlink(outside, dest); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
+	// Destination validation must not depend on git being available, as in a
+	// sandboxed package build where git is intentionally absent from PATH.
+	t.Setenv("PATH", t.TempDir())
 
 	err := packs.Install(t.TempDir(), packs.InstallOpts{
 		Target: "file:///nonexistent/linked.git",

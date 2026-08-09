@@ -253,15 +253,15 @@ func cloneAndRegister(configDir, repo, name, ref, subdir, dest string) error {
 	if err := validateGitRemote(repo); err != nil {
 		return err
 	}
-	if _, err := exec.LookPath("git"); err != nil {
-		return ErrNoGit
-	}
 	root, err := resolveInstallRoot(name, dest)
 	if err != nil {
 		return err
 	}
 	if err := refuseSymlinkPath(root, root); err != nil {
 		return err
+	}
+	if _, err := exec.LookPath("git"); err != nil {
+		return ErrNoGit
 	}
 	if err := os.MkdirAll(filepath.Dir(root), 0o755); err != nil {
 		return err
