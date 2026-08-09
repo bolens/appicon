@@ -12,11 +12,11 @@ printf 'two' > "$fixture/two.tar.gz"
 bash "$ROOT/scripts/ci/verify-release.sh" "$fixture" >/dev/null
 
 # Stock macOS provides shasum rather than GNU sha256sum. Use an isolated PATH
-# to exercise that branch while delegating the fixture hash to the host tool.
+# to exercise that branch with the host's real shasum implementation.
 fallback_bin="$fixture/fallback-bin"
 mkdir -p "$fallback_bin"
-printf '%s\n' '#!/bin/sh' 'shift 2' 'exec /usr/bin/sha256sum "$@"' > "$fallback_bin/shasum"
-chmod +x "$fallback_bin/shasum"
+shasum_path=$(command -v shasum)
+ln -s "$shasum_path" "$fallback_bin/shasum"
 PATH="$fallback_bin" /bin/bash "$ROOT/scripts/ci/verify-release.sh" "$fixture" >/dev/null
 
 if PATH="$fixture/empty-path" /bin/bash "$ROOT/scripts/ci/verify-release.sh" "$fixture" >/dev/null 2>&1; then

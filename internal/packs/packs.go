@@ -1123,7 +1123,7 @@ func validateBundle(bundlePath, root string, maxTotal int64) error {
 }
 
 func countArchiveEntry(count *int, limit int) error {
-	*count++
+	(*count)++
 	if *count > limit {
 		return fmt.Errorf("archive entry count exceeds limit %d", limit)
 	}
