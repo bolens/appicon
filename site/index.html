@@ -7,6 +7,7 @@
   <meta name="theme-color" content="#101820">
   <title>Appicon — local icons, one query away</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="guide.css">
   <link rel="stylesheet" href="accessibility.css">
 </head>
 <body>
@@ -14,9 +15,9 @@
   <header class="site-header">
     <a class="wordmark" href="#top" aria-label="Appicon home"><span aria-hidden="true">◆</span> appicon</a>
     <nav aria-label="Primary navigation">
-      <a href="#how-it-works">How it works</a>
-      <a href="#install">Install</a>
-      <a href="https://github.com/bolens/appicon/tree/main/docs">Docs</a>
+      <a href="#start">Get started</a>
+      <a href="#everyday">Use Appicon</a>
+      <a href="#help">Get help</a>
       <a class="nav-cta" href="https://github.com/bolens/appicon">GitHub</a>
     </nav>
   </header>
@@ -50,6 +51,24 @@
       <div><strong>Linux · macOS · Windows</strong><span>One portable CLI</span></div>
     </section>
 
+    <section class="guide-section start-guide" id="start" aria-labelledby="start-title">
+      <header class="guide-heading">
+        <p class="eyebrow">Get started</p>
+        <h2 id="start-title">Find your first icon.</h2>
+        <p>Appicon runs in a terminal. You type an application name, and Appicon prints the location of an icon file on your computer.</p>
+      </header>
+      <div class="steps">
+        <article><span>1</span><h3>Install Appicon</h3><p>Pick the option that matches your system. If you are unsure, use the first option for your system.</p></article>
+        <article><span>2</span><h3>Check the installation</h3><pre tabindex="0"><code>appicon version</code></pre><p>You should see a version number such as <code>v0.4.1</code>.</p></article>
+        <article><span>3</span><h3>Find an icon</h3><pre tabindex="0"><code>appicon resolve firefox</code></pre><p>Appicon prints a file path. Paste that path into the tool that needs the icon.</p></article>
+      </div>
+      <div class="install-choices" aria-label="Installation choices">
+        <article><p class="choice-label">Arch Linux</p><h3>Install the ready-made package</h3><pre tabindex="0"><code>yay -S appicon-bin</code></pre><p>You can use another AUR helper in place of <code>yay</code>.</p></article>
+        <article><p class="choice-label">Nix</p><h3>Install the ready-made package</h3><pre tabindex="0"><code>nix profile install github:bolens/appicon#appicon-bin</code></pre></article>
+        <article><p class="choice-label">Other systems</p><h3>Download a release</h3><p>Choose the archive for your operating system and processor. Each release includes checksums.</p><a href="https://github.com/bolens/appicon/releases/latest">Open the latest release</a></article>
+      </div>
+    </section>
+
     <section class="section" id="how-it-works" aria-labelledby="pipeline-title">
       <div class="section-heading">
         <p class="eyebrow">Predictable by design</p>
@@ -78,13 +97,31 @@
       </div>
     </section>
 
+    <section class="guide-section everyday" id="everyday" aria-labelledby="everyday-title">
+      <header class="guide-heading"><p class="eyebrow">Use Appicon</p><h2 id="everyday-title">Common tasks.</h2><p>You can start with one command. Add options only when you need them.</p></header>
+      <div class="task-list">
+        <article><div><h3>Find one icon</h3><p>Use the application name that you see in your launcher.</p></div><pre tabindex="0"><code>appicon resolve discord</code></pre></article>
+        <article><div><h3>Find a small PNG</h3><p>Use this for a bar or menu that cannot display SVG files.</p></div><pre tabindex="0"><code>appicon resolve --format png --size 24 firefox</code></pre></article>
+        <article><div><h3>Work without a network connection</h3><p>Offline mode only uses icons that Appicon already has.</p></div><pre tabindex="0"><code>appicon resolve --offline firefox</code></pre></article>
+        <article><div><h3>Correct a wrong match</h3><p>Tell Appicon which known icon to use for your application name.</p></div><pre tabindex="0"><code>appicon override set my-browser firefox</code></pre></article>
+      </div>
+      <aside class="plain-note"><h3>If Appicon prints nothing</h3><p>The icon was not found. Nothing is broken. Try a shorter name, check the spelling, or keep the fallback icon in your bar or launcher.</p></aside>
+    </section>
+
+    <section class="guide-section help" id="help" aria-labelledby="help-title">
+      <header class="guide-heading"><p class="eyebrow">Get help</p><h2 id="help-title">Start with a status check.</h2></header>
+      <div class="help-grid">
+        <article><h3>An icon does not match</h3><p>Run <code>appicon resolve --explain NAME</code>. The result shows which source supplied the icon. Add an override if you want a different match.</p></article>
+        <article><h3>Remote icons do not load</h3><p>Run <code>appicon status</code>. Check that Appicon can reach its enabled sources. Offline and cached icons continue to work.</p></article>
+        <article><h3>Your cache is too large</h3><p>Run <code>appicon cache stats</code>, then <code>appicon cache prune</code>. Pruning removes old cached files without changing your settings.</p></article>
+        <article><h3>You found a bug</h3><p>Copy the output from <code>appicon status</code> and describe the name you tried. Do not include API keys.</p><a href="https://github.com/bolens/appicon/issues/new/choose">Report the problem</a></article>
+      </div>
+    </section>
+
     <section class="install" id="install" aria-labelledby="install-title">
-      <div><p class="eyebrow">Get started</p><h2 id="install-title">Build it. Resolve it.</h2><p>Install from source with Go, or choose a signed archive from the latest release.</p></div>
-      <pre tabindex="0" aria-label="Appicon source installation commands"><code>git clone https://github.com/bolens/appicon.git
-cd appicon
-make build
-./bin/appicon resolve firefox</code></pre>
-      <a class="button light" href="https://github.com/bolens/appicon#install">All install options</a>
+      <div><p class="eyebrow">Technical documentation</p><h2 id="install-title">Building or integrating Appicon?</h2><p>The repository documents source builds, configuration files, MCP tools, the daemon, icon packs, schemas, security, and packaging.</p></div>
+      <ul class="technical-links"><li><a href="https://github.com/bolens/appicon/tree/main/docs">Technical documentation</a></li><li><a href="docs/architecture/appicon.html">Interactive architecture map</a></li><li><a href="https://github.com/bolens/appicon/blob/main/docs/consumer-contract.md">Consumer contract</a></li><li><a href="https://github.com/bolens/appicon/blob/main/CONTRIBUTING.md">Contributing guide</a></li></ul>
+      <a class="button light" href="https://github.com/bolens/appicon">Open the repository</a>
     </section>
   </main>
 
