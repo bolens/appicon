@@ -1,0 +1,8 @@
+[
+  {"title":"Install Appicon","url":"install/","summary":"Choose an installation method for Linux, macOS, or Windows.","keywords":"install arch aur nix mac windows download release"},
+  {"title":"Find an icon","url":"guide/","summary":"Resolve an application name to a local icon file.","keywords":"resolve path firefox discord icon"},
+  {"title":"Work offline","url":"guide/","summary":"Use icons that Appicon already has without a network connection.","keywords":"offline cache network"},
+  {"title":"Correct a match","url":"guide/","summary":"Use an override when an application gets the wrong icon.","keywords":"override wrong match remap"},
+  {"title":"Troubleshoot Appicon","url":"help/","summary":"Check status, explain a result, and prune the cache.","keywords":"help status explain cache prune bug"},
+  {"title":"Appicon architecture","url":"architecture/","summary":"Understand the resolver, cache, sources, CLI, MCP server, and daemon.","keywords":"architecture topology resolver mcp daemon sources"}
+]

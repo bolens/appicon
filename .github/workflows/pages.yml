@@ -1,12 +1,23 @@
 name: Pages
 
 on:
+  pull_request:
+    paths:
+      - site/**
+      - docs/architecture/**
+      - scripts/ci/build-pages-site.py
+      - scripts/ci/check-pages-site.py
+      - .github/workflows/pages.yml
   push:
     branches: [main]
     paths:
       - site/**
       - docs/architecture/**
+      - scripts/ci/build-pages-site.py
+      - scripts/ci/check-pages-site.py
       - .github/workflows/pages.yml
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -19,20 +30,41 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Validate site source
+        run: python3 scripts/ci/check-pages-site.py --site site --architecture docs/architecture/appicon.html
+      - name: Build versioned preview
+        run: |
+          version="$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0-dev)"
+          python3 scripts/ci/build-pages-site.py --architecture docs/architecture/appicon.html --architecture-name appicon.html --version "$version"
+      - name: Check rendered accessibility
+        run: |
+          python3 -m http.server 4173 --directory _site &
+          npx --yes lighthouse@12.8.2 http://127.0.0.1:4173/ --only-categories=accessibility --chrome-flags='--headless --no-sandbox' --preset=desktop --output=json --output-path=/tmp/lighthouse.json --quiet
+          # Chrome versions vary on the experimental target-spacing audit.
+          python3 -c "import json; score=json.load(open('/tmp/lighthouse.json'))['categories']['accessibility']['score']; print(f'accessibility={score:.0%}'); assert score >= 0.95"
+
   deploy:
+    if: github.event_name != 'pull_request'
+    needs: validate
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
       - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
-      - name: Assemble site
+      - name: Assemble versioned site
         run: |
-          mkdir -p _site/docs/architecture
-          cp -R site/. _site/
-          cp docs/architecture/appicon.html _site/docs/architecture/appicon.html
-          touch _site/.nojekyll
+          version="$(git describe --tags --abbrev=0)"
+          python3 scripts/ci/build-pages-site.py --architecture docs/architecture/appicon.html --architecture-name appicon.html --version "$version"
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
       - name: Deploy to GitHub Pages
         id: deployment

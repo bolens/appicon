@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Choose the Appicon installation instructions for your operating system.">
+  <meta property="og:title" content="Install Appicon | Appicon">
+  <meta property="og:description" content="Choose the Appicon installation instructions for your operating system.">
+  <meta property="og:image" content="https://bolens.github.io/appicon/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Install Appicon | Appicon</title>
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body data-root="../">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="docs-header">
+    <a class="docs-brand" href="../">◆ appicon</a>
+    <nav class="docs-nav" aria-label="Documentation">
+      <a href="../install/">Install</a><a href="../guide/">Use</a><a href="../help/">Help</a><a href="../architecture/">Architecture</a>
+      <form class="docs-search" role="search" data-search-form><label class="sr-only" for="site-search">Search guides</label><input id="site-search" name="q" type="search" placeholder="Search"><button>Search</button></form>
+    </nav>
+  </header>
+  <main class="page-main" id="main"><p class="breadcrumbs"><a href="../">Home</a> / Install</p><header class="page-hero"><p class="page-kicker">Install</p><h1>Install Appicon.</h1><p>Choose your operating system. The page remembers your choice on this device.</p><p>Current release: <strong>__SITE_VERSION__</strong></p></header><div class="platform-picker" role="group" aria-label="Operating system"><button type="button" data-os="linux" aria-pressed="false">Linux</button><button type="button" data-os="macos" aria-pressed="false">macOS</button><button type="button" data-os="windows" aria-pressed="false">Windows</button></div><section data-platforms="linux"><div class="page-grid"><article class="doc-card"><h2>Arch Linux</h2><p>Install the ready-made AUR package.</p><pre tabindex="0"><code>yay -S appicon-bin</code></pre></article><article class="doc-card"><h2>Nix</h2><p>Install the ready-made flake package.</p><pre tabindex="0"><code>nix profile install github:bolens/appicon#appicon-bin</code></pre></article></div></section><section data-platforms="macos"><article class="doc-card"><h2>Download the macOS archive</h2><p>Open the latest release and choose the archive for your Mac processor. Move the <code>appicon</code> file to a directory on your PATH.</p><a href="https://github.com/bolens/appicon/releases/latest">Open the latest release</a></article></section><section data-platforms="windows"><article class="doc-card"><h2>Download the Windows archive</h2><p>Open the latest release and choose the Windows archive. Extract <code>appicon.exe</code> to a directory on your PATH.</p><a href="https://github.com/bolens/appicon/releases/latest">Open the latest release</a></article></section><div class="callout"><h2>Check the installation</h2><pre tabindex="0"><code>appicon version</code></pre><p>The command prints <code>__SITE_VERSION__</code>.</p></div><p class="feedback">Did this page answer your question? <a href="https://github.com/bolens/appicon/issues/new?title=Pages%20feedback%3A%20">Suggest an improvement</a>.</p></main>
+  <footer class="docs-footer"><p>Appicon <span data-version>__SITE_VERSION__</span> · MIT licensed</p><nav aria-label="Footer"><a href="https://github.com/bolens/appicon">Repository</a><a href="https://github.com/bolens/appicon/releases/latest">Release</a></nav></footer>
+</body>
+</html>
+
