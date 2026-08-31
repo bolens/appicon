@@ -3,6 +3,7 @@ package resolve_test
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"runtime"
 	"testing"
 
@@ -46,6 +47,29 @@ func TestSuggestOverrideFromDesktop(t *testing.T) {
 	}
 	if len(s.Candidates) == 0 {
 		t.Fatalf("expected candidates: %+v", s)
+	}
+}
+
+func TestSuggestOverrideSortsExistingOverrides(t *testing.T) {
+	cfg := t.TempDir()
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+	if err := resolve.SetOverride(cfg, "match-z", "zebra-match"); err != nil {
+		t.Fatal(err)
+	}
+	if err := resolve.SetOverride(cfg, "match-a", "alpha-match"); err != nil {
+		t.Fatal(err)
+	}
+
+	s, err := resolve.SuggestOverride(cfg, "match", resolve.Options{
+		DataDirs: []string{t.TempDir()},
+		Offline:  true,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"alpha-match", "zebra-match"}
+	if !reflect.DeepEqual(s.Candidates, want) {
+		t.Fatalf("candidates=%v want %v", s.Candidates, want)
 	}
 }
 

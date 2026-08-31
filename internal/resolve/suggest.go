@@ -60,7 +60,8 @@ func SuggestOverride(configDir, query string, opts Options) (Suggestion, error) 
 
 	if m, err := ListOverrides(configDir); err == nil {
 		ql := strings.ToLower(q)
-		for k, v := range m {
+		for _, k := range SortedOverrideKeys(m) {
+			v := m[k]
 			if strings.Contains(k, ql) || strings.Contains(strings.ToLower(v), ql) {
 				add(v, "existing override")
 			}
