@@ -1,0 +1,14 @@
+@media (prefers-color-scheme: dark) {
+  .pipeline small {
+    color: #c7d0d4;
+  }
+
+  .pipeline .hit {
+    background: #064f46;
+  }
+
+  .pipeline .hit span,
+  .pipeline .hit small {
+    color: #fff;
+  }
+}

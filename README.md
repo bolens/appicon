@@ -2,6 +2,8 @@
 
 Resolve desktop and brand icons to **local file paths** for Waybar, Rofi, scripts, and other consumers that need an icon file.
 
+[Website](https://bolens.github.io/appicon/) · [Documentation](docs/README.md) · [Releases](https://github.com/bolens/appicon/releases/latest)
+
 ```bash
 appicon resolve firefox
 appicon resolve --json --format png --size 24 "VS Code"

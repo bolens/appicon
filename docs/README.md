@@ -18,6 +18,7 @@ Hub for appicon docs. Prefer editing the **source of truth** column when behavio
 | [../CHANGELOG.md](../CHANGELOG.md) | User-facing release notes |
 | [releasing.md](releasing.md) | PR, tag, verification, packaging, and local-install release playbook |
 | [architecture/appicon.html](architecture/appicon.html) | Interactive map of CLI, MCP, daemon, resolver, sources, and cache |
+| [site-evidence/README.md](site-evidence/README.md) | Pages accessibility audit and desktop/mobile layout evidence |
 | [../nix/README.md](../nix/README.md) | Flake attrs, Home Manager, `vendorHash` |
 | [../packaging/aur/README.md](../packaging/aur/README.md) | AUR PKGBUILD publish checklist |
 | [../contrib/systemd/README.md](../contrib/systemd/README.md) | User socket unit install |
