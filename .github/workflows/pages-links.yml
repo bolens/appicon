@@ -1,0 +1,30 @@
+name: Pages links
+
+on:
+  pull_request:
+    paths:
+      - site/**
+      - .github/workflows/pages-links.yml
+  schedule:
+    - cron: '17 8 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+      - name: Build link-check target
+        run: |
+          version="$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0-dev)"
+          python3 scripts/ci/build-pages-site.py --architecture docs/architecture/appicon.html --architecture-name appicon.html --version "$version"
+      - name: Check internal and external links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
+        with:
+          args: --no-progress --accept 200,429 '_site/**/*.html'
+          fail: true
