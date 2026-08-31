@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Fix common Appicon icon matching, network, and cache problems.">
+  <meta property="og:title" content="Get help | Appicon">
+  <meta property="og:description" content="Fix common Appicon icon matching, network, and cache problems.">
+  <meta property="og:image" content="https://bolens.github.io/appicon/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Get help | Appicon</title>
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body data-root="../">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="docs-header">
+    <a class="docs-brand" href="../">◆ appicon</a>
+    <nav class="docs-nav" aria-label="Documentation">
+      <a href="../install/">Install</a><a href="../guide/">Use</a><a href="../help/">Help</a><a href="../architecture/">Architecture</a>
+      <form class="docs-search" role="search" data-search-form><label class="sr-only" for="site-search">Search guides</label><input id="site-search" name="q" type="search" placeholder="Search"><button>Search</button></form>
+    </nav>
+  </header>
+  <main class="page-main" id="main"><p class="breadcrumbs"><a href="../">Home</a> / Help</p><header class="page-hero"><p class="page-kicker">Troubleshooting</p><h1>Start with a status check.</h1><pre tabindex="0"><code>appicon status</code></pre></header><div class="page-grid"><article class="doc-card"><h2>The icon is wrong</h2><p>Run <code>appicon resolve --explain NAME</code>. The output names the source. Add an override if you want another match.</p></article><article class="doc-card"><h2>Remote icons do not load</h2><p>Check your enabled sources in the status output. Cached icons continue to work offline.</p></article><article class="doc-card"><h2>The cache is too large</h2><pre tabindex="0"><code>appicon cache stats
+appicon cache prune</code></pre><p>Pruning removes old cached files. It keeps your settings.</p></article><article class="doc-card"><h2>You found a bug</h2><p>Include the output from <code>appicon status</code> and the name you tried. Remove API keys before posting.</p><a href="https://github.com/bolens/appicon/issues/new/choose">Report a problem</a></article></div><p class="feedback">Did this page answer your question? <a href="https://github.com/bolens/appicon/issues/new?title=Pages%20feedback%3A%20">Suggest an improvement</a>.</p></main>
+  <footer class="docs-footer"><p>Appicon <span data-version>__SITE_VERSION__</span> · MIT licensed</p><nav aria-label="Footer"><a href="https://github.com/bolens/appicon">Repository</a><a href="https://github.com/bolens/appicon/releases/latest">Release</a></nav></footer>
+</body>
+</html>
+

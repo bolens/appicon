@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Resolve icons, work offline, create PNG files, and correct matches with Appicon.">
+  <meta property="og:title" content="Use Appicon | Appicon">
+  <meta property="og:description" content="Resolve icons, work offline, create PNG files, and correct matches with Appicon.">
+  <meta property="og:image" content="https://bolens.github.io/appicon/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Use Appicon | Appicon</title>
+  <link rel="icon" type="image/png" href="../assets/favicon.png">
+  <link rel="stylesheet" href="../assets/site.css">
+  <script src="../assets/site.js" defer></script>
+</head>
+<body data-root="../">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="docs-header">
+    <a class="docs-brand" href="../">◆ appicon</a>
+    <nav class="docs-nav" aria-label="Documentation">
+      <a href="../install/">Install</a><a href="../guide/">Use</a><a href="../help/">Help</a><a href="../architecture/">Architecture</a>
+      <form class="docs-search" role="search" data-search-form><label class="sr-only" for="site-search">Search guides</label><input id="site-search" name="q" type="search" placeholder="Search"><button>Search</button></form>
+    </nav>
+  </header>
+  <main class="page-main" id="main"><p class="breadcrumbs"><a href="../">Home</a> / Use</p><header class="page-hero"><p class="page-kicker">Common tasks</p><h1>Use Appicon.</h1><p>Start with the application name shown in your launcher. Appicon prints a local file path.</p></header><div class="task-list"><article class="task"><div><h2>Find one icon</h2><p>Use the application name that you see.</p></div><pre tabindex="0"><code>appicon resolve firefox</code></pre></article><article class="task"><div><h2>Create a small PNG</h2><p>Use this command for a bar or menu that cannot display SVG files.</p></div><pre tabindex="0"><code>appicon resolve --format png --size 24 firefox</code></pre></article><article class="task"><div><h2>Work offline</h2><p>Offline mode uses only icons Appicon already has.</p></div><pre tabindex="0"><code>appicon resolve --offline firefox</code></pre></article><article class="task"><div><h2>Correct a wrong match</h2><p>Map your application name to a known icon.</p></div><pre tabindex="0"><code>appicon override set my-browser firefox</code></pre></article></div><div class="callout"><h2>If Appicon prints nothing</h2><p>Appicon did not find the icon. Try a shorter name or check the spelling. Keep a fallback icon in your bar or launcher.</p></div><p class="feedback">Did this page answer your question? <a href="https://github.com/bolens/appicon/issues/new?title=Pages%20feedback%3A%20">Suggest an improvement</a>.</p></main>
+  <footer class="docs-footer"><p>Appicon <span data-version>__SITE_VERSION__</span> · MIT licensed</p><nav aria-label="Footer"><a href="https://github.com/bolens/appicon">Repository</a><a href="https://github.com/bolens/appicon/releases/latest">Release</a></nav></footer>
+</body>
+</html>
+

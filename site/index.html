@@ -4,22 +4,31 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Appicon resolves application and brand names to local icon files for desktop tools, scripts, and agents.">
+  <meta property="og:title" content="Appicon — find the right local icon">
+  <meta property="og:description" content="Install Appicon, find an icon, and solve common problems with plain-language guides.">
+  <meta property="og:image" content="https://bolens.github.io/appicon/assets/og.png">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#101820">
   <title>Appicon — local icons, one query away</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="guide.css">
   <link rel="stylesheet" href="accessibility.css">
+  <link rel="stylesheet" href="assets/site.css">
+  <link rel="icon" href="assets/favicon.png" type="image/png">
+  <script src="assets/site.js" defer></script>
 </head>
-<body>
+<body data-root="">
   <a class="skip-link" href="#main">Skip to content</a>
   <header class="site-header">
-    <a class="wordmark" href="#top" aria-label="Appicon home"><span aria-hidden="true">◆</span> appicon</a>
+    <a class="wordmark" href="./" aria-label="Appicon home"><span aria-hidden="true">◆</span> appicon</a>
     <nav aria-label="Primary navigation">
-      <a href="#start">Get started</a>
-      <a href="#everyday">Use Appicon</a>
-      <a href="#help">Get help</a>
+      <a href="install/">Install</a>
+      <a href="guide/">Use Appicon</a>
+      <a href="help/">Get help</a>
+      <a href="architecture/">How it works</a>
       <a class="nav-cta" href="https://github.com/bolens/appicon">GitHub</a>
     </nav>
+    <form class="header-search" action="search/" role="search"><label class="sr-only" for="home-search">Search the guides</label><input id="home-search" name="q" type="search" placeholder="Search guides"><button type="submit">Search</button></form>
   </header>
 
   <main id="main">
@@ -29,7 +38,7 @@
         <h1 id="hero-title">One query.<br><span>A local icon path.</span></h1>
         <p class="lede">Appicon gives Waybar, Rofi, scripts, and AI tools a dependable path to the right icon—without pushing download logic into every consumer.</p>
         <div class="actions">
-          <a class="button primary" href="#install">Install Appicon</a>
+          <a class="button primary" href="install/">Install Appicon</a>
           <a class="button secondary" href="https://github.com/bolens/appicon/releases/latest">Latest release</a>
         </div>
       </div>
@@ -59,7 +68,7 @@
       </header>
       <div class="steps">
         <article><span>1</span><h3>Install Appicon</h3><p>Pick the option that matches your system. If you are unsure, use the first option for your system.</p></article>
-        <article><span>2</span><h3>Check the installation</h3><pre tabindex="0"><code>appicon version</code></pre><p>You should see a version number such as <code>v0.4.1</code>.</p></article>
+        <article><span>2</span><h3>Check the installation</h3><pre tabindex="0"><code>appicon version</code></pre><p>You should see the current version, <code>__SITE_VERSION__</code>.</p></article>
         <article><span>3</span><h3>Find an icon</h3><pre tabindex="0"><code>appicon resolve firefox</code></pre><p>Appicon prints a file path. Paste that path into the tool that needs the icon.</p></article>
       </div>
       <div class="install-choices" aria-label="Installation choices">
@@ -82,7 +91,7 @@
         <li><span>04</span><strong>SVGL</strong><small>Cache-first remote fallback</small></li>
         <li class="hit"><span>✓</span><strong>Local path</strong><small>Ready for your consumer</small></li>
       </ol>
-      <p class="architecture-link"><a href="docs/architecture/appicon.html">Explore the interactive architecture map <span aria-hidden="true">→</span></a></p>
+      <p class="architecture-link"><a href="architecture/">Learn how Appicon works <span aria-hidden="true">→</span></a></p>
     </section>
 
     <section class="section features" aria-labelledby="features-title">
@@ -120,14 +129,14 @@
 
     <section class="install" id="install" aria-labelledby="install-title">
       <div><p class="eyebrow">Technical documentation</p><h2 id="install-title">Building or integrating Appicon?</h2><p>The repository documents source builds, configuration files, MCP tools, the daemon, icon packs, schemas, security, and packaging.</p></div>
-      <ul class="technical-links"><li><a href="https://github.com/bolens/appicon/tree/main/docs">Technical documentation</a></li><li><a href="docs/architecture/appicon.html">Interactive architecture map</a></li><li><a href="https://github.com/bolens/appicon/blob/main/docs/consumer-contract.md">Consumer contract</a></li><li><a href="https://github.com/bolens/appicon/blob/main/CONTRIBUTING.md">Contributing guide</a></li></ul>
+      <ul class="technical-links"><li><a href="https://github.com/bolens/appicon/tree/main/docs">Technical documentation</a></li><li><a href="architecture/">How Appicon works</a></li><li><a href="https://github.com/bolens/appicon/blob/main/docs/consumer-contract.md">Consumer contract</a></li><li><a href="https://github.com/bolens/appicon/blob/main/CONTRIBUTING.md">Contributing guide</a></li></ul>
       <a class="button light" href="https://github.com/bolens/appicon">Open the repository</a>
     </section>
   </main>
 
   <footer>
     <p><strong>appicon</strong> · MIT licensed · Built for local-first desktops.</p>
-    <nav aria-label="Footer navigation"><a href="https://github.com/bolens/appicon/releases">Releases</a><a href="https://github.com/bolens/appicon/blob/main/SECURITY.md">Security</a><a href="https://github.com/bolens/appicon/blob/main/LICENSE">License</a></nav>
+    <nav aria-label="Footer navigation"><a href="https://github.com/bolens/appicon/releases">Releases</a><a href="https://github.com/bolens/appicon/blob/main/SECURITY.md">Security</a><a href="https://github.com/bolens/appicon/blob/main/LICENSE">License</a><a href="https://github.com/bolens/appicon/issues/new?title=Pages%20feedback%3A%20&amp;body=Page%3A%20%0A%0AWhat%20would%20make%20this%20page%20more%20helpful%3F%0A">Was this site helpful?</a></nav>
   </footer>
 </body>
 </html>
