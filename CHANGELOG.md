@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-08-31
+
+### Changed
+
+- Updated `golang.org/x/sys` to 0.47.0
+
+### Security
+
+- Release and CI builds use Go 1.25.13 to include standard-library vulnerability fixes
+- Refreshed the Nix Go module hash for the current dependency graph
+
 ## [0.4.0] — 2026-08-08
 
 ### Added
