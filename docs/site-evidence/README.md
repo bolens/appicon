@@ -6,6 +6,8 @@ The Pages landing page was rendered from `site/` and inspected at these viewport
 | --- | --- | --- |
 | 1440 × 1000 | [Desktop](desktop.png) | Two-column hero, visible primary navigation, four-column proof strip |
 | 390 × 844 | [Mobile](mobile.png) | Single-column flow, full-width actions, compact navigation, no horizontal page overflow |
+| 1440 × 6000 | [Full desktop guide](guide-desktop.png) | Installation choices, first-use steps, task guides, help, and technical handoff |
+| 390 × 6000 | [Full mobile guide](guide-mobile.png) | User guide reflows into one readable column with scrollable commands |
 
 Lighthouse 13.4.1 reported an accessibility score of **100/100** with no failed binary audits on August 31, 2026. Separate light- and dark-mode runs covered accessible names, landmarks, heading order, link names, focusable controls, and color contrast.
 
