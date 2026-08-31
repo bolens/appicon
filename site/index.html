@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Appicon resolves application and brand names to local icon files for desktop tools, scripts, and agents.">
+  <meta name="theme-color" content="#101820">
+  <title>Appicon — local icons, one query away</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="accessibility.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="wordmark" href="#top" aria-label="Appicon home"><span aria-hidden="true">◆</span> appicon</a>
+    <nav aria-label="Primary navigation">
+      <a href="#how-it-works">How it works</a>
+      <a href="#install">Install</a>
+      <a href="https://github.com/bolens/appicon/tree/main/docs">Docs</a>
+      <a class="nav-cta" href="https://github.com/bolens/appicon">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow">Local-first icon resolution</p>
+        <h1 id="hero-title">One query.<br><span>A local icon path.</span></h1>
+        <p class="lede">Appicon gives Waybar, Rofi, scripts, and AI tools a dependable path to the right icon—without pushing download logic into every consumer.</p>
+        <div class="actions">
+          <a class="button primary" href="#install">Install Appicon</a>
+          <a class="button secondary" href="https://github.com/bolens/appicon/releases/latest">Latest release</a>
+        </div>
+      </div>
+      <div class="terminal" aria-label="Example Appicon command and result">
+        <div class="terminal-bar" aria-hidden="true"><span></span><span></span><span></span><b>appicon — resolve</b></div>
+        <pre><code><span class="prompt">$</span> appicon resolve firefox
+<span class="result">/home/me/.cache/appicon/svgl/firefox.svg</span>
+
+<span class="prompt">$</span> appicon resolve --json missing-app
+<span class="muted">{"query":"missing-app","path":null}</span>
+<span class="comment"># A miss is safe. Your fallback stays visible.</span></code></pre>
+      </div>
+    </section>
+
+    <section class="proof" aria-label="Project qualities">
+      <div><strong>Local paths</strong><span>Stable consumer contract</span></div>
+      <div><strong>Cache first</strong><span>Warm hits stay offline</span></div>
+      <div><strong>Exit 1</strong><span>Misses are expected</span></div>
+      <div><strong>Linux · macOS · Windows</strong><span>One portable CLI</span></div>
+    </section>
+
+    <section class="section" id="how-it-works" aria-labelledby="pipeline-title">
+      <div class="section-heading">
+        <p class="eyebrow">Predictable by design</p>
+        <h2 id="pipeline-title">Your sources. In your order.</h2>
+        <p>Resolution is a visible pipeline. Start with local knowledge, add only the remote sources you trust, and explain every result.</p>
+      </div>
+      <ol class="pipeline">
+        <li><span>01</span><strong>Overrides</strong><small>Your exact remaps win</small></li>
+        <li><span>02</span><strong>XDG</strong><small>Desktop files and themes</small></li>
+        <li><span>03</span><strong>Local packs</strong><small>Curated icon collections</small></li>
+        <li><span>04</span><strong>SVGL</strong><small>Cache-first remote fallback</small></li>
+        <li class="hit"><span>✓</span><strong>Local path</strong><small>Ready for your consumer</small></li>
+      </ol>
+      <p class="architecture-link"><a href="docs/architecture/appicon.html">Explore the interactive architecture map <span aria-hidden="true">→</span></a></p>
+    </section>
+
+    <section class="section features" aria-labelledby="features-title">
+      <div class="section-heading">
+        <p class="eyebrow">Small contract, broad reach</p>
+        <h2 id="features-title">Built to disappear into your workflow.</h2>
+      </div>
+      <div class="feature-grid">
+        <article><span class="feature-mark" aria-hidden="true">⌁</span><h3>CLI and MCP</h3><p>The same resolver powers shell commands and a thin stdio MCP server.</p></article>
+        <article><span class="feature-mark" aria-hidden="true">◎</span><h3>Offline-aware</h3><p>Resolve from cache, explain misses, and prefetch the icons you depend on.</p></article>
+        <article><span class="feature-mark" aria-hidden="true">◇</span><h3>Safe by default</h3><p>Remote hosts are allowlisted and credentials stay in environment variables.</p></article>
+      </div>
+    </section>
+
+    <section class="install" id="install" aria-labelledby="install-title">
+      <div><p class="eyebrow">Get started</p><h2 id="install-title">Build it. Resolve it.</h2><p>Install from source with Go, or choose a signed archive from the latest release.</p></div>
+      <pre tabindex="0" aria-label="Appicon source installation commands"><code>git clone https://github.com/bolens/appicon.git
+cd appicon
+make build
+./bin/appicon resolve firefox</code></pre>
+      <a class="button light" href="https://github.com/bolens/appicon#install">All install options</a>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>appicon</strong> · MIT licensed · Built for local-first desktops.</p>
+    <nav aria-label="Footer navigation"><a href="https://github.com/bolens/appicon/releases">Releases</a><a href="https://github.com/bolens/appicon/blob/main/SECURITY.md">Security</a><a href="https://github.com/bolens/appicon/blob/main/LICENSE">License</a></nav>
+  </footer>
+</body>
+</html>
