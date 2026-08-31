@@ -60,8 +60,8 @@ let
 
   # Linux release asset hashes for v${version} (from SHA256SUMS → SRI).
   binHashes = {
-    x86_64-linux = "sha256-1/fUXLdQUJi2VGvRHxdrY1WrNk158yKTtdx+w+jkI1A=";
-    aarch64-linux = "sha256-SjymIhXi28+BtodsxGngLLJ5cRFOWaGpJnnMzf8x7Bo=";
+    x86_64-linux = "sha256-AdJGDcUL+dey+3w9PNwtFDQPP7sq7sYm4CoKsq3jgJE=";
+    aarch64-linux = "sha256-yXR0qezOLo6F7aYu60KNL8S7kvP6yiyrkNWXXReWutw=";
   };
 
   goarchFor = system: {
