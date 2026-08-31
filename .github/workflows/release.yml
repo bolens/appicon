@@ -11,9 +11,10 @@ concurrency:
 
 permissions:
   contents: write
+  pull-requests: write
+  actions: write # dispatch CI for the token-created packaging PR
   id-token: write # cosign keyless OIDC + attestations
   attestations: write
-  actions: read # await CI runs for this commit
   checks: read
 
 jobs:
@@ -49,6 +50,10 @@ jobs:
     name: Build and publish
     needs: await-ci
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.hashes.outputs.version }}
+      amd64_sha256: ${{ steps.hashes.outputs.amd64_sha256 }}
+      arm64_sha256: ${{ steps.hashes.outputs.arm64_sha256 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
@@ -60,6 +65,25 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/ci/build-release.sh "${GITHUB_REF_NAME}" dist
+
+      - name: Export release hashes
+        id: hashes
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          checksum() {
+            awk -v name="$1" '$2 == name || $2 == "./" name { print $1 }' dist/SHA256SUMS
+          }
+          amd64="$(checksum "appicon_v${version}_linux_amd64.tar.gz")"
+          arm64="$(checksum "appicon_v${version}_linux_arm64.tar.gz")"
+          for value in "$amd64" "$arm64"; do
+            [[ "$value" =~ ^[0-9a-f]{64}$ ]] || exit 1
+          done
+          {
+            echo "version=$version"
+            echo "amd64_sha256=$amd64"
+            echo "arm64_sha256=$arm64"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
@@ -87,3 +111,83 @@ jobs:
             dist/SHA256SUMS
             dist/SHA256SUMS.sigstore.json
           generate_release_notes: true
+
+  update-packaging:
+    name: Open packaging update PR
+    needs: release
+    runs-on: ubuntu-latest
+    outputs:
+      branch: ${{ steps.pr.outputs.pull-request-branch }}
+      number: ${{ steps.pr.outputs.pull-request-number }}
+      operation: ${{ steps.pr.outputs.pull-request-operation }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+
+      - name: Calculate tagged source hash
+        id: source
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          archive="${RUNNER_TEMP}/appicon-${VERSION}.tar.gz"
+          curl --fail --location --retry 5 --output "$archive" \
+            "https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/v${VERSION}.tar.gz"
+          sha="$(sha256sum "$archive" | cut -d' ' -f1)"
+          [[ "$sha" =~ ^[0-9a-f]{64}$ ]] || exit 1
+          echo "sha256=$sha" >> "$GITHUB_OUTPUT"
+
+      - name: Update packaging manifests
+        run: |
+          python3 scripts/ci/update-release-packaging.py \
+            "${{ needs.release.outputs.version }}" \
+            "${{ steps.source.outputs.sha256 }}" \
+            "${{ needs.release.outputs.amd64_sha256 }}" \
+            "${{ needs.release.outputs.arm64_sha256 }}"
+          bash scripts/ci/check-packaging-versions.sh
+
+      - name: Create packaging PR
+        id: pr
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(packaging): update v${{ needs.release.outputs.version }} hashes"
+          branch: "chore/packaging-v${{ needs.release.outputs.version }}"
+          delete-branch: true
+          title: "chore(packaging): update v${{ needs.release.outputs.version }} hashes"
+          body: |
+            Automated packaging refresh using hashes calculated from the tagged
+            source archive and published Linux release assets.
+
+  finalize-packaging:
+    name: Verify and merge packaging PR
+    needs: [release, update-packaging]
+    if: needs.update-packaging.outputs.number != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Dispatch CI for packaging branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ needs.update-packaging.outputs.branch }}
+        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+
+      - name: Wait for dispatched CI and squash-merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ needs.update-packaging.outputs.branch }}
+          PR: ${{ needs.update-packaging.outputs.number }}
+        run: |
+          set -euo pipefail
+          run_id=""
+          for _ in $(seq 1 30); do
+            run_id="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml \
+              --branch "$BRANCH" --event workflow_dispatch --limit 1 \
+              --json databaseId --jq '.[0].databaseId // empty')"
+            [[ -n "$run_id" ]] && break
+            sleep 10
+          done
+          [[ -n "$run_id" ]] || { echo "CI run was not scheduled" >&2; exit 1; }
+          gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
+          gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --squash --delete-branch
