@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Appicon resolution architecture",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/bolens/appicon",
+      "revision": "fbf79bad23d51f47e574676fa9b5bfec976bb00b"
+    },
+    "views": [
+      { "id": "request", "label": "Resolution request", "focus": ["consumers", "entrypoints", "resolver", "local", "remote", "cache"], "note": "Follow a query from a consumer through ordered sources to a cached local path." },
+      { "id": "configuration", "label": "Configuration", "focus": ["entrypoints", "configuration", "resolver"], "note": "CLI and MCP commands manage the same source order, overrides, and pack definitions." },
+      { "id": "daemon", "label": "Daemon path", "focus": ["consumers", "daemon", "resolver", "cache"], "note": "Unix clients may reuse the length-prefixed JSON daemon instead of resolving in-process." }
+    ]
+  },
+  "components": [
+    { "id": "consumers", "type": "external", "label": "Consumers", "sublabel": "Waybar, Rofi, scripts, agents", "pos": [40, 280], "size": [160, 68] },
+    { "id": "entrypoints", "type": "frontend", "label": "CLI and MCP", "sublabel": "cmd/appicon · internal/appmcp", "pos": [270, 180], "size": [180, 72], "sources": [{ "path": "cmd/appicon/main.go" }, { "path": "internal/appmcp/server.go", "line": 37 }] },
+    { "id": "daemon", "type": "messagebus", "label": "Resolve daemon", "sublabel": "JSON frames over Unix socket", "pos": [270, 390], "size": [180, 72], "sources": [{ "path": "internal/daemon/protocol.go", "line": 1 }, { "path": "internal/daemon/server.go", "line": 102 }] },
+    { "id": "configuration", "type": "database", "label": "User configuration", "sublabel": "sources, overrides, packs", "pos": [520, 60], "size": [170, 72], "sources": [{ "path": "internal/resolve/sources.go", "line": 1 }, { "path": "internal/resolve/overrides.go", "line": 1 }] },
+    { "id": "resolver", "type": "backend", "label": "Ordered resolver", "sublabel": "internal/resolve", "pos": [520, 280], "size": [170, 72], "tag": "first valid local path", "sources": [{ "path": "internal/resolve/resolve.go", "line": 1 }] },
+    { "id": "local", "type": "backend", "label": "Local sources", "sublabel": "files, XDG, packs, glyphs", "pos": [770, 160], "size": [170, 72] },
+    { "id": "remote", "type": "cloud", "label": "Remote sources", "sublabel": "SVGL and opt-in providers", "pos": [770, 400], "size": [170, 72] },
+    { "id": "cache", "type": "database", "label": "Cache and rasterizer", "sublabel": "downloaded SVG · local PNG", "pos": [1020, 280], "size": [180, 72] }
+  ],
+  "connections": [
+    { "id": "consumer-cli", "from": "consumers", "to": "entrypoints", "label": "commands or stdio MCP", "variant": "emphasis", "labelAt": [235, 266] },
+    { "id": "consumer-daemon", "from": "consumers", "to": "daemon", "label": "optional socket request", "variant": "dashed" },
+    { "id": "cli-resolve", "from": "entrypoints", "to": "resolver", "label": "Resolve(options, query)", "variant": "emphasis", "labelAt": [485, 266] },
+    { "id": "daemon-resolve", "from": "daemon", "to": "resolver", "label": "resolve or batch" },
+    { "id": "config-resolve", "from": "configuration", "to": "resolver", "label": "ordered stages and remaps", "labelAt": [605, 146] },
+    { "id": "cli-config", "from": "entrypoints", "to": "configuration", "label": "manage config", "variant": "dashed" },
+    { "id": "resolver-local", "from": "resolver", "to": "local", "label": "probe in order" },
+    { "id": "resolver-remote", "from": "resolver", "to": "remote", "label": "fetch when enabled" },
+    { "id": "local-cache", "from": "local", "to": "cache", "label": "rasterize if needed", "labelAt": [980, 246] },
+    { "id": "remote-cache", "from": "remote", "to": "cache", "label": "validate and store" },
+    { "id": "cache-resolver", "from": "cache", "to": "resolver", "label": "local path", "variant": "emphasis", "labelAt": [900, 370] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "One resolver", "items": ["CLI, MCP, and daemon calls converge on internal/resolve", "The configured stage order determines precedence"] },
+    { "dot": "emerald", "title": "Local result contract", "items": ["Successful responses return a filesystem path", "Remote assets enter the cache before consumers receive them"] },
+    { "dot": "amber", "title": "Network boundary", "items": ["XDG and packs work offline", "Remote providers are allowlisted and most are opt-in"] }
+  ]
+}
