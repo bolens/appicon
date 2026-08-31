@@ -3,7 +3,7 @@
 # Update pkgver + sha256sums_* from release SHA256SUMS before uploading.
 
 pkgname=appicon-bin
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc='Resolve desktop and brand icons to local file paths (prebuilt)'
 arch=('x86_64' 'aarch64')
@@ -20,8 +20,8 @@ options=('!strip')
 
 source_x86_64=("$url/releases/download/v$pkgver/appicon_v${pkgver}_linux_amd64.tar.gz")
 source_aarch64=("$url/releases/download/v$pkgver/appicon_v${pkgver}_linux_arm64.tar.gz")
-sha256sums_x86_64=('d7f7d45cb7505098b6546bd11f176b6355ab364d79f32293b5dc7ec3e8e42350')
-sha256sums_aarch64=('4a3ca62215e2dbcf81b6876cc469e02cb27971114e59a1a92679cccdff31ec1a')
+sha256sums_x86_64=('01d2460dc50bf9d7b2fb7c3d3cdc2d14340f3fbb2aeec626e02a0ab2ade38091')
+sha256sums_aarch64=('c97474a9ecce2e8e85eda62eeb428d2fc4bb92f3faca2cab90d5975d1796badc')
 
 package() {
   install -Dm755 appicon "$pkgdir/usr/bin/appicon"
