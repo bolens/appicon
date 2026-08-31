@@ -1,6 +1,6 @@
 # appicon
 
-Resolve desktop and brand icons to **local file paths** — for Waybar, Rofi, scripts, and anything else that needs a real icon file.
+Resolve desktop and brand icons to **local file paths** for Waybar, Rofi, scripts, and other consumers that need an icon file.
 
 ```bash
 appicon resolve firefox
@@ -25,11 +25,11 @@ appicon completion bash   # print completion script
 appicon man | man -l -    # view man page
 ```
 
-**Resolve order (default):** file → overrides → XDG / `.desktop` → [SVGL](https://svgl.app/). Fully reorderable via `sources.json` / `sources.yaml` / `--order` — including opt-in `simple-icons`, `dashboard-icons`, `github`, BYOK (`logo-dev`, `iconify`, `noun-project`), `glyph`, and local packs. See [docs/sources.md](docs/sources.md) and [docs/packs.md](docs/packs.md).
+**Default resolve order:** file → overrides → XDG / `.desktop` → [SVGL](https://svgl.app/). Change the order with `sources.json`, `sources.yaml`, or `--order`. Optional stages include `simple-icons`, `dashboard-icons`, `github`, BYOK (`logo-dev`, `iconify`, `noun-project`), `glyph`, and local packs. See [docs/sources.md](docs/sources.md) and [docs/packs.md](docs/packs.md).
 
 XDG, SVGL (cache-first), local packs, opt-in CDN/github/BYOK/glyph stages, PNG rasterization, `--offline`, `cache prune`, MCP, optional unix-socket daemon (not on Windows), and shell completions are implemented. Deferred ideas: [docs/deferred.md](docs/deferred.md).
 
-**Consumer contract:** exit `0` / `1` (miss) / `2` (error); stable `resolve --json` fields (single object or `{results:[…]}` batch) — [docs/consumer-contract.md](docs/consumer-contract.md), schemas [docs/resolve-result.schema.json](docs/resolve-result.schema.json) / [docs/resolve-batch-result.schema.json](docs/resolve-batch-result.schema.json). Misses are supported (callers keep glyphs). Auth-skipped BYOK stages show as `stage(auth)` in `--explain` `tried`. Treat appicon like optional peers such as `zscroll` / `cava`: never require the binary for a working bar.
+**Consumer contract:** exit `0` for a hit, `1` for a miss, and `2` for an error. `resolve --json` has stable fields for a single object or a `{results:[…]}` batch. See [docs/consumer-contract.md](docs/consumer-contract.md) and the [single](docs/resolve-result.schema.json) and [batch](docs/resolve-batch-result.schema.json) schemas. Callers should keep their fallback glyph after a miss. Keep appicon optional so a missing binary cannot break a bar.
 
 **Portability:** Primary target is Linux (XDG, Flatpak/Snap roots, systemd daemon). The local `xdg` stage also discovers macOS `.app` bundle icons from XML `Info.plist` metadata and Windows `.url` shortcuts with an absolute `IconFile`; binary plist, Windows `.lnk`, and embedded EXE icon extraction are not supported. Config/cache fall back to OS user dirs when `XDG_*` are unset. Daemon refuses on Windows (`daemon_supported=false` in `status`).
 

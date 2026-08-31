@@ -1,6 +1,6 @@
 # Deferred ideas
 
-Not a backlog — revisit only if a real consumer needs it.
+This is not a backlog. Revisit an item only when a real consumer needs it.
 
 Part of the [documentation map](README.md). Prefer [consumer-contract.md](consumer-contract.md) misses + [sources.md](sources.md) / [packs.md](packs.md) / overrides over new heuristics.
 
