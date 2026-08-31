@@ -5,7 +5,7 @@ green `main` commit; never tag an unmerged branch.
 
 ## 1. Prepare and merge
 
-1. Rebase the release PR on current `origin/main` and run `make check` plus
+1. Update the release branch from current `origin/main` and run `make check` plus
    `go test -race ./...`.
 2. Move the relevant `CHANGELOG.md` entries from `Unreleased` into a dated
    `X.Y.Z` section. Do not update AUR/Nix binary hashes yet: release assets do
@@ -40,22 +40,25 @@ bash scripts/ci/verify-release.sh /tmp/appicon-vX.Y.Z
 
 Confirm `gh release view vX.Y.Z` reports a published, non-draft release.
 
-## 3. Refresh packaging
+## 3. Confirm the packaging update
 
-After assets exist, update the stable packaging references on a new branch:
+The release workflow calculates the tagged source hash and both Linux archive
+hashes. It opens a packaging PR, dispatches CI for that branch, and squash-merges
+the PR after CI passes. A normal release has no manual hash step.
 
-1. Set `version` in `flake.nix` and `pkgver` in the stable and binary AUR
-   `PKGBUILD`s.
-2. Put the tagged GitHub source archive hash in `packaging/aur/appicon`.
-3. Put both release archive hashes in `packaging/aur/appicon-bin`, and convert
-   them to SRI for `nix/packages.nix` with
-   `nix hash convert --hash-algo sha256 --to sri HASH`.
-4. Refresh both `.SRCINFO` files with `makepkg --printsrcinfo` and update the
-   `appicon-git` placeholder version when appropriate.
-5. Run `make check-packaging-versions`, `make check`, and the available Nix/AUR
-   build checks. Submit and merge this as a separate packaging PR.
-6. Publish the canonical AUR repositories when configured; the checked-in AUR
-   directories are reference copies.
+Confirm that the packaging PR merged and that `main` contains the released
+version in `flake.nix`, the AUR files, and `nix/packages.nix`. If automation
+fails, run the updater locally with hashes from the published assets:
+
+```bash
+python3 scripts/ci/update-release-packaging.py X.Y.Z SOURCE_SHA AMD64_SHA ARM64_SHA
+make check-packaging-versions
+make check
+```
+
+Submit the recovery changes as a packaging PR. Publishing the canonical AUR
+repositories remains a maintainer action; this repository contains reference
+copies.
 
 ## 4. Update a local binary installation
 
@@ -82,6 +85,8 @@ binary manually.
   externally visible.
 - Keep downloaded assets until checksum/signature verification and the local
   version check both succeed.
+- If the packaging PR fails CI, fix that PR and squash-merge it. The GitHub
+  release is already published, so do not move or reuse the tag.
 
 ## See also
 
