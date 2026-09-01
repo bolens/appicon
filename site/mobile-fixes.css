@@ -1,0 +1,9 @@
+@media (max-width: 850px) {
+  .install-choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .install-choices > * {
+    min-width: 0;
+  }
+}
