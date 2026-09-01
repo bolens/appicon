@@ -4,16 +4,17 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Appicon resolves application and brand names to local icon files for desktop tools, scripts, and agents.">
-  <meta property="og:title" content="Appicon — find the right local icon">
+  <meta property="og:title" content="Appicon: find the right local icon">
   <meta property="og:description" content="Install Appicon, find an icon, and solve common problems with plain-language guides.">
   <meta property="og:image" content="https://bolens.github.io/appicon/assets/og.png">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#101820">
-  <title>Appicon — local icons, one query away</title>
+  <title>Appicon: local icons, one query away</title>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="guide.css">
   <link rel="stylesheet" href="accessibility.css">
   <link rel="stylesheet" href="assets/site.css">
+  <style>@media(max-width:850px){.install-choices{grid-template-columns:minmax(0,1fr)}.install-choices>*{min-width:0}}</style>
   <link rel="icon" href="assets/favicon.png" type="image/png">
   <script src="assets/site.js" defer></script>
 </head>
@@ -36,14 +37,14 @@
       <div class="hero-copy">
         <p class="eyebrow">Local-first icon resolution</p>
         <h1 id="hero-title">One query.<br><span>A local icon path.</span></h1>
-        <p class="lede">Appicon gives Waybar, Rofi, scripts, and AI tools a dependable path to the right icon—without pushing download logic into every consumer.</p>
+        <p class="lede">Appicon resolves application names to local icon files for Waybar, Rofi, scripts, and AI tools. Consumers do not need their own download logic.</p>
         <div class="actions">
           <a class="button primary" href="install/">Install Appicon</a>
           <a class="button secondary" href="https://github.com/bolens/appicon/releases/latest">Latest release</a>
         </div>
       </div>
       <div class="terminal" aria-label="Example Appicon command and result">
-        <div class="terminal-bar" aria-hidden="true"><span></span><span></span><span></span><b>appicon — resolve</b></div>
+        <div class="terminal-bar" aria-hidden="true"><span></span><span></span><span></span><b>appicon · resolve</b></div>
         <pre><code><span class="prompt">$</span> appicon resolve firefox
 <span class="result">/home/me/.cache/appicon/svgl/firefox.svg</span>
 
@@ -80,9 +81,9 @@
 
     <section class="section" id="how-it-works" aria-labelledby="pipeline-title">
       <div class="section-heading">
-        <p class="eyebrow">Predictable by design</p>
+        <p class="eyebrow">Resolution order</p>
         <h2 id="pipeline-title">Your sources. In your order.</h2>
-        <p>Resolution is a visible pipeline. Start with local knowledge, add only the remote sources you trust, and explain every result.</p>
+        <p>Appicon checks overrides, desktop themes, local packs, and enabled remote sources in order. Explain mode identifies the source behind each result.</p>
       </div>
       <ol class="pipeline">
         <li><span>01</span><strong>Overrides</strong><small>Your exact remaps win</small></li>
@@ -96,13 +97,13 @@
 
     <section class="section features" aria-labelledby="features-title">
       <div class="section-heading">
-        <p class="eyebrow">Small contract, broad reach</p>
-        <h2 id="features-title">Built to disappear into your workflow.</h2>
+        <p class="eyebrow">Interfaces</p>
+        <h2 id="features-title">One resolver for commands and MCP.</h2>
       </div>
       <div class="feature-grid">
         <article><span class="feature-mark" aria-hidden="true">⌁</span><h3>CLI and MCP</h3><p>The same resolver powers shell commands and a thin stdio MCP server.</p></article>
         <article><span class="feature-mark" aria-hidden="true">◎</span><h3>Offline-aware</h3><p>Resolve from cache, explain misses, and prefetch the icons you depend on.</p></article>
-        <article><span class="feature-mark" aria-hidden="true">◇</span><h3>Safe by default</h3><p>Remote hosts are allowlisted and credentials stay in environment variables.</p></article>
+        <article><span class="feature-mark" aria-hidden="true">◇</span><h3>Restricted remote access</h3><p>Remote hosts are allowlisted and credentials stay in environment variables.</p></article>
       </div>
     </section>
 
@@ -135,7 +136,7 @@
   </main>
 
   <footer>
-    <p><strong>appicon</strong> · MIT licensed · Built for local-first desktops.</p>
+    <p><strong>appicon</strong> · MIT licensed · Local-path icon resolver.</p>
     <nav aria-label="Footer navigation"><a href="https://github.com/bolens/appicon/releases">Releases</a><a href="https://github.com/bolens/appicon/blob/main/SECURITY.md">Security</a><a href="https://github.com/bolens/appicon/blob/main/LICENSE">License</a><a href="https://github.com/bolens/appicon/issues/new?title=Pages%20feedback%3A%20&amp;body=Page%3A%20%0A%0AWhat%20would%20make%20this%20page%20more%20helpful%3F%0A">Was this site helpful?</a></nav>
   </footer>
 </body>
