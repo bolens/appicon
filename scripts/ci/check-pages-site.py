@@ -77,6 +77,16 @@ def main() -> int:
     for route in REQUIRED_ROUTES:
         if not (site / route).is_file():
             errors.append(f"missing route: {route}")
+    for asset in (
+        "site.webmanifest",
+        "assets/favicon.png",
+        "assets/apple-touch-icon.png",
+        "assets/icon-192.png",
+        "assets/icon-512.png",
+        "assets/social-card.png",
+    ):
+        if not (site / asset).is_file():
+            errors.append(f"missing discovery asset: {asset}")
 
     pages = sorted(site.rglob("*.html"))
     for page in pages:
@@ -102,6 +112,13 @@ def main() -> int:
             target = local_target(page, site, href)
             if target is not None and not target.exists():
                 errors.append(f"{rel}: broken internal link {href}")
+
+    home = (site / "index.html").read_text(encoding="utf-8")
+    for contract in ("rel=\"canonical\"", "og:type", "og:url", "og:site_name", "og:image:width",
+                     "og:image:height", "og:image:alt", "twitter:card", "twitter:title", "twitter:description", "twitter:image", "twitter:image:alt",
+                     "rel=\"apple-touch-icon\"", "rel=\"manifest\""):
+        if contract not in home:
+            errors.append(f"index.html: missing discovery contract {contract}")
 
     index = site / "search-index.json"
     if not index.is_file():
