@@ -318,14 +318,12 @@ jobs:
     name: actionlint
     needs: changes
     if: needs.changes.outputs.workflow == 'true' || needs.changes.outputs.scripts_ci == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          persist-credentials: false
-      - name: actionlint
-        run: bash scripts/ci/check-actionlint.sh
+    permissions:
+      contents: read
+      security-events: write
+    uses: bolens/.github/.github/workflows/reusable-actionlint.yml@d30ff6a56b47317d3d565e7b4747d133966db8d2
+    with:
+      security-audit: true
 
   markdownlint:
     name: markdownlint
