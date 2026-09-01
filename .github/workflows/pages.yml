@@ -66,6 +66,9 @@ jobs:
           version="$(git describe --tags --abbrev=0)"
           python3 scripts/ci/build-pages-site.py --architecture docs/architecture/appicon.html --architecture-name appicon.html --version "$version"
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+          include-hidden-files: true
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
