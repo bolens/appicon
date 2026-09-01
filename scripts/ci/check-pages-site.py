@@ -115,7 +115,7 @@ def main() -> int:
 
     home = (site / "index.html").read_text(encoding="utf-8")
     for contract in ("rel=\"canonical\"", "og:type", "og:url", "og:site_name", "og:image:width",
-                     "twitter:title", "twitter:description", "twitter:image", "twitter:image:alt",
+                     "og:image:height", "og:image:alt", "twitter:card", "twitter:title", "twitter:description", "twitter:image", "twitter:image:alt",
                      "rel=\"apple-touch-icon\"", "rel=\"manifest\""):
         if contract not in home:
             errors.append(f"index.html: missing discovery contract {contract}")
