@@ -68,8 +68,7 @@ get_repo_root() {
     fi
 
     # Final fallback to script location
-    local script_dir
-    script_dir="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local script_dir="$(CDPATH="" cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     (cd "$script_dir/../../.." && pwd)
 }
 
@@ -365,7 +364,6 @@ format_speckit_command() {
     command_name="${command_name#speckit-}"
     command_name="${command_name//./$separator}"
 
-    # shellcheck disable=SC2016 # $speckit is the literal Codex skill prefix.
     printf '$speckit%s%s\n' "$separator" "$command_name"
 }
 
@@ -772,7 +770,7 @@ except Exception as exc:
                 local candidate=""
                 if [ -n "$manifest_file" ]; then
                     case "$manifest_file" in
-                        /*|*../*) manifest_file="" ;;
+                        /*|*../*|../*) manifest_file="" ;;
                     esac
                 fi
                 if [ -n "$manifest_file" ]; then
