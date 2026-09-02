@@ -42,13 +42,20 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Resolve latest published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "SITE_RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
       - name: Verify generated changelog
         run: python3 scripts/render-changelog.py --name AppIcon --base-url https://bolens.github.io/appicon/ --accent "#5eead4" --social-image assets/social-card.png --favicon assets/favicon.png --docs-shell --output site/changelog/index.html
       - name: Validate site source
         run: python3 scripts/ci/check-pages-site.py --site site --architecture docs/architecture/appicon.html --architecture-source docs/architecture/appicon.architecture.json
       - name: Build versioned preview
         run: |
-          version="$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0-dev)"
+          version="$SITE_RELEASE_VERSION"
           python3 scripts/ci/build-pages-site.py --architecture docs/architecture/appicon.html --architecture-name appicon.html --version "$version"
       - name: Check rendered accessibility
         run: |
@@ -74,10 +81,17 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Resolve latest published release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName)"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "SITE_RELEASE_VERSION=$tag" >> "$GITHUB_ENV"
       - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6
       - name: Assemble versioned site
         run: |
-          version="$(git describe --tags --abbrev=0)"
+          version="$SITE_RELEASE_VERSION"
           python3 scripts/ci/build-pages-site.py --architecture docs/architecture/appicon.html --architecture-name appicon.html --version "$version"
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
         with:
