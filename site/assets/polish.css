@@ -14,12 +14,12 @@ p { text-wrap: pretty; }
 
 .resolver-signal { display: block; width: min(100%, 32rem); margin: 1.5rem 0 .25rem; overflow: visible; }
 .resolver-signal path, .resolver-signal rect { fill: none; stroke: var(--line); stroke-width: 2; vector-effect: non-scaling-stroke; }
-.resolver-signal .resolver-path { stroke: var(--accent); stroke-dasharray: .12 .04; animation: resolver-flow 4s linear infinite; }
+.resolver-signal .resolver-path { stroke: var(--accent); stroke-dasharray: .12 .04; animation: resolver-flow 5.4s linear infinite; }
 .resolver-signal circle { fill: var(--signal); }
-.resolver-signal .resolver-query { animation: resolver-query 4s cubic-bezier(.4,0,.2,1) infinite; }
+.resolver-signal .resolver-query { animation: resolver-query 5.4s cubic-bezier(.45,0,.2,1) infinite; }
 .resolver-signal text { fill: currentColor; font: 800 11px ui-monospace, monospace; letter-spacing: .12em; text-anchor: middle; }
-.resolver-cache { transform-origin: 201px 42px; animation: resolver-cache 4s ease-in-out infinite; }
-.resolver-file { transform-origin: 454px 42px; animation: resolver-file 4s ease-in-out infinite; }
+.resolver-cache { transform-origin: 201px 42px; animation: resolver-cache 5.4s ease-in-out infinite; }
+.resolver-file { transform-origin: 454px 42px; animation: resolver-file 5.4s ease-in-out infinite; }
 @keyframes resolver-flow { to { stroke-dashoffset: -1; } }
 @keyframes resolver-query { 0%,10% { transform: translateX(0); } 45%,55% { transform: translateX(183px); } 90%,100% { transform: translateX(436px); } }
 @keyframes resolver-cache { 0%,32%,68%,100% { opacity: .55; transform: scale(1); } 45%,55% { opacity: 1; transform: scale(1.06); } }
