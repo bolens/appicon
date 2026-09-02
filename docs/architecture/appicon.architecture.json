@@ -11,7 +11,9 @@
     "views": [
       { "id": "request", "label": "Resolution request", "focus": ["consumers", "entrypoints", "resolver", "local", "remote", "cache"], "note": "Follow a query from a consumer through ordered sources to a cached local path." },
       { "id": "configuration", "label": "Configuration", "focus": ["entrypoints", "configuration", "resolver"], "note": "CLI and MCP commands manage the same source order, overrides, and pack definitions." },
-      { "id": "daemon", "label": "Daemon path", "focus": ["consumers", "daemon", "resolver", "cache"], "note": "Unix clients may reuse the length-prefixed JSON daemon instead of resolving in-process." }
+      { "id": "daemon", "label": "Daemon path", "focus": ["consumers", "daemon", "resolver", "cache"], "note": "Unix clients may reuse the length-prefixed JSON daemon instead of resolving in-process." },
+      { "id": "offline", "label": "Offline-first lookup", "focus": ["consumers", "entrypoints", "resolver", "local", "cache"], "note": "Offline calls stay within local sources and durable cache, so hot-path consumers never require the network." },
+      { "id": "remote-materialization", "label": "Remote asset materialization", "focus": ["resolver", "remote", "cache", "consumers"], "note": "Remote hits are validated, stored, and optionally rasterized before a consumer receives a local path." }
     ]
   },
   "components": [
