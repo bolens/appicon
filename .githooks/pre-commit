@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+go_root=$(mise where go@1.25.13)
+export GOROOT="$go_root"
+export PATH="$go_root/bin:$PATH"
+git diff --cached --check
+make check-fast
+if ! git diff --cached --quiet -- 'CHANGELOG.md' 'scripts/check-changelog.py'; then
+  python3 scripts/check-changelog.py
+fi
+if ! git diff --cached --quiet -- '.github/workflows/*.yml' '.github/workflows/*.yaml'; then
+  make check-actionlint
+  zizmor --offline --min-severity medium --min-confidence medium .github
+fi
