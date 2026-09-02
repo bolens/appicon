@@ -160,6 +160,13 @@ def main() -> int:
     if not args.architecture.is_file():
         errors.append(f"missing architecture artifact: {args.architecture}")
 
+    theme_source = (site / "assets/theme.js").read_text(encoding="utf-8")
+    for behavior in ("prefers-color-scheme: light", "prefers-color-scheme: dark", "new Date().getHours()", "return \"dark\"", "localStorage.setItem"):
+        if behavior not in theme_source:
+            errors.append(f"assets/theme.js: missing {behavior} adaptive-theme behavior")
+    if any("data-color-mode-storage" not in page.read_text(encoding="utf-8") for page in pages):
+        errors.append("all pages must initialize the adaptive theme before paint")
+
     if errors:
         print("\n".join(f"ERROR: {error}" for error in errors), file=sys.stderr)
         return 1
