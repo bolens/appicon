@@ -6,6 +6,10 @@
 
 - Pages code examples use theme-aware shell syntax highlighting without changing copied commands.
 
+### Fixed
+
+- Explicit light mode keeps its light palette when the operating system prefers dark mode.
+
 ## [0.4.1] - 2026-08-31
 
 ### Changed
