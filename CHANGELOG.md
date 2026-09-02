@@ -13,7 +13,7 @@
 - Release and CI builds use Go 1.25.13 to include standard-library vulnerability fixes
 - Refreshed the Nix Go module hash for the current dependency graph
 
-## [0.4.0] — 2026-08-08
+## [0.4.0] - 2026-08-08
 
 ### Added
 
@@ -35,7 +35,7 @@
 - Wrapped Noun Project downloads, current catalog decoding, URL extension sanitization, and repointed SVGL asset invalidation
 - Windows cache locking and file replacement, macOS checksum portability, and release asset completeness checks
 
-## [0.3.0] — 2026-08-08
+## [0.3.0] - 2026-08-08
 
 ### Added
 
@@ -52,16 +52,16 @@
 - Pack queries reject empty normalized names
 - CI covers the bounded-read package and fails closed when checking Nix secret configuration
 
-## [0.2.2] — 2026-07-14
+## [0.2.2] - 2026-07-14
 
 ### Security
 
-- Pack install hardening: contain `index.json` / `--subdir` under the pack root; refuse dangerous `--path` targets (`/`, `.`, `$HOME`); wipe only under the packs data directory; HTTPS for non-loopback archive URLs; block cloud-metadata/link-local redirects; skip tar symlinks/hardlinks and refuse writes through existing symlinks; per-member (32 MiB) and total (512 MiB) extract caps; reject git remotes that look like CLI flags
+- Pack installs contain subdirectories and destinations, reject unsafe targets and links, require HTTPS for remote archives, cap extraction size, and reject option-like Git remotes
 - Cache path containment on `Path` / `WriteAtomic` / `Read` / `Exists`
 - GitHub icon downloads: HTTPS only
 - Raster: max edge 512px (`raster.MaxSize`); `resolve` clamps `--size` / MCP `size` to that max
 
-## [0.2.1] — 2026-07-12
+## [0.2.1] - 2026-07-12
 
 ### Added
 
@@ -79,31 +79,27 @@
 - Portability: Linux-only Flatpak/Snap/`/usr` XDG defaults; Windows config/cache/packs via OS user dirs; safer daemon runtime fallback; `daemon` refused on Windows
 - Home Manager: document sops EnvironmentFile (secret *values*); do not put `sops.secrets.*.path` into `environment`
 
-## [0.2.0] — 2026-07-12
+## [0.2.0] - 2026-07-12
 
 ### Added
 
-- CLI↔daemon integration tests; prefetch uses daemon `resolve-batch` when available; `Result.Hint` plumbed end-to-end
-- Examples: batch resolve in rofi/walker; `examples/prefetch-and-suggest.sh`
-- Docs: CONTRIBUTING checks table, sources MCP/theme, systemd order/explain/batch
-- Tests for batch resolve, override suggest, prefetch `--from-desktop`, `__complete`, daemon order/explain/batch, MCP `queries` / `override_suggest` / `from_desktop`, theme/recent/catalog helpers
-- Batch JSON schema ([docs/resolve-batch-result.schema.json](docs/resolve-batch-result.schema.json)); CI path filters cover `testdata/**` / `examples/**`; jobs assert `consumer-smoke` + `aur-publish-check`
-- Daemon protocol: `order`, `explain`, and `resolve-batch` (CLI no longer forces in-process for `--order`/`--explain`)
-- Batch resolve: `appicon resolve --json q1 q2 …` → `{results:[…]}`; MCP `resolve` accepts `queries`
-- `appicon override suggest` (+ `--from-misses` / `--apply`); MCP `override_suggest`; recent miss journal under cache
-- `appicon prefetch --from-desktop` (+ MCP `from_desktop`) — warm from installed `.desktop` files
-- Theme auto-detect from `GTK_THEME` `:dark`/`:light`; XDG prefers `name-dark` / `name-symbolic` / `name-light`
-- Shell completions for queries via `appicon __complete queries` (overrides, recent, catalog)
-- Consumer smoke: `make check-consumer-smoke`; AUR publish readiness: `make check-aur-publish`
-- Repo hygiene: Dependabot, `govulncheck`, `SECURITY.md`, CODEOWNERS, issue/PR templates, `.editorconfig` / `.gitattributes`, pinned `markdownlint-cli`, release build provenance attestations
-- Docs hub ([docs/README.md](docs/README.md)) with CI `check-docs-crosslinks` so pages stay crosslinked
-- Pin CI Go to 1.25.12 (stdlib GO-2026-5856); cache `Path` no longer creates dirs (Nix `/homeless-shelter` tests)
-- Fully reorderable resolve stages (`file`, `overrides`, `xdg`, packs, SVGL, opt-in CDN/github/glyph) via `sources.json` and `resolve --order`
-- `appicon sources` / `appicon pack` (+ MCP `sources_*` / `pack_*`); pack recipes, URL install (git / `.tar.gz`), update, and `--from-bundle`
-- Opt-in `simple-icons`, `dashboard-icons`, `github`, and `glyph` stages
-- Docs: [docs/sources.md](docs/sources.md), [docs/packs.md](docs/packs.md); deferred ideas in [docs/deferred.md](docs/deferred.md)
+- Batch resolution, desktop-entry prefetch, configurable source ordering, icon packs, and override suggestions.
+- New CLI and MCP commands for sources, packs, overrides, recent misses, and batch queries.
+- Opt-in Simple Icons, Dashboard Icons, GitHub, and glyph providers.
+- Consumer examples, schemas, completions, release attestations, and packaging readiness checks.
 
-## [0.1.2] — 2026-07-12
+### Changed
+
+- The daemon supports ordered, explained, and batched resolution without forcing in-process fallback.
+- Theme lookup recognizes dark and light variants and installed desktop entries.
+- CI checks consumer behavior, AUR publication, documentation links, vulnerabilities, and Nix builds.
+
+### Fixed
+
+- Cache paths no longer create directories during read-only lookups.
+- Miss tracking, daemon framing, and batch results preserve caller-visible hints and errors.
+
+## [0.1.2] - 2026-07-12
 
 ### Added
 
@@ -119,7 +115,7 @@
 - AUR PKGBUILDs pin systemd `ExecStart` to `/usr/bin/appicon daemon`
 - GitHub Actions: checkout v7, setup-go v6, golangci-lint-action v9, cosign-installer v4, action-gh-release v3, nix-installer v22
 
-## [0.1.1] — 2026-07-12
+## [0.1.1] - 2026-07-12
 
 Post-v0.1.0 packaging and agent/daemon surface. Cut after pushing `main` and tagging `v0.1.1`.
 
@@ -141,6 +137,6 @@ Post-v0.1.0 packaging and agent/daemon surface. Cut after pushing `main` and tag
 - CI/release Go toolchain pin: 1.25.x
 - Release tarballs include completions, man page, and systemd units
 
-## [0.1.0] — 2026-07-12
+## [0.1.0] - 2026-07-12
 
 Initial release: XDG/SVGL/packs resolve, PNG raster, offline/prune, Waybar consumer.
