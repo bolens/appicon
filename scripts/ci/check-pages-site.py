@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
+import re
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
@@ -70,6 +72,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--site", type=Path, default=Path("site"))
     parser.add_argument("--architecture", type=Path, required=True)
+    parser.add_argument("--architecture-source", type=Path, required=True)
     args = parser.parse_args()
 
     site = args.site.resolve()
@@ -174,6 +177,31 @@ def main() -> int:
 
     if not args.architecture.is_file():
         errors.append(f"missing architecture artifact: {args.architecture}")
+    if not args.architecture_source.is_file():
+        errors.append(f"missing architecture source: {args.architecture_source}")
+    elif args.architecture.is_file():
+        try:
+            architecture = json.loads(args.architecture_source.read_text(encoding="utf-8"))
+            rendered = args.architecture.read_text(encoding="utf-8")
+            if architecture.get("diagram_type") != "architecture":
+                errors.append("architecture source: diagram_type must be architecture")
+            if architecture.get("meta", {}).get("quality_profile") != "showcase":
+                errors.append("architecture source: quality_profile must be showcase")
+            repository = architecture.get("meta", {}).get("repository", {})
+            if not repository.get("url") or not re.fullmatch(
+                r"[0-9a-f]{40}", repository.get("revision", "")
+            ):
+                errors.append("architecture source: repository evidence must be pinned to a full commit")
+            if 'name="generator" content="archify ' not in rendered:
+                errors.append("architecture artifact: missing Archify generator metadata")
+            for component in architecture.get("components", []):
+                label = component.get("label")
+                if not component.get("sources"):
+                    errors.append(f"architecture source: component {component.get('id')!r} has no evidence")
+                if isinstance(label, str) and html.escape(label, quote=True) not in rendered:
+                    errors.append(f"architecture artifact: missing component label {label!r}")
+        except (OSError, json.JSONDecodeError) as exc:
+            errors.append(f"architecture source: {exc}")
 
     theme_source = (site / "assets/theme.js").read_text(encoding="utf-8")
     for behavior in ("prefers-color-scheme: light", "prefers-color-scheme: dark", "new Date().getHours()", "return \"dark\"", "localStorage.setItem"):
