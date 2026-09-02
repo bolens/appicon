@@ -1,0 +1,13 @@
+/* Resolver-line polish shared by the landing page and guides. */
+::selection { background: var(--signal, var(--guide-accent)); color: #fff; }
+h1, h2 { text-wrap: balance; }
+p { text-wrap: pretty; }
+.button, .doc-card, .feature-grid article, .terminal { transition: transform 180ms ease, border-color 180ms ease, box-shadow 180ms ease; }
+.button:hover, .doc-card:hover, .feature-grid article:hover { transform: translateY(-3px); }
+.doc-card:hover, .feature-grid article:hover { border-color: var(--accent, var(--guide-accent)); }
+.site-header nav, .docs-nav { overflow-x: auto; scrollbar-width: none; }
+.site-header nav::-webkit-scrollbar, .docs-nav::-webkit-scrollbar { display: none; }
+.section, .install, .task-list { content-visibility: auto; contain-intrinsic-size: 700px; }
+@media (max-height: 560px) and (orientation: landscape) { .hero { min-height: auto !important; padding-block: 2.75rem !important; gap: 3rem; } .hero h1 { font-size: clamp(3rem, 8vw, 5.4rem); } .page-main { padding-top: 2.5rem; } }
+@media (max-width: 480px) { .site-header form { display: none; } .site-header nav { margin-left: auto; } }
+@media (prefers-reduced-motion: reduce) { .button, .doc-card, .feature-grid article, .terminal { transition: none; } .button:hover, .doc-card:hover, .feature-grid article:hover { transform: none; } }
