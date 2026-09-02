@@ -16,3 +16,12 @@ use `docs/README.md` to locate the contract relevant to the change.
 - Update the source-of-truth docs and synchronized schemas/contracts together.
 - Run focused tests, then `make check-fast`; use `make check` for release-bound
   or cross-cutting work. Report skipped tools instead of claiming they passed.
+
+## Spec-driven changes
+
+Use Spec Kit for new capabilities, architecture, security-sensitive behavior,
+migrations, and coordinated multi-file changes. Keep narrow fixes, dependency
+updates, prose edits, and release housekeeping in the normal repository
+workflow unless their risk warrants a written specification. Keep completed
+feature directories under `specs/` as decision history; do not backfill them for
+finished work.
