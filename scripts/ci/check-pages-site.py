@@ -79,6 +79,7 @@ def main() -> int:
             errors.append(f"missing route: {route}")
     for asset in (
         "site.webmanifest",
+        "assets/appicon-mark.svg",
         "assets/favicon.png",
         "assets/apple-touch-icon.png",
         "assets/icon-192.png",
