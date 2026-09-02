@@ -45,7 +45,7 @@ jobs:
       - name: Verify generated changelog
         run: python3 scripts/render-changelog.py --name AppIcon --base-url https://bolens.github.io/appicon/ --accent "#5eead4" --social-image assets/social-card.png --favicon assets/favicon.png --docs-shell --output site/changelog/index.html
       - name: Validate site source
-        run: python3 scripts/ci/check-pages-site.py --site site --architecture docs/architecture/appicon.html
+        run: python3 scripts/ci/check-pages-site.py --site site --architecture docs/architecture/appicon.html --architecture-source docs/architecture/appicon.architecture.json
       - name: Build versioned preview
         run: |
           version="$(git describe --tags --abbrev=0 2>/dev/null || echo v0.0.0-dev)"
