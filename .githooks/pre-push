@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+go_root=$(mise where go@1.25.13)
+export GOROOT="$go_root"
+export PATH="$go_root/bin:$PATH"
+make check
+make lint check-docs-crosslinks check-ci-path-filters check-packaging-versions check-release-build check-verify-release
+python3 scripts/ci/check-pages-site.py --site site --architecture docs/architecture/appicon.html
+actionlint
+zizmor --offline --min-severity medium --min-confidence medium .github

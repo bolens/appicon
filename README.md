@@ -282,3 +282,7 @@ installation: **[docs/releasing.md](docs/releasing.md)**.
 ## License
 
 MIT for **code** only. See [LICENSE](LICENSE).
+
+### Git hooks
+
+Run `bash scripts/install-git-hooks` once per clone. The pre-commit hook runs fast staged checks; pre-push runs the broader local CI gate.
