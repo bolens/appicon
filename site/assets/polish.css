@@ -11,3 +11,17 @@ p { text-wrap: pretty; }
 @media (max-height: 560px) and (orientation: landscape) { .hero { min-height: auto !important; padding-block: 2.75rem !important; gap: 3rem; } .hero h1 { font-size: clamp(3rem, 8vw, 5.4rem); } .page-main { padding-top: 2.5rem; } }
 @media (max-width: 480px) { .site-header form { display: none; } .site-header nav { margin-left: auto; } }
 @media (prefers-reduced-motion: reduce) { .button, .doc-card, .feature-grid article, .terminal { transition: none; } .button:hover, .doc-card:hover, .feature-grid article:hover { transform: none; } }
+
+.resolver-signal { display: block; width: min(100%, 32rem); margin: 1.5rem 0 .25rem; overflow: visible; }
+.resolver-signal path, .resolver-signal rect { fill: none; stroke: var(--line); stroke-width: 2; vector-effect: non-scaling-stroke; }
+.resolver-signal .resolver-path { stroke: var(--accent); stroke-dasharray: .12 .04; animation: resolver-flow 4s linear infinite; }
+.resolver-signal circle { fill: var(--signal); }
+.resolver-signal .resolver-query { animation: resolver-query 4s cubic-bezier(.4,0,.2,1) infinite; }
+.resolver-signal text { fill: currentColor; font: 800 11px ui-monospace, monospace; letter-spacing: .12em; text-anchor: middle; }
+.resolver-cache { transform-origin: 201px 42px; animation: resolver-cache 4s ease-in-out infinite; }
+.resolver-file { transform-origin: 454px 42px; animation: resolver-file 4s ease-in-out infinite; }
+@keyframes resolver-flow { to { stroke-dashoffset: -1; } }
+@keyframes resolver-query { 0%,10% { transform: translateX(0); } 45%,55% { transform: translateX(183px); } 90%,100% { transform: translateX(436px); } }
+@keyframes resolver-cache { 0%,32%,68%,100% { opacity: .55; transform: scale(1); } 45%,55% { opacity: 1; transform: scale(1.06); } }
+@keyframes resolver-file { 0%,72% { opacity: .45; transform: translateY(3px); } 90%,100% { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .resolver-signal * { animation: none !important; } .resolver-query { transform: translateX(436px); } }
