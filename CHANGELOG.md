@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Pages code examples use theme-aware shell syntax highlighting without changing copied commands.
+
 ## [0.4.1] - 2026-08-31
 
 ### Changed
