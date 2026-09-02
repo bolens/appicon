@@ -15,14 +15,14 @@
     ]
   },
   "components": [
-    { "id": "consumers", "type": "external", "label": "Consumers", "sublabel": "Waybar, Rofi, scripts, agents", "pos": [40, 280], "size": [160, 68] },
+    { "id": "consumers", "type": "external", "label": "Consumers", "sublabel": "Waybar, Rofi, scripts, agents", "pos": [40, 280], "size": [160, 68], "sources": [{ "path": "README.md", "line": 3, "end_line": 34, "label": "consumer contract" }] },
     { "id": "entrypoints", "type": "frontend", "label": "CLI and MCP", "sublabel": "cmd/appicon · internal/appmcp", "pos": [270, 180], "size": [180, 72], "sources": [{ "path": "cmd/appicon/main.go" }, { "path": "internal/appmcp/server.go", "line": 37 }] },
     { "id": "daemon", "type": "messagebus", "label": "Resolve daemon", "sublabel": "JSON frames over Unix socket", "pos": [270, 390], "size": [180, 72], "sources": [{ "path": "internal/daemon/protocol.go", "line": 1 }, { "path": "internal/daemon/server.go", "line": 102 }] },
     { "id": "configuration", "type": "database", "label": "User configuration", "sublabel": "sources, overrides, packs", "pos": [520, 60], "size": [170, 72], "sources": [{ "path": "internal/resolve/sources.go", "line": 1 }, { "path": "internal/resolve/overrides.go", "line": 1 }] },
     { "id": "resolver", "type": "backend", "label": "Ordered resolver", "sublabel": "internal/resolve", "pos": [520, 280], "size": [170, 72], "tag": "first valid local path", "sources": [{ "path": "internal/resolve/resolve.go", "line": 1 }] },
-    { "id": "local", "type": "backend", "label": "Local sources", "sublabel": "files, XDG, packs, glyphs", "pos": [770, 160], "size": [170, 72] },
-    { "id": "remote", "type": "cloud", "label": "Remote sources", "sublabel": "SVGL and opt-in providers", "pos": [770, 400], "size": [170, 72] },
-    { "id": "cache", "type": "database", "label": "Cache and rasterizer", "sublabel": "downloaded SVG · local PNG", "pos": [1020, 280], "size": [180, 72] }
+    { "id": "local", "type": "backend", "label": "Local sources", "sublabel": "files, XDG, packs, glyphs", "pos": [770, 160], "size": [170, 72], "sources": [{ "path": "internal/resolve/resolve.go", "line": 210, "end_line": 242, "label": "local source dispatch" }] },
+    { "id": "remote", "type": "cloud", "label": "Remote sources", "sublabel": "SVGL and opt-in providers", "pos": [770, 400], "size": [170, 72], "sources": [{ "path": "internal/resolve/resolve.go", "line": 243, "end_line": 363, "label": "remote provider dispatch" }] },
+    { "id": "cache", "type": "database", "label": "Cache and rasterizer", "sublabel": "downloaded SVG · local PNG", "pos": [1020, 280], "size": [180, 72], "sources": [{ "path": "internal/cache/cache.go", "line": 19, "end_line": 84, "label": "cache storage" }, { "path": "internal/raster/raster.go", "line": 1, "label": "rasterizer" }] }
   ],
   "connections": [
     { "id": "consumer-cli", "from": "consumers", "to": "entrypoints", "label": "commands or stdio MCP", "variant": "emphasis", "labelAt": [235, 266] },
