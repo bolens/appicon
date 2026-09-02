@@ -85,6 +85,8 @@ def main() -> int:
         "assets/icon-192.png",
         "assets/icon-512.png",
         "assets/social-card.png",
+        "assets/syntax-highlight.css",
+        "assets/syntax-highlight.js",
     ):
         if not (site / asset).is_file():
             errors.append(f"missing discovery asset: {asset}")
@@ -107,6 +109,12 @@ def main() -> int:
             errors.append(f"{rel}: missing favicon")
         if not any(src.endswith("site.js") for src in parsed.scripts):
             errors.append(f"{rel}: missing shared site.js")
+        page_source = page.read_text(encoding="utf-8")
+        if "<pre" in page_source:
+            if not any(src.endswith("syntax-highlight.js") for src in parsed.scripts):
+                errors.append(f"{rel}: code blocks missing syntax highlighter")
+            if not any(href.endswith("syntax-highlight.css") for href in parsed.styles):
+                errors.append(f"{rel}: code blocks missing syntax palette")
         for href in parsed.links:
             if "docs/architecture/" in href and args.architecture.is_file():
                 continue
@@ -150,6 +158,13 @@ def main() -> int:
         for behavior in ("navigator.clipboard", "aria-pressed", "aria-live", "search-index.json"):
             if behavior not in source:
                 errors.append(f"assets/site.js: missing {behavior} behavior")
+
+    syntax_source = (site / "assets/syntax-highlight.js").read_text(encoding="utf-8")
+    for contract in ("createTextNode", "replaceChildren", "token.className", "querySelectorAll"):
+        if contract not in syntax_source:
+            errors.append(f"syntax highlighter: missing {contract}")
+    if "innerHTML" in syntax_source:
+        errors.append("syntax highlighter must not inject command text as HTML")
 
     css = site / "assets/site.css"
     if not css.is_file():
