@@ -1,0 +1,4 @@
+[data-color-scheme="light"]{color-scheme:light;--guide-bg:#edf4f8;--guide-card:#fff;--guide-ink:#101b2d;--guide-muted:#44576a;--guide-line:#aebfca;--guide-accent:#0758c7;--guide-focus:#006dff;--guide-code:#0b1115}
+[data-color-scheme="dark"]{color-scheme:dark;--guide-bg:#091321;--guide-card:#101d2e;--guide-ink:#f2f7ff;--guide-muted:#bac9d8;--guide-line:#40546b;--guide-accent:#7ab5ff;--guide-focus:#78aaff;--guide-code:#080d10}
+.color-mode-picker{display:inline-flex;align-items:center;gap:.4rem;color:var(--guide-muted);font-size:.72rem;font-weight:750}.color-mode-picker select{max-width:8rem;padding:.35rem .55rem;border:1px solid var(--guide-line);background:var(--guide-card);color:var(--guide-ink);font:inherit}
+@media(max-width:850px){.color-mode-picker span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}}
