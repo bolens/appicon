@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - site/**
+      - CHANGELOG.md
+      - scripts/render-changelog.py
       - docs/architecture/**
       - scripts/ci/build-pages-site.py
       - scripts/ci/check-pages-site.py
@@ -12,6 +14,8 @@ on:
     branches: [main]
     paths:
       - site/**
+      - CHANGELOG.md
+      - scripts/render-changelog.py
       - docs/architecture/**
       - scripts/ci/build-pages-site.py
       - scripts/ci/check-pages-site.py
@@ -38,6 +42,8 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+      - name: Verify generated changelog
+        run: python3 scripts/render-changelog.py --name AppIcon --base-url https://bolens.github.io/appicon/ --accent "#5eead4" --social-image assets/social-card.png --favicon assets/favicon.png --docs-shell --output site/changelog/index.html
       - name: Validate site source
         run: python3 scripts/ci/check-pages-site.py --site site --architecture docs/architecture/appicon.html
       - name: Build versioned preview

@@ -28,5 +28,5 @@ jobs:
       - name: Check internal and external links
         uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
         with:
-          args: --no-progress --accept 200,429 '_site/**/*.html'
+          args: --no-progress --accept 200,429 --exclude '^https://bolens[.]github[.]io/appicon/changelog/$' '_site/**/*.html'
           fail: true

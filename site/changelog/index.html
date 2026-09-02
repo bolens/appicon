@@ -1,0 +1,131 @@
+<!doctype html><html lang="en" data-changelog-mode="system" data-color-mode-storage="appicon-changelog-mode"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark light"><meta name="theme-color" content="#09111d"><title>Changelog · AppIcon</title><meta name="description" content="Release history for AppIcon."><link rel="canonical" href="https://bolens.github.io/appicon/changelog/"><meta property="og:type" content="website"><meta property="og:title" content="Changelog · AppIcon"><meta property="og:description" content="Release history for AppIcon."><meta property="og:url" content="https://bolens.github.io/appicon/changelog/"><meta property="og:site_name" content="AppIcon"><meta property="og:image" content="https://bolens.github.io/appicon/assets/social-card.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="AppIcon release history"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="Changelog · AppIcon"><meta name="twitter:description" content="Release history for AppIcon."><meta name="twitter:image" content="https://bolens.github.io/appicon/assets/social-card.png"><meta name="twitter:image:alt" content="AppIcon release history"><link rel="icon" href="../assets/favicon.png"><script src="../assets/site.js" defer></script><script>(()=>{const r=document.documentElement,k='appicon-changelog-mode',q=s=>typeof matchMedia==='function'?matchMedia(s):{matches:false},l=q('(prefers-color-scheme: light)'),d=q('(prefers-color-scheme: dark)');let m;try{m=localStorage.getItem(k)}catch{}if(!['system','time','light','dark'].includes(m))m='system';const x=()=>m==='time'?(new Date().getHours()>=7&&new Date().getHours()<19?'light':'dark'):m==='light'||m==='dark'?m:l.matches?'light':d.matches?'dark':'dark';const apply=()=>{r.dataset.changelogMode=m;r.dataset.changelogScheme=x()};apply();addEventListener('DOMContentLoaded',()=>{const s=document.querySelector('[data-mode]');s.value=m;s.addEventListener('change',()=>{m=s.value;try{localStorage.setItem(k,m)}catch{}apply()})});l.addEventListener?.('change',apply);d.addEventListener?.('change',apply);setInterval(()=>{if(m==='time')apply()},60000)})()</script><style>
+:root{--accent:#5eead4;--bg:#09111d;--panel:#111d2d;--ink:#edf5ff;--muted:#9fb0c5;--line:#2a3c53;color-scheme:dark}[data-changelog-scheme=light]{--bg:#f5f7fa;--panel:#fff;--ink:#142033;--muted:#56677d;--line:#c8d2df;color-scheme:light}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.65 ui-sans-serif,system-ui,sans-serif}a{color:var(--accent)}header{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem max(1rem,calc((100vw - 74rem)/2));border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(16px)}header>a{font-weight:800;text-decoration:none;color:var(--ink)}nav,label{display:flex;align-items:center;gap:.75rem}label{color:var(--muted);font-size:.8rem}select{max-width:9rem;padding:.45rem .6rem;border:1px solid var(--line);border-radius:.55rem;background:var(--panel);color:var(--ink)}main{width:min(74rem,calc(100% - 2rem));margin:auto;padding:clamp(2rem,6vw,5rem) 0}.intro{max-width:46rem;margin-bottom:2.5rem}h1{font-size:clamp(2.4rem,7vw,5.4rem);line-height:.95;letter-spacing:-.055em;margin:.2rem 0 1rem}.intro p{color:var(--muted);font-size:1.08rem}h2{display:inline-block;min-width:14rem;margin:2rem 2rem 1rem 0;padding-top:1.5rem;border-top:1px solid var(--line);font-size:1.15rem}h3{margin:1rem 0 .25rem;color:var(--accent);font-size:.78rem;text-transform:uppercase;letter-spacing:.12em}p,ul{max-width:52rem;overflow-wrap:anywhere;margin:.25rem 0 1rem}li+li{margin-top:.6rem}code{padding:.12rem .3rem;border-radius:.3rem;background:var(--panel)}footer{padding:2rem;text-align:center;color:var(--muted);border-top:1px solid var(--line)}@media(max-width:700px){header{align-items:flex-start;flex-wrap:wrap}nav{flex-wrap:wrap}label span{position:absolute;width:1px;height:1px;overflow:hidden}}
+</style></head><body><header><a href="../">AppIcon</a><nav><a aria-current="page" href="./">Changelog</a><a href="https://github.com/bolens/appicon">GitHub</a><label><span>Theme</span><select data-mode aria-label="Color theme"><option value="system">System</option><option value="time">Day cycle</option><option value="light">Light</option><option value="dark">Dark</option></select></label></nav></header><main><div class="intro"><p>Release notes</p><h1>What changed.</h1><p>Generated from the project changelog whenever its release history changes.</p></div><h2 id="unreleased">Unreleased</h2>
+<h2 id="0-4-1-2026-08-31">0.4.1 - 2026-08-31</h2>
+<h3>Changed</h3>
+<ul>
+<li>Updated <code>golang.org/x/sys</code> to 0.47.0</li>
+</ul>
+<h3>Security</h3>
+<ul>
+<li>Release and CI builds use Go 1.25.13 to include standard-library vulnerability fixes</li>
+<li>Refreshed the Nix Go module hash for the current dependency graph</li>
+</ul>
+<h2 id="0-4-0-2026-08-08">0.4.0 - 2026-08-08</h2>
+<h3>Added</h3>
+<ul>
+<li>Portable release archives for macOS arm64 and Windows amd64, with cross-platform checksum generation and release verification</li>
+<li>Release contract tests that validate archive contents, version metadata, complete asset sets, and corrupt-asset rejection</li>
+<li>Nested Linux desktop-entry discovery and hidden-entry handling</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>Resolution remains cache-first across GitHub, Noun Project, and catalog-backed sources, including global offline mode and canceled requests</li>
+<li>Cache, catalog, configuration, and pack operations use stronger locking, atomic replacement, path containment, symlink checks, and rollback behavior across platforms</li>
+<li>Pack and bundle installs preflight configuration and hostile archive input, cap entries and expansion, validate git refs and subdirectories, and protect pack roots and destinations</li>
+<li>Remote providers enforce redirect allowlists and validate cached/downloaded artifacts, response identity, credential environment names, and configurable hosts</li>
+<li>Native app discovery uses platform-specific paths and scoped fingerprints, with portable XDG fallbacks and cache invalidation for nested applications</li>
+<li>Daemon batch requests and deterministic pack lookups are bounded; daemon responses validate request identity and preserve miss hints</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li>Wrapped Noun Project downloads, current catalog decoding, URL extension sanitization, and repointed SVGL asset invalidation</li>
+<li>Windows cache locking and file replacement, macOS checksum portability, and release asset completeness checks</li>
+</ul>
+<h2 id="0-3-0-2026-08-08">0.3.0 - 2026-08-08</h2>
+<h3>Added</h3>
+<ul>
+<li>Installed-app icon discovery for macOS XML <code>Info.plist</code> app bundles and Windows <code>.url</code> shortcuts</li>
+<li>Portable home-relative path expansion, Windows icon search roots, file extensions, and HiDPI icon variants</li>
+<li>Coverage for CDN/glyph fallbacks, MCP cache and override operations, daemon framing, platform paths, native metadata, and download limits</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>Remote caches now include complete provider identity, URL, repository path/ref, and configurable endpoint data to prevent cross-source collisions</li>
+<li>Remote response bodies are bounded before caching; cache locks, recent-miss writes, configuration writes, overrides, and raster output use safer serialized or atomic replacement</li>
+<li>CLI JSON and plain output paths now propagate write failures</li>
+<li>Daemon framing handles partial writes and listener cleanup preserves active replacement sockets</li>
+<li>Pack queries reject empty normalized names</li>
+<li>CI covers the bounded-read package and fails closed when checking Nix secret configuration</li>
+</ul>
+<h2 id="0-2-2-2026-07-14">0.2.2 - 2026-07-14</h2>
+<h3>Security</h3>
+<ul>
+<li>Pack installs contain subdirectories and destinations, reject unsafe targets and links, require HTTPS for remote archives, cap extraction size, and reject option-like Git remotes</li>
+<li>Cache path containment on <code>Path</code> / <code>WriteAtomic</code> / <code>Read</code> / <code>Exists</code></li>
+<li>GitHub icon downloads: HTTPS only</li>
+<li>Raster: max edge 512px (<code>raster.MaxSize</code>); <code>resolve</code> clamps <code>--size</code> / MCP <code>size</code> to that max</li>
+</ul>
+<h2 id="0-2-1-2026-07-12">0.2.1 - 2026-07-12</h2>
+<h3>Added</h3>
+<ul>
+<li>BYOK stages: <code>logo-dev</code>, <code>iconify</code>, <code>noun-project</code>; GitHub PAT + private repo Contents API; optional Bearer on <code>http-index</code> via <code>token_env</code></li>
+<li>Sources/overrides as JSON <strong>or</strong> YAML (<code>sources.yaml</code> / <code>overrides.yaml</code>); <code>sources set --format</code>; <a href="https://github.com/bolens/appicon/blob/main/docs/sources.schema.json">docs/sources.schema.json</a></li>
+<li><code>appicon status</code> / MCP <code>status</code>: <code>daemon_alive</code>, <code>credentials</code>, <code>goos</code>/<code>goarch</code>, <code>daemon_supported</code></li>
+<li><code>appicon override export|import</code> (+ MCP <code>override_export</code> / <code>override_import</code>)</li>
+<li>Home Manager: declarative <code>sources</code> / <code>overrides</code> / <code>environment</code> / <code>environmentFiles</code> / <code>configFormat</code></li>
+<li>Auth-skip visibility: explain <code>tried</code> labels <code>stage(auth)</code> when BYOK env is missing</li>
+<li>CI: unit-test matrix covers <code>logodev</code> / <code>iconify</code> / <code>nounproject</code> / <code>version</code>; <code>windows-compile</code> job; matrix completeness check</li>
+<li>Daemon: unix-only <code>CloseOnExec</code> helper so <code>GOOS=windows</code> builds cleanly</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>Portability: Linux-only Flatpak/Snap/<code>/usr</code> XDG defaults; Windows config/cache/packs via OS user dirs; safer daemon runtime fallback; <code>daemon</code> refused on Windows</li>
+<li>Home Manager: document sops EnvironmentFile (secret *values*); do not put <code>sops.secrets.*.path</code> into <code>environment</code></li>
+</ul>
+<h2 id="0-2-0-2026-07-12">0.2.0 - 2026-07-12</h2>
+<h3>Added</h3>
+<ul>
+<li>Batch resolution, desktop-entry prefetch, configurable source ordering, icon packs, and override suggestions.</li>
+<li>New CLI and MCP commands for sources, packs, overrides, recent misses, and batch queries.</li>
+<li>Opt-in Simple Icons, Dashboard Icons, GitHub, and glyph providers.</li>
+<li>Consumer examples, schemas, completions, release attestations, and packaging readiness checks.</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>The daemon supports ordered, explained, and batched resolution without forcing in-process fallback.</li>
+<li>Theme lookup recognizes dark and light variants and installed desktop entries.</li>
+<li>CI checks consumer behavior, AUR publication, documentation links, vulnerabilities, and Nix builds.</li>
+</ul>
+<h3>Fixed</h3>
+<ul>
+<li>Cache paths no longer create directories during read-only lookups.</li>
+<li>Miss tracking, daemon framing, and batch results preserve caller-visible hints and errors.</li>
+</ul>
+<h2 id="0-1-2-2026-07-12">0.1.2 - 2026-07-12</h2>
+<h3>Added</h3>
+<ul>
+<li>Home Manager <code>programs.appicon.daemon.enable</code> (user systemd socket)</li>
+<li>Nix packages install <code>lib/systemd/user/</code> units with absolute <code>ExecStart</code></li>
+<li><code>appicon override list|get|set|rm|path</code> (+ MCP <code>override_*</code> tools)</li>
+<li><code>flake.lock</code> for reproducible Nix inputs</li>
+<li>CI packaging gates: version sync + AUR/Nix build matrix for <code>appicon</code> / <code>appicon-bin</code> / <code>appicon-git</code></li>
+<li>Release workflow waits for a successful CI run on the tagged commit before publishing</li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>AUR PKGBUILDs pin systemd <code>ExecStart</code> to <code>/usr/bin/appicon daemon</code></li>
+<li>GitHub Actions: checkout v7, setup-go v6, golangci-lint-action v9, cosign-installer v4, action-gh-release v3, nix-installer v22</li>
+</ul>
+<h2 id="0-1-1-2026-07-12">0.1.1 - 2026-07-12</h2>
+<p>Post-v0.1.0 packaging and agent/daemon surface. Cut after pushing <code>main</code> and tagging <code>v0.1.1</code>.</p>
+<h3>Added</h3>
+<ul>
+<li>Stdio MCP server: <code>appicon mcp</code> (<code>resolve</code>, <code>prefetch</code>, <code>cache_*</code>, <code>version</code>)</li>
+<li>Shell completions: <code>appicon completion bash|zsh|fish</code></li>
+<li>Man page: <code>appicon man</code></li>
+<li>Optional unix-socket daemon: <code>appicon daemon</code> + <code>contrib/systemd/</code></li>
+<li>Nix flake + Home Manager module (<code>flake.nix</code>, <code>nix/home-manager.nix</code>)</li>
+<li>Nightly live SVGL smoke workflow</li>
+<li>Consumer examples: <code>examples/{rofi,walker,notify}-appicon.sh</code></li>
+<li>AUR reference PKGBUILDs: <code>appicon</code>, <code>appicon-bin</code>, <code>appicon-git</code></li>
+<li>Cosign keyless signing of release <code>SHA256SUMS</code> → <code>SHA256SUMS.sigstore.json</code></li>
+<li><code>scripts/ci/verify-release.sh</code></li>
+</ul>
+<h3>Changed</h3>
+<ul>
+<li>CI/release Go toolchain pin: 1.25.x</li>
+<li>Release tarballs include completions, man page, and systemd units</li>
+</ul>
+<h2 id="0-1-0-2026-07-12">0.1.0 - 2026-07-12</h2>
+<p>Initial release: XDG/SVGL/packs resolve, PNG raster, offline/prune, Waybar consumer.</p></main><footer><a href="../">Back to AppIcon</a></footer></body></html>
