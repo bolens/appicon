@@ -81,6 +81,9 @@ def main() -> int:
         if not (site / route).is_file():
             errors.append(f"missing route: {route}")
     for asset in (
+        "robots.txt",
+        "sitemap.xml",
+        "llms.txt",
         "site.webmanifest",
         "assets/appicon-mark.svg",
         "assets/favicon.png",
@@ -126,6 +129,14 @@ def main() -> int:
                 errors.append(f"{rel}: broken internal link {href}")
 
     home = (site / "index.html").read_text(encoding="utf-8")
+    sitemap = (site / "sitemap.xml").read_text(encoding="utf-8")
+    llms = (site / "llms.txt").read_text(encoding="utf-8")
+    for route in ("", "install/", "guide/", "help/", "search/", "architecture/", "changelog/"):
+        url = f"https://bolens.github.io/appicon/{route}"
+        if f"<loc>{url}</loc>" not in sitemap:
+            errors.append(f"sitemap.xml: missing {url}")
+        if url not in llms:
+            errors.append(f"llms.txt: missing {url}")
     for contract in ("rel=\"canonical\"", "og:type", "og:url", "og:site_name", "og:image:width",
                      "og:image:height", "og:image:alt", "twitter:card", "twitter:title", "twitter:description", "twitter:image", "twitter:image:alt",
                      "rel=\"apple-touch-icon\"", "rel=\"manifest\""):
