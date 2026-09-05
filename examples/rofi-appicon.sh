@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Example: Rofi window / app picker using appicon for icons.
 #
 # Requires: rofi, appicon on PATH, python3 (batch JSON).

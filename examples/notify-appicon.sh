@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Example: desktop notification with an appicon-resolved icon.
 #
 # Requires: notify-send, appicon on PATH.

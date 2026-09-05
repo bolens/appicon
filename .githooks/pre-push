@@ -8,6 +8,6 @@ export GOROOT="$go_root"
 export PATH="$go_root/bin:$PATH"
 make check
 make lint check-docs-crosslinks check-ci-path-filters check-packaging-versions check-release-build check-verify-release
-python3 scripts/ci/check-pages-site.py --site site --architecture docs/architecture/appicon.html
+python3 scripts/ci/check-pages-site.py --site site --architecture docs/architecture/appicon.html --architecture-source docs/architecture/appicon.architecture.json
 actionlint
 zizmor --offline --min-severity medium --min-confidence medium .github

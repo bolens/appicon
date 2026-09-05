@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Example: walker-style launcher stub using appicon PNG paths.
 #
 # walker (https://github.com/abenz1267/walker) configs vary by version.
