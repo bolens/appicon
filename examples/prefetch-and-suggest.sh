@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Example: warm the cache from installed .desktop files, then suggest overrides for misses.
 #
 # Usage: bash examples/prefetch-and-suggest.sh
