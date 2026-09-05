@@ -17,7 +17,10 @@ fi
 "$bin" version
 
 # Isolate cache so a warm personal cache cannot mask network failures.
-export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$(mktemp -d)}"
+smoke_root=$(mktemp -d)
+trap 'rm -rf -- "$smoke_root"' EXIT
+export XDG_CACHE_HOME="$smoke_root/cache"
+export XDG_CONFIG_HOME="$smoke_root/config"
 # Force in-process resolve (same as --local): do not dial a developer daemon
 # that might serve a different binary/cache than $bin.
 export APPICON_NO_DAEMON=1
@@ -25,12 +28,28 @@ export APPICON_NO_DAEMON=1
 for q in firefox discord; do
   echo "== resolve $q =="
   # --local: belt-and-suspenders with APPICON_NO_DAEMON above.
-  out=$("$bin" resolve --json --format svg --order svgl --local "$q")
+  for attempt in 1 2 3; do
+    if out=$("$bin" resolve --json --format svg --order svgl --local "$q"); then
+      break
+    else
+      status=$?
+    fi
+    # Exit 1 is a supported miss. Retry operational failures only, with a bound.
+    if [[ "$status" != 2 || "$attempt" == 3 ]]; then
+      exit "$status"
+    fi
+    echo "resolve $q failed; retrying ($attempt/3)" >&2
+    sleep "$attempt"
+  done
   printf '%s\n' "$out"
   printf '%s\n' "$out" | python3 -c '
 import json, sys
+from pathlib import Path
 payload = json.load(sys.stdin)
 assert payload.get("path"), payload
+assert Path(payload["path"]).is_file(), payload
+assert payload.get("cached") is False, payload
+assert payload.get("error") is None, payload
 assert payload.get("source") == "svgl", payload
 # Guard against silent PNG conversion if format handling changes.
 assert payload.get("format") == "svg", payload

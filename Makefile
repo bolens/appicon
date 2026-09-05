@@ -15,7 +15,7 @@ ACTIONLINT_VERSION ?= 1.7.7
 .PHONY: help build test vet fmt check check-fast lint \
 	check-gitleaks check-actionlint check-markdownlint check-govulncheck \
 	check-docs-crosslinks check-consumer-smoke check-aur-publish \
-	check-ci-path-filters check-nix-packages check-packaging-versions check-release-build check-verify-release \
+	check-ci-path-filters check-nix-packages check-packaging-versions check-release-build check-verify-release check-nightly-smoke \
 	build-packaging clean
 
 help:
@@ -97,6 +97,9 @@ check-release-build:
 check-verify-release:
 	bash scripts/ci/check-verify-release.sh
 
+check-nightly-smoke:
+	python3 -m unittest discover -s scripts/ci -p 'test_*.py' -v
+
 build-packaging:
 	bash scripts/ci/build-packaging.sh
 
@@ -114,6 +117,7 @@ check: check-fast
 	@$(MAKE) check-packaging-versions
 	@$(MAKE) check-release-build
 	@$(MAKE) check-verify-release
+	@$(MAKE) check-nightly-smoke
 
 clean:
 	rm -rf bin/ dist/ coverage.out coverage.html
