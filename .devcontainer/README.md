@@ -7,8 +7,8 @@ packages. Setup installs dependencies from this checkout's lockfiles and runs
 `smoke.sh`. Rebuild the container after Dockerfile changes. Rerun
 `bash .devcontainer/post-create.sh` after changing dependency lockfiles.
 
-Includes Python, Ruff, ShellCheck, actionlint, zizmor and Markdown tooling for
-repository maintenance. This repository has no application runtime to start.
+Includes Go 1.25 for the CLI and MCP server, plus Python, Ruff, ShellCheck,
+actionlint, zizmor and Markdown tooling. Setup downloads the Go modules.
 
 Run from the workspace root:
 
