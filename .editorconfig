@@ -1,20 +1,43 @@
 root = true
 
 [*]
+indent_style = space
+indent_size = 2
 charset = utf-8
 end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-[*.go]
-indent_style = tab
-
 [*.{yml,yaml,json,md,toml,nix}]
 indent_style = space
 indent_size = 2
 
-[Makefile]
-indent_style = tab
-
 [*.md]
 trim_trailing_whitespace = false
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[{Makefile,makefile,GNUmakefile,*.mk}]
+indent_style = tab
+indent_size = tab
+
+[*.go]
+indent_style = tab
+indent_size = tab
+
+# Lockfiles are written by their owning tool.
+[{package-lock.json,go.sum,flake.lock}]
+indent_style = unset
+indent_size = unset
+trim_trailing_whitespace = unset
+insert_final_newline = unset
+
+[*.png]
+charset = unset
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+indent_style = unset
+indent_size = unset
