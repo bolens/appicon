@@ -41,3 +41,5 @@ python3 scripts/development-container.py run apple -- make check-fast check-nigh
 The helper exports an OCI archive and uses `container image load`. Native ARM Macs target `aarch64-linux`; x86 Linux builds target `x86_64-linux`. [Building Linux images from macOS requires a Linux builder](https://devenv.sh/containers/). This workflow does not assume Apple container implements Docker Compose or Docker's daemon API.
 
 Apple execution is not verified by Linux tests. Host desktop integration and optional systemd daemon installation still require their owning platform; container tests do not establish those capabilities.
+
+Resolver fixtures set explicit XDG and native application roots so host-installed Mac applications cannot satisfy fixture queries. Shared socket fixtures use short private directories to stay within macOS socket-path limits.
