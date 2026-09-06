@@ -1,6 +1,47 @@
 # Documentation
 
-Hub for appicon docs. Prefer editing the **source of truth** column when behavior changes; keep sibling pages linked so nothing orphans.
+Icon resolution, local-file consumer contracts, and optional transports.
+
+## Start here
+
+| Need | Owning document |
+| --- | --- |
+| Use the project | [README.md](../README.md) |
+| Change the repository | [AGENTS.md](../AGENTS.md) |
+| Deliver or recover | [RELEASING.md](../RELEASING.md) |
+| Plan substantial changes | [.specify/memory/project-guide.md](../.specify/memory/project-guide.md) |
+| Non-negotiable constraints | [.specify/memory/constitution.md](../.specify/memory/constitution.md) |
+
+## Architecture
+
+The CLI, optional daemon, and MCP surface share resolver behavior. Consumers receive a local path
+and retain their fallback when resolution misses. Warm-cache resolution must avoid providers.
+[Consumer contracts](consumer-contract.md), [source policy](sources.md), and [pack
+handling](packs.md) own the detailed boundaries. The [architecture
+diagram](architecture/appicon.html) explains the flow.
+
+## Deployment and recovery
+
+[Installation](../README.md#install) and [release verification](../RELEASING.md) cover different
+stages: installing a binary does not require the daemon. Preserve in-process operation and test a
+supported miss as well as a successful resolution when integrating a caller.
+
+## Database and state
+
+Assets use a filesystem cache, not a database service. [Cache code](../internal/cache/cache.go) owns
+atomic publication, locking, and containment. Cache contents are replaceable provider artifacts,
+while user overrides and installed packs need separate treatment. Follow [cache
+usage](../README.md#cache) and [pack safety](packs.md) before clearing anything.
+
+## Documentation maintenance
+
+Keep decisions, invariants, failure modes, and recovery requirements in the owning document. Link to
+commands, defaults, schemas, and generated catalogs instead of copying them. Change the owner and
+affected references together. Update this index when adding or moving a guide, and verify relative
+links and heading anchors. Historical specs and audits describe their recorded revision, not current
+runtime proof. A topic without an implementation stays explicitly unimplemented.
+
+## Topic guides
 
 | Doc | Source of truth for |
 |-----|---------------------|
@@ -35,8 +76,10 @@ When you change resolve behavior, packaging, or the public contract:
 4. Run `make check-docs-crosslinks` (also part of `make check` / CI).
 5. Extend unit/CLI/MCP/daemon tests for new public surfaces; keep `make check-consumer-smoke` green.
 
-Issue forms and security contact links live under [`.github/ISSUE_TEMPLATE/`](../.github/ISSUE_TEMPLATE/) and point back here / SECURITY.
+Issue forms and security contact links live under
+[`.github/ISSUE_TEMPLATE/`](../.github/ISSUE_TEMPLATE/) and point back here / SECURITY.
 
 ## Development environment
 
-See [development-environments.md](development-environments.md) for the locked devenv shell, container adapters, and platform validation boundaries.
+See [development-environments.md](development-environments.md) for the locked devenv shell,
+container adapters, and platform validation boundaries.

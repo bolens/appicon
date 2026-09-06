@@ -1,5 +1,7 @@
 # Release playbook
 
+[Documentation](docs/README.md)
+
 Appicon publishes Semantic Versioning releases from signed `vX.Y.Z` tags. The
 release workflow builds platform archives and checksums, signs the checksum
 manifest with keyless Cosign, creates provenance attestations, publishes the
