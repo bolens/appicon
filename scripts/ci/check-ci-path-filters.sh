@@ -8,6 +8,7 @@ CI_YML="$ROOT/.github/workflows/ci.yml"
 python3 - "$CI_YML" <<'PY'
 import fnmatch
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -111,18 +112,19 @@ if "matrix:" not in text or "./cmd/appicon" not in text:
     print("FAIL: unit-tests package matrix missing", file=sys.stderr)
     fail = 1
 
-# Every first-party package under cmd/ and internal/ must appear in the matrix.
+# Every buildable Go package, including nested and newly added packages, must
+# appear in the matrix. Discovery errors must fail instead of skipping tests.
 matrix_pkgs = set(
     re.findall(
-        r"(?m)^          - (\./(?:cmd|internal)/[A-Za-z0-9_-]+)\s*$",
+        r"(?m)^          - (\./[A-Za-z0-9_/-]+)\s*$",
         text,
     )
 )
 root = Path(sys.argv[1]).resolve().parents[2]
-expected = {"./cmd/appicon"}
-for p in sorted((root / "internal").iterdir()):
-    if p.is_dir() and not p.name.startswith("."):
-        expected.add(f"./internal/{p.name}")
+module = subprocess.check_output(["go", "list", "-m"], cwd=root, text=True).strip()
+packages = subprocess.check_output(["go", "list", "./..."], cwd=root, text=True).splitlines()
+expected = {"." if package == module else "./" + package.removeprefix(module + "/")
+            for package in packages}
 missing_pkgs = sorted(expected - matrix_pkgs)
 extra_pkgs = sorted(matrix_pkgs - expected)
 if missing_pkgs:
