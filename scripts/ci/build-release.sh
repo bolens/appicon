@@ -35,12 +35,12 @@ for target in $targets; do
     -ldflags "-X github.com/bolens/appicon/internal/version.Version=${version}" \
     -o "$stage/$binary" ./cmd/appicon
 
-  cp LICENSE README.md "$stage/"
+  cp LICENSE README.md THIRD_PARTY_LICENSES.txt THIRD_PARTY_NOTICES.md "$stage/"
   cp internal/completion/appicon.bash "$stage/completions/"
   cp internal/completion/appicon.zsh "$stage/completions/"
   cp internal/completion/appicon.fish "$stage/completions/"
   cp internal/completion/appicon.1 "$stage/man/man1/"
-  members=("$binary" LICENSE README.md completions man)
+  members=("$binary" LICENSE README.md THIRD_PARTY_LICENSES.txt THIRD_PARTY_NOTICES.md completions man)
   if [[ "$goos" = linux ]]; then
     mkdir -p "$stage/contrib/systemd"
     cp contrib/systemd/appicon.service contrib/systemd/appicon.socket contrib/systemd/README.md \

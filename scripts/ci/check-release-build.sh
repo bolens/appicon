@@ -25,7 +25,7 @@ for target in linux_amd64 darwin_arm64 windows_amd64; do
   archive="$dist/appicon_v9.8.7_${target}.tar.gz"
   [[ -f "$archive" ]] || { echo "missing $archive" >&2; exit 1; }
   listing=$(tar -tzf "$archive")
-  for member in LICENSE README.md completions/appicon.bash man/man1/appicon.1; do
+  for member in LICENSE README.md THIRD_PARTY_LICENSES.txt THIRD_PARTY_NOTICES.md completions/appicon.bash man/man1/appicon.1; do
     grep -qx "$member" <<<"$listing" || { echo "$archive missing $member" >&2; exit 1; }
   done
 done
