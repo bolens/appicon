@@ -45,6 +45,8 @@ type Options struct {
 	// DataDirs / IconDirs override XDG roots (tests). Empty = system defaults.
 	DataDirs []string
 	IconDirs []string
+	// NativeAppDirs overrides native application roots; empty uses platform defaults.
+	NativeAppDirs []string
 	// ConfigDir overrides XDG_CONFIG_HOME/appicon for overrides.json / sources.json.
 	ConfigDir string
 
@@ -211,11 +213,12 @@ func resolveSource(ctx context.Context, src sourceSpec, query string, opts Optio
 	switch src.Type {
 	case "xdg":
 		xdgOpts := xdg.Options{
-			Size:        opts.Size,
-			IconTheme:   opts.IconTheme,
-			ColorScheme: opts.Theme,
-			DataDirs:    opts.DataDirs,
-			IconDirs:    opts.IconDirs,
+			Size:          opts.Size,
+			IconTheme:     opts.IconTheme,
+			ColorScheme:   opts.Theme,
+			DataDirs:      opts.DataDirs,
+			IconDirs:      opts.IconDirs,
+			NativeAppDirs: opts.NativeAppDirs,
 		}
 		xdgRes, err := xdg.Resolve(query, xdgOpts)
 		if err != nil {

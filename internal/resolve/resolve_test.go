@@ -36,12 +36,13 @@ func xdgFixtureOpts(t *testing.T) resolve.Options {
 	share := filepath.Join(root, "share")
 	flatpak := filepath.Join(root, "flatpak", "exports", "share")
 	return resolve.Options{
-		Format:    "svg",
-		Size:      48,
-		DataDirs:  []string{share, flatpak},
-		IconDirs:  []string{filepath.Join(share, "icons"), filepath.Join(share, "pixmaps"), filepath.Join(flatpak, "icons")},
-		IconTheme: "hicolor",
-		ConfigDir: t.TempDir(),
+		Format:        "svg",
+		Size:          48,
+		DataDirs:      []string{share, flatpak},
+		IconDirs:      []string{filepath.Join(share, "icons"), filepath.Join(share, "pixmaps"), filepath.Join(flatpak, "icons")},
+		IconTheme:     "hicolor",
+		ConfigDir:     t.TempDir(),
+		NativeAppDirs: []string{t.TempDir()},
 	}
 }
 
@@ -510,5 +511,32 @@ func TestCacheDirAndStats(t *testing.T) {
 	}
 	if st.Dir != dir {
 		t.Fatalf("stats dir=%q want %q", st.Dir, dir)
+	}
+}
+
+func TestResolveUsesExplicitNativeApplicationRoots(t *testing.T) {
+	t.Parallel()
+	opts := xdgFixtureOpts(t)
+	root := opts.NativeAppDirs[0]
+	icon := filepath.Join(root, "fixture.ico")
+	if err := os.WriteFile(icon, []byte("ico"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	shortcut := filepath.Join(root, "isolated-native-fixture.url")
+	if err := os.WriteFile(shortcut, []byte("[InternetShortcut]\nIconFile="+icon+"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	opts.Offline = true
+	opts.Order = []string{"xdg"}
+	result, err := resolve.Resolve(context.Background(), "isolated-native-fixture", opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Path != icon || result.Source != "xdg" {
+		t.Fatalf("unexpected native fixture result: %+v", result)
+	}
+	opts.NativeAppDirs = []string{t.TempDir()}
+	if _, err := resolve.Resolve(context.Background(), "isolated-native-fixture", opts); !errors.Is(err, resolve.ErrNotFound) {
+		t.Fatalf("native fixture escaped its explicit search roots: %v", err)
 	}
 }

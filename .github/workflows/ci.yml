@@ -202,6 +202,7 @@ jobs:
           - ./internal/simpleicons
           - ./internal/slugcdn
           - ./internal/svgl
+          - ./internal/testutil
           - ./internal/userpath
           - ./internal/version
           - ./internal/xdg
