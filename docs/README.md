@@ -36,3 +36,7 @@ When you change resolve behavior, packaging, or the public contract:
 5. Extend unit/CLI/MCP/daemon tests for new public surfaces; keep `make check-consumer-smoke` green.
 
 Issue forms and security contact links live under [`.github/ISSUE_TEMPLATE/`](../.github/ISSUE_TEMPLATE/) and point back here / SECURITY.
+
+## Development environment
+
+See [development-environments.md](development-environments.md) for the locked devenv shell, container adapters, and platform validation boundaries.

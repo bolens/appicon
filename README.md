@@ -286,3 +286,7 @@ MIT for **code** only. See [LICENSE](LICENSE).
 ### Git hooks
 
 Run `bash scripts/install-git-hooks` once per clone. The pre-commit hook runs fast staged checks; pre-push runs the broader local CI gate.
+
+## Reproducible development
+
+Use the [development environment guide](docs/development-environments.md) for devenv and local Docker, Podman, or Apple container commands. Existing Make targets and Nix packaging remain authoritative.
