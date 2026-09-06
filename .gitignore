@@ -69,3 +69,8 @@ Desktop.ini
 node_modules/
 .nix-cache/
 .gopath/
+
+# Local tooling and runtime artifacts
+__pycache__/
+*.py[cod]
+.ruff_cache/
