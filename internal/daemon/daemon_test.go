@@ -16,6 +16,7 @@ import (
 
 	"github.com/bolens/appicon/internal/daemon"
 	"github.com/bolens/appicon/internal/resolve"
+	"github.com/bolens/appicon/internal/testutil"
 )
 
 type shortWriter struct {
@@ -61,7 +62,7 @@ func fixtureOpts(t *testing.T) resolve.Options {
 
 func startServer(t *testing.T, opts resolve.Options) (socket string, stop context.CancelFunc) {
 	t.Helper()
-	socket = filepath.Join(t.TempDir(), "appicon.sock")
+	socket = testutil.SocketPath(t)
 	ln, err := daemon.Listen(socket)
 	if err != nil {
 		t.Fatal(err)
@@ -95,7 +96,7 @@ func startServer(t *testing.T, opts resolve.Options) (socket string, stop contex
 
 func startOneShotServer(t *testing.T, response daemon.Response) string {
 	t.Helper()
-	socket := filepath.Join(t.TempDir(), "appicon.sock")
+	socket := testutil.SocketPath(t)
 	ln, err := daemon.Listen(socket)
 	if err != nil {
 		t.Fatal(err)
@@ -127,7 +128,7 @@ func startOneShotServer(t *testing.T, response daemon.Response) string {
 
 func TestClientForwardsEnvironmentOffline(t *testing.T) {
 	t.Setenv("APPICON_OFFLINE", "1")
-	socket := filepath.Join(t.TempDir(), "appicon.sock")
+	socket := testutil.SocketPath(t)
 	ln, err := daemon.Listen(socket)
 	if err != nil {
 		t.Fatal(err)
@@ -244,7 +245,7 @@ func TestValidateRejectsAbstract(t *testing.T) {
 }
 
 func TestListenRefusesActiveSocket(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "appicon.sock")
+	path := testutil.SocketPath(t)
 	first, err := daemon.Listen(path)
 	if err != nil {
 		t.Fatal(err)
@@ -266,7 +267,7 @@ func TestListenRefusesActiveSocket(t *testing.T) {
 }
 
 func TestListenReplacesStaleSocket(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "appicon.sock")
+	path := testutil.SocketPath(t)
 	stale, err := net.Listen("unix", path)
 	if err != nil {
 		t.Fatal(err)
@@ -287,7 +288,7 @@ func TestListenReplacesStaleSocket(t *testing.T) {
 }
 
 func TestListenPreservesNonSocketPath(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "appicon.sock")
+	path := testutil.SocketPath(t)
 	if err := os.WriteFile(path, []byte("keep"), 0o644); err != nil {
 		t.Fatal(err)
 	}

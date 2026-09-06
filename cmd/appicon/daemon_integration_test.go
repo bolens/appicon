@@ -5,13 +5,13 @@ import (
 	"encoding/json"
 	"errors"
 	"net"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/bolens/appicon/internal/daemon"
 	"github.com/bolens/appicon/internal/resolve"
+	"github.com/bolens/appicon/internal/testutil"
 )
 
 func startTestDaemon(t *testing.T) (socket string) {
@@ -27,7 +27,7 @@ func startTestDaemon(t *testing.T) (socket string) {
 		Format:    "svg",
 		Size:      48,
 	}
-	socket = filepath.Join(t.TempDir(), "appicon.sock")
+	socket = testutil.SocketPath(t)
 	ln, err := daemon.Listen(socket)
 	if err != nil {
 		t.Fatal(err)
