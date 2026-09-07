@@ -42,6 +42,11 @@ let
         export XDG_DATA_HOME="$HOME/.local/share"
       '';
       postInstall = ''
+        for notice in LICENSE THIRD_PARTY_LICENSES.txt THIRD_PARTY_NOTICES.md; do
+          if [ -f "$notice" ]; then
+            install -Dm644 "$notice" "$out/share/licenses/appicon/$notice"
+          fi
+        done
         install -Dm644 contrib/systemd/appicon.socket \
           $out/lib/systemd/user/appicon.socket
         substitute contrib/systemd/appicon.service \
@@ -113,6 +118,11 @@ let
             --replace-fail 'ExecStart=appicon daemon' \
             "ExecStart=$out/bin/appicon daemon"
         fi
+        for notice in LICENSE THIRD_PARTY_LICENSES.txt THIRD_PARTY_NOTICES.md; do
+          if [ -f "$notice" ]; then
+            install -Dm644 "$notice" "$out/share/licenses/appicon/$notice"
+          fi
+        done
         runHook postInstall
       '';
       meta = with lib; {

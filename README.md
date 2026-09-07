@@ -290,3 +290,10 @@ Run `bash scripts/install-git-hooks` once per clone. The pre-commit hook runs fa
 ## Reproducible development
 
 Use the [development environment guide](docs/development-environments.md) for devenv and local Docker, Podman, or Apple container commands. Existing Make targets and Nix packaging remain authoritative.
+
+## License scope and attribution
+
+See [third-party notices](THIRD_PARTY_NOTICES.md) for the project license scope,
+retained upstream notices, and dependency or asset exceptions.
+
+Full [dependency license texts](THIRD_PARTY_LICENSES.txt) accompany this source.

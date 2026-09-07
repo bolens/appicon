@@ -25,6 +25,11 @@ sha256sums_aarch64=('c97474a9ecce2e8e85eda62eeb428d2fc4bb92f3faca2cab90d5975d179
 
 package() {
   install -Dm755 appicon "$pkgdir/usr/bin/appicon"
+  for notice in LICENSE THIRD_PARTY_LICENSES.txt THIRD_PARTY_NOTICES.md; do
+    if [[ -f "$notice" ]]; then
+      install -Dm644 "$notice" "$pkgdir/usr/share/licenses/$pkgname/$notice"
+    fi
+  done
   if [[ -f completions/appicon.bash ]]; then
     install -Dm644 completions/appicon.bash \
       "$pkgdir/usr/share/bash-completion/completions/appicon"
