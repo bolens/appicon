@@ -46,6 +46,11 @@ package() {
   cd "$pkgname-$pkgver"
   install -Dm755 build/appicon "$pkgdir/usr/bin/appicon"
   install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  for notice in THIRD_PARTY_LICENSES.txt THIRD_PARTY_NOTICES.md; do
+    if [[ -f "$notice" ]]; then
+      install -Dm644 "$notice" "$pkgdir/usr/share/licenses/$pkgname/$notice"
+    fi
+  done
   install -Dm644 README.md "$pkgdir/usr/share/doc/$pkgname/README.md"
   install -Dm644 internal/completion/appicon.1 "$pkgdir/usr/share/man/man1/appicon.1"
   install -Dm644 internal/completion/appicon.bash \
