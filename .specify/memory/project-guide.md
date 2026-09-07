@@ -1,5 +1,7 @@
 # appicon Spec Kit project guide
 
+[Documentation](../../docs/README.md)
+
 A cache-first Go icon resolver with CLI, optional daemon, and thin MCP surfaces.
 
 Read this guide with `AGENTS.md` and `.specify/memory/constitution.md` before
