@@ -41,3 +41,8 @@ Docs map: [docs/README.md](docs/README.md). Security: [SECURITY.md](SECURITY.md)
 - Prefer small PRs.
 - Do not invent speculative aliases in code — use `appicon override` / MCP `override_*` (and `override suggest` for candidates).
 - Do not commit cached logos or secrets.
+
+## Devcontainer
+
+See [the devcontainer guide](.devcontainer/README.md) for the repository toolchain,
+setup, checks and platform limits.
