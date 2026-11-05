@@ -20,14 +20,123 @@ class PublicationDisabled(ValueError):
     """A reviewed migration has not selected this publisher yet."""
 
 
+BROKER_URL = "https://woodpecker.bolens.dev/publisher/credentials"
+_cached_token = None
+_cached_expiration = None
+_mints = 0
+
+
+def clean_environment():
+    blocked = {
+        "GH_TOKEN",
+        "GITHUB_TOKEN",
+        "GH_ENTERPRISE_TOKEN",
+        "GITHUB_ENTERPRISE_TOKEN",
+        "GH_DEBUG",
+        "PUBLISHER_LEASE",
+        "GITHUB_PUBLISH_TOKEN_EXPIRES_AT",
+    }
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in blocked
+        and not key.startswith(
+            (
+                "GIT_TRACE",
+                "GIT_CONFIG_",
+                "GIT_CURL",
+                "GIT_TRANSFER_TRACE",
+                "CURL_TRACE",
+                "CURL_VERBOSE",
+                "CI_NETRC_",
+            )
+        )
+    }
+    env.update(GH_HOST="github.com", GH_PROMPT_DISABLED="1", GIT_TERMINAL_PROMPT="0")
+    return env
+
+
+def credentials(minimum=120):
+    """Redeem the pipeline-bound lease; keep short-lived App tokens only in memory."""
+    from datetime import datetime, timezone
+    import secrets
+    import urllib.request
+
+    global _cached_token, _cached_expiration, _mints
+    now = datetime.now(timezone.utc)
+    if _cached_token and (_cached_expiration - now).total_seconds() >= max(
+        120, minimum
+    ):
+        return _cached_token
+    lease = os.environ.get("PUBLISHER_LEASE")
+    sha = os.environ.get("CI_COMMIT_SHA", "")
+    if not lease or not re.fullmatch(r"[0-9a-f]{40}", sha) or _mints >= 8:
+        raise ValueError(
+            "publisher lease unavailable, invalid source or mint budget exhausted"
+        )
+
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, request, fp, code, message, headers, newurl):
+            raise ValueError("publisher broker redirects are forbidden")
+
+    request = urllib.request.Request(
+        BROKER_URL,
+        method="POST",
+        data=json.dumps(
+            {
+                "lease": lease,
+                "repository": REPOSITORY,
+                "commit": sha,
+                "purpose": "github",
+                "request_id": secrets.token_hex(16),
+            }
+        ).encode(),
+        headers={"Content-Type": "application/json"},
+    )
+    _mints += 1
+    try:
+        with urllib.request.build_opener(NoRedirect).open(
+            request, timeout=30
+        ) as response:
+            result = json.load(response)
+        expires = datetime.fromisoformat(result["expires_at"].replace("Z", "+00:00"))
+        token = result["token"]
+        if (
+            not isinstance(token, str)
+            or not token
+            or any(ord(character) < 33 or ord(character) == 127 for character in token)
+            or expires.tzinfo is None
+            or (expires - now).total_seconds() < max(120, minimum)
+        ):
+            raise ValueError("broker returned an unusable short-lived credential")
+    except Exception:
+        raise RuntimeError("publication credential redemption failed") from None
+    _cached_token, _cached_expiration = token, expires
+    return token
+
+
+def publisher_environment():
+    env = clean_environment()
+    env["GH_TOKEN"] = credentials()
+    return env
+
+
+def token_budget(seconds: int):
+    credentials(seconds)
+
+
 def run(*args: str, **kwargs):
     kwargs.setdefault("timeout", 1200)
+    kwargs.setdefault(
+        "env", publisher_environment() if args[0] == "gh" else clean_environment()
+    )
     return subprocess.run(
         args, check=True, text=True, capture_output=True, **kwargs
     ).stdout.strip()
 
 
 def api(path: str, method: str = "GET", data=None):
+    token_budget(60)
     args = ["gh", "api", "--method", method, path]
     if data is not None:
         args += ["--input", "-"]
@@ -55,6 +164,8 @@ def context(event: str) -> tuple[str, str]:
     tag = os.environ.get("CI_COMMIT_TAG", "")
     if event == "tag" and not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", tag):
         raise ValueError("publication denied: invalid release tag")
+    if event == "tag" and os.environ.get("CI_COMMIT_REF") != f"refs/tags/{tag}":
+        raise ValueError("publication denied: release ref differs from tag")
     if event == "push" and (os.environ.get("CI_COMMIT_BRANCH") != "main" or tag):
         raise ValueError("publication denied: Pages requires main push")
     return sha, tag
@@ -80,6 +191,14 @@ def guard(event: str) -> tuple[str, str]:
         relation = api(f"repos/{REPOSITORY}/compare/{sha}...main")
         if relation["status"] not in {"ahead", "identical"}:
             raise ValueError("tagged source is not on canonical main")
+        if REPOSITORY == "bolens/appicon":
+            version = re.search(
+                r'(?m)^\s*version\s*=\s*"([^"]+)";', Path("flake.nix").read_text()
+            )[1]
+        else:
+            version = Path("VERSION").read_text().strip()
+        if tag != f"v{version}":
+            raise ValueError("release tag differs from the prepared source version")
     elif api(f"repos/{REPOSITORY}/commits/main")["sha"] != sha:
         raise ValueError("superseded Pages deployment")
     return sha, tag
@@ -101,55 +220,157 @@ def manifest() -> dict:
     return result
 
 
-def draft() -> dict:
-    sha, tag = guard("tag")
-    record = manifest()
-    # Never reuse a version: concurrent runs and retries fail closed, without --clobber.
-    releases = api(f"repos/{REPOSITORY}/releases?per_page=100")
-    if any(r["tag_name"] == tag for r in releases):
-        raise ValueError("release version already exists; inspect it before recovery")
-    notes = (OUTPUT / "release-notes.md").read_text()
-    release = api(
-        f"repos/{REPOSITORY}/releases",
-        "POST",
-        {
-            "tag_name": tag,
-            "target_commitish": sha,
-            "name": tag,
-            "body": notes,
-            "draft": True,
-            "prerelease": False,
-        },
-    )
+def publisher_identity(release: dict):
+    identity = api(f"repos/{REPOSITORY}/actions/variables/WOODPECKER_PUBLISHER_ID")[
+        "value"
+    ]
+    if not re.fullmatch(r"[1-9][0-9]*", identity) or release.get("author", {}).get(
+        "id"
+    ) != int(identity):
+        raise ValueError("release author differs from the approved publisher identity")
+
+
+def download(tag: str, name: str, directory: Path):
     run(
         "gh",
         "release",
-        "upload",
+        "download",
         tag,
         "--repo",
         REPOSITORY,
-        *(str(f) for f in sorted((OUTPUT / "release").iterdir())),
-        str(OUTPUT / "release-manifest.json"),
+        "--pattern",
+        name,
+        "--dir",
+        str(directory),
     )
-    if REPOSITORY == "bolens/appicon":
-        api(
-            f"repos/{REPOSITORY}/actions/workflows/release.yml/dispatches",
-            "POST",
-            {"ref": tag, "inputs": {"woodpecker_bridge": "true"}},
-        )
-        deadline = time.monotonic() + 1800
-        while time.monotonic() < deadline:
-            current = api(f"repos/{REPOSITORY}/releases/{release['id']}")
-            if not current["draft"]:
-                break
-            time.sleep(10)
-        else:
-            raise TimeoutError(
-                "OIDC bridge did not publish within 30 minutes; draft retained"
+
+
+def resume_record(release: dict, local: dict) -> dict:
+    """Verify matching drafts, preserving original native bytes and invocation identity."""
+    import tempfile
+    from urllib.parse import urlparse
+
+    if release["target_commitish"] != local["commit"]:
+        raise ValueError("existing release targets another source; no writes")
+    publisher_identity(release)
+    assets = {asset["name"] for asset in release["assets"]}
+    with tempfile.TemporaryDirectory() as temporary:
+        directory = Path(temporary)
+        if "release-manifest.json" in assets:
+            download(local["tag"], "release-manifest.json", directory)
+            record = json.loads((directory / "release-manifest.json").read_text())
+            if any(
+                record.get(key) != local[key] for key in ["repository", "commit", "tag"]
+            ):
+                raise ValueError("existing native receipt belongs to another source")
+            builder = urlparse(record["builder"])
+            if (
+                builder.scheme != "https"
+                or builder.hostname != "woodpecker.bolens.dev"
+                or set(record["assets"]) != set(local["assets"])
+            ):
+                raise ValueError(
+                    "existing native receipt has an unexpected builder or asset set"
+                )
+        elif assets:
+            raise ValueError(
+                "existing draft has assets but no receipt; restore its original release-manifest.json before retrying"
             )
-    else:
-        api(f"repos/{REPOSITORY}/releases/{release['id']}", "PATCH", {"draft": False})
-    # Verify every uploaded asset against locally built bytes after publication.
+        else:
+            record = local
+        allowed = set(record["assets"]) | {"release-manifest.json"}
+        if REPOSITORY == "bolens/appicon":
+            allowed.add("SHA256SUMS.sigstore.json")
+        if assets - allowed:
+            raise ValueError("existing release contains unexpected assets; no writes")
+        for name, expected in record["assets"].items():
+            if Path(name).name != name or not re.fullmatch(r"[0-9a-f]{64}", expected):
+                raise ValueError("unsafe native receipt asset")
+            if name in assets:
+                download(record["tag"], name, directory)
+                actual = hashlib.sha256((directory / name).read_bytes()).hexdigest()
+            else:
+                if not release["draft"]:
+                    raise ValueError(
+                        "published release is incomplete; never repair public versions in place"
+                    )
+                path = OUTPUT / "release" / name
+                actual = hashlib.sha256(path.read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(
+                    f"immutable asset mismatch: {name}; recover original bytes from {record['builder']} and rerun, never replace assets"
+                )
+        # Save the verified original build identity for packaging and subsequent recovery.
+        (OUTPUT / "release-manifest.json").write_text(
+            json.dumps(record, indent=2) + "\n"
+        )
+        if "release-manifest.json" not in assets:
+            run(
+                "gh",
+                "release",
+                "upload",
+                record["tag"],
+                "--repo",
+                REPOSITORY,
+                str(OUTPUT / "release-manifest.json"),
+            )
+        for name in sorted(set(record["assets"]) - assets):
+            run(
+                "gh",
+                "release",
+                "upload",
+                record["tag"],
+                "--repo",
+                REPOSITORY,
+                str(OUTPUT / "release" / name),
+            )
+    return record
+
+
+def draft() -> dict:
+    sha, tag = guard("tag")
+    token_budget(600)
+    local = manifest()
+    releases = api(f"repos/{REPOSITORY}/releases?per_page=100")
+    release = next((r for r in releases if r["tag_name"] == tag), None)
+    if release is None:
+        notes = (OUTPUT / "release-notes.md").read_text()
+        release = api(
+            f"repos/{REPOSITORY}/releases",
+            "POST",
+            {
+                "tag_name": tag,
+                "target_commitish": sha,
+                "name": tag,
+                "body": notes,
+                "draft": True,
+                "prerelease": False,
+            },
+        )
+    record = resume_record(release, local)
+    if release["draft"]:
+        if REPOSITORY == "bolens/appicon":
+            api(
+                f"repos/{REPOSITORY}/actions/workflows/release.yml/dispatches",
+                "POST",
+                {"ref": tag, "inputs": {"woodpecker_bridge": "true"}},
+            )
+            deadline = time.monotonic() + 1800
+            while time.monotonic() < deadline:
+                current = api(f"repos/{REPOSITORY}/releases/{release['id']}")
+                if not current["draft"]:
+                    break
+                time.sleep(10)
+            else:
+                raise TimeoutError(
+                    "OIDC bridge timed out; retry with a fresh broker token to resume the verified draft"
+                )
+        else:
+            api(
+                f"repos/{REPOSITORY}/releases/{release['id']}",
+                "PATCH",
+                {"draft": False},
+            )
     verify_assets(record)
     return record
 
@@ -158,6 +379,13 @@ def verify_assets(record: dict):
     release = api(f"repos/{REPOSITORY}/releases/tags/{record['tag']}")
     if release["draft"] or release["target_commitish"] != record["commit"]:
         raise ValueError("published source differs from the built candidate")
+    publisher_identity(release)
+    if REPOSITORY == "bolens/appicon" and "SHA256SUMS.sigstore.json" not in {
+        asset["name"] for asset in release["assets"]
+    }:
+        raise ValueError(
+            "published Appicon release lacks the required OIDC signature bundle"
+        )
     import tempfile
 
     with tempfile.TemporaryDirectory() as directory:
@@ -187,6 +415,31 @@ def packaging():
     if (record["commit"], record["tag"]) != (sha, tag):
         raise ValueError("packaging manifest belongs to another candidate")
     verify_assets(record)
+    branch = f"chore/woodpecker-packaging-{tag}"
+    prior = json.loads(
+        run(
+            "gh",
+            "pr",
+            "list",
+            "--repo",
+            REPOSITORY,
+            "--state",
+            "all",
+            "--head",
+            branch,
+            "--json",
+            "url,state,headRefOid",
+        )
+    )
+    if prior:
+        if len(prior) != 1 or prior[0]["state"] == "CLOSED":
+            raise ValueError(
+                "packaging branch has ambiguous or closed PR history; inspect before recovery"
+            )
+        if prior[0]["state"] == "MERGED":
+            return
+        finish_packaging(prior[0]["url"], prior[0]["headRefOid"])
+        return
     # Keep generated packaging updates reviewable; never push or bypass main.
     import tempfile
     import urllib.request
@@ -213,6 +466,16 @@ def packaging():
     run("git", "fetch", "origin", "main")
     branch = f"chore/woodpecker-packaging-{tag}"
     run("git", "checkout", "--no-track", "-b", branch, "origin/main")
+    if REPOSITORY == "bolens/appicon":
+        current_version = re.search(
+            r'(?m)^\s*version\s*=\s*"([^"]+)";', Path("flake.nix").read_text()
+        )[1]
+    else:
+        current_version = Path("VERSION").read_text().strip()
+    if current_version != tag[1:]:
+        raise ValueError(
+            "main has advanced to another release version; do not downgrade packaging"
+        )
     run(*command)
     paths = (
         ["packaging", "flake.nix"]
@@ -232,8 +495,20 @@ def packaging():
         "-m",
         f"chore(packaging): refresh {tag} immutable release hashes",
     )
-    push(branch)
-    run(
+    remote = run("git", "ls-remote", "origin", f"refs/heads/{branch}")
+    if remote:
+        run("git", "fetch", "origin", branch)
+        if run("git", "rev-parse", "FETCH_HEAD^{tree}") != run(
+            "git", "rev-parse", "HEAD^{tree}"
+        ):
+            raise ValueError(
+                "existing packaging branch differs from candidate; inspect it rather than force-push"
+            )
+        expected_head = run("git", "rev-parse", "FETCH_HEAD")
+    else:
+        push(branch)
+        expected_head = run("git", "rev-parse", "HEAD")
+    pr_url = run(
         "gh",
         "pr",
         "create",
@@ -248,17 +523,100 @@ def packaging():
         "--body",
         f"Generated from signed tag {tag} ({sha}) and verified published asset hashes. Require current checks and protected squash merge.",
     )
+    finish_packaging(pr_url, expected_head)
+
+
+def finish_packaging(pr_url: str, expected_head: str):
+    """Wait for all required checks, then use the host's protected squash merge."""
+    deadline = time.monotonic() + 2700
+    while time.monotonic() < deadline:
+        token_budget(60)
+        result = subprocess.run(
+            [
+                "gh",
+                "pr",
+                "checks",
+                pr_url,
+                "--repo",
+                REPOSITORY,
+                "--required",
+                "--json",
+                "bucket,name",
+            ],
+            text=True,
+            capture_output=True,
+            timeout=120,
+            env=publisher_environment(),
+        )
+        if result.returncode not in {0, 1, 8}:
+            raise RuntimeError("could not read required PR checks; no merge attempted")
+        if (
+            result.returncode == 1
+            and not result.stdout.strip()
+            and "no checks" not in result.stderr.lower()
+        ):
+            raise RuntimeError(
+                "required check query failed; diagnose authentication/host failure before retrying"
+            )
+        if result.stdout.strip():
+            checks = json.loads(result.stdout)
+            if any(check["bucket"] in {"fail", "cancel"} for check in checks):
+                raise ValueError(
+                    "packaging checks failed; retain PR for a reviewed fix"
+                )
+            if (
+                checks
+                and any(check["bucket"] == "pass" for check in checks)
+                and all(check["bucket"] in {"pass", "skipping"} for check in checks)
+            ):
+                run(
+                    "gh",
+                    "pr",
+                    "merge",
+                    pr_url,
+                    "--repo",
+                    REPOSITORY,
+                    "--squash",
+                    "--delete-branch",
+                    "--match-head-commit",
+                    expected_head,
+                )
+                state = json.loads(
+                    run(
+                        "gh",
+                        "pr",
+                        "view",
+                        pr_url,
+                        "--repo",
+                        REPOSITORY,
+                        "--json",
+                        "state,mergeCommit",
+                    )
+                )
+                if state["state"] != "MERGED" or not state["mergeCommit"]:
+                    raise ValueError(
+                        "packaging PR is not merged; no completion claimed"
+                    )
+                return
+        time.sleep(10)
+    raise TimeoutError(
+        "packaging checks did not complete; retry the existing PR with a fresh broker token"
+    )
 
 
 def push(branch: str, directory: str | None = None):
     import base64
 
-    token = os.environ["GH_TOKEN"]
+    token = credentials()
     env = dict(
-        os.environ,
-        GIT_CONFIG_COUNT="1",
-        GIT_CONFIG_KEY_0="http.https://github.com/.extraheader",
-        GIT_CONFIG_VALUE_0="AUTHORIZATION: basic "
+        clean_environment(),
+        GIT_CONFIG_NOSYSTEM="1",
+        GIT_CONFIG_GLOBAL="/dev/null",
+        GIT_CONFIG_COUNT="2",
+        GIT_CONFIG_KEY_0="credential.helper",
+        GIT_CONFIG_VALUE_0="",
+        GIT_CONFIG_KEY_1="http.https://github.com/.extraheader",
+        GIT_CONFIG_VALUE_1="AUTHORIZATION: basic "
         + base64.b64encode(f"x-access-token:{token}".encode()).decode(),
     )
     run(

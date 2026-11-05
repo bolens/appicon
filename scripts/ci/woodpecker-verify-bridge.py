@@ -38,7 +38,7 @@ def validate(directory, repo, tag, sha):
     }
     if set(expected) != required or set(expected) != {
         p.name for p in directory.iterdir()
-    } - {"release-manifest.json"}:
+    } - {"release-manifest.json", "SHA256SUMS.sigstore.json"}:
         raise ValueError("draft asset set differs from native contract")
     for name, digest in expected.items():
         path = directory / name
@@ -88,6 +88,11 @@ def main():
     release = api(f"repos/{repo}/releases/tags/{tag}")
     if not release["draft"] or release["target_commitish"] != sha:
         raise ValueError("bridge requires exact-source native draft")
+    identity = os.environ.get("WOODPECKER_PUBLISHER_ID", "")
+    if not re.fullmatch(r"[1-9][0-9]*", identity) or release.get("author", {}).get(
+        "id"
+    ) != int(identity):
+        raise ValueError("draft author is not the approved native publisher")
     directory = Path(".woodpecker-out/bridge")
     directory.mkdir(parents=True)
     subprocess.run(
@@ -95,6 +100,12 @@ def main():
         check=True,
     )
     validate(directory, repo, tag, sha)
+    with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
+        output.write(
+            "signature_exists="
+            + str((directory / "SHA256SUMS.sigstore.json").exists()).lower()
+            + "\n"
+        )
     print(
         "Verified native source, asset identity and checksums; ready for OIDC signing."
     )

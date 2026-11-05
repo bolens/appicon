@@ -28,7 +28,7 @@ Behavior changes MUST update their canonical docs, schemas, and tests together. 
 
 `docs/README.md` maps detailed authorities. Contract or security exceptions require explicit rationale and tests. Amendments use semantic versioning.
 
-**Version**: 1.0.0 | **Ratified**: 2026-08-15 | **Last Amended**: 2026-08-15
+**Version**: 1.1.0 | **Ratified**: 2026-08-15 | **Last Amended**: 2026-11-04
 
 ### CI publisher authority
 

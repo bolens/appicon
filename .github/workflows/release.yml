@@ -14,7 +14,7 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions: {}
 
@@ -230,12 +230,24 @@ jobs:
         with:
           persist-credentials: false
       - name: Verify native source and immutable draft assets
+        id: native
         env:
           GH_TOKEN: ${{ github.token }}
+          WOODPECKER_PUBLISHER_ID: ${{ vars.WOODPECKER_PUBLISHER_ID }}
         run: python3 scripts/ci/woodpecker-verify-bridge.py
       - name: Install cosign
         uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Verify retained native signature during draft recovery
+        if: steps.native.outputs.signature_exists == 'true'
+        env:
+          TAG: ${{ github.ref_name }}
+        run: >-
+          cosign verify-blob --bundle .woodpecker-out/bridge/SHA256SUMS.sigstore.json
+          --certificate-identity "https://github.com/bolens/appicon/.github/workflows/release.yml@refs/tags/$TAG"
+          --certificate-oidc-issuer https://token.actions.githubusercontent.com
+          .woodpecker-out/bridge/SHA256SUMS
       - name: Sign native checksum manifest with existing GitHub OIDC identity
+        if: steps.native.outputs.signature_exists != 'true'
         run: cosign sign-blob --yes --bundle .woodpecker-out/bridge/SHA256SUMS.sigstore.json .woodpecker-out/bridge/SHA256SUMS
       - name: Attest native assets
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
@@ -245,10 +257,15 @@ jobs:
             .woodpecker-out/bridge/SHA256SUMS
             .woodpecker-out/bridge/SHA256SUMS.sigstore.json
             .woodpecker-out/bridge/woodpecker-provenance.json
-      - name: Attach signature and publish verified draft
+      - name: Attach new signature without replacing existing assets
+        if: steps.native.outputs.signature_exists != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
           gh release upload "$TAG" .woodpecker-out/bridge/SHA256SUMS.sigstore.json --repo "$GITHUB_REPOSITORY"
-          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+      - name: Publish verified native draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"

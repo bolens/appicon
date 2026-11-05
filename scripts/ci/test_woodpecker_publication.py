@@ -27,6 +27,18 @@ class PublicationGuards(unittest.TestCase):
         )
         isolated.start()
         self.addCleanup(isolated.stop)
+        from datetime import datetime, timedelta, timezone
+
+        token = patch.object(publish, "_cached_token", "fixture-only")
+        expiration = patch.object(
+            publish,
+            "_cached_expiration",
+            datetime.now(timezone.utc) + timedelta(hours=1),
+        )
+        token.start()
+        expiration.start()
+        self.addCleanup(token.stop)
+        self.addCleanup(expiration.stop)
         self.sha = "a" * 40
         self.env = {
             "CI_FORGE_TYPE": "github",
@@ -35,6 +47,7 @@ class PublicationGuards(unittest.TestCase):
             "CI_PIPELINE_EVENT": "tag",
             "CI_COMMIT_SHA": self.sha,
             "CI_COMMIT_TAG": "v1.2.3",
+            "CI_COMMIT_REF": "refs/tags/v1.2.3",
         }
 
     def invoke(self, **changes):
@@ -150,17 +163,10 @@ class PublicationGuards(unittest.TestCase):
             publish.guard("tag")
 
     def test_existing_release_never_replaced(self):
-        with (
-            patch.object(publish, "guard", return_value=(self.sha, "v1.2.3")),
-            patch.object(publish, "manifest", return_value={}),
-            patch.object(publish, "api", return_value=[{"tag_name": "v1.2.3"}]) as api,
-            self.assertRaises(ValueError),
-        ):
-            publish.draft()
-        self.assertEqual(api.call_count, 1)
-        self.assertEqual(
-            api.call_args.args[0], f"repos/{publish.REPOSITORY}/releases?per_page=100"
-        )
+        release = {"target_commitish": "b" * 40}
+        with patch.object(publish, "api") as api, self.assertRaises(ValueError):
+            publish.resume_record(release, {"commit": self.sha})
+        api.assert_not_called()
 
     def test_published_release_source_must_match(self):
         record = {"tag": "v1.2.3", "commit": self.sha}
@@ -187,6 +193,106 @@ class PublicationGuards(unittest.TestCase):
             self.assertRaises(ValueError),
         ):
             publish.context("push")
+
+    def test_expired_cache_without_lease_denied(self):
+        from datetime import datetime, timezone
+
+        with (
+            patch.object(
+                publish, "_cached_expiration", datetime(2000, 1, 1, tzinfo=timezone.utc)
+            ),
+            self.assertRaises(ValueError),
+        ):
+            publish.token_budget(60)
+
+    def test_wrong_release_author_denied(self):
+        with (
+            patch.object(publish, "api", return_value={"value": "42"}),
+            self.assertRaises(ValueError),
+        ):
+            publish.publisher_identity({"author": {"id": 43}})
+
+    def test_draft_resume_keeps_original_bytes_and_uploads_only_missing(self):
+        import hashlib
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            (output / "release").mkdir()
+            contents = {"archive.tar.gz": b"original", "SHA256SUMS": b"checksums"}
+            hashes = {
+                name: hashlib.sha256(data).hexdigest()
+                for name, data in contents.items()
+            }
+            record = {
+                "repository": publish.REPOSITORY,
+                "commit": self.sha,
+                "tag": "v1.2.3",
+                "builder": "https://woodpecker.bolens.dev/repos/123/pipeline/4",
+                "assets": hashes,
+            }
+            server = dict(
+                contents, **{"release-manifest.json": json.dumps(record).encode()}
+            )
+            # The rebuilt archive differs. Its original bytes are already on the server and must not be replaced.
+            (output / "release/archive.tar.gz").write_bytes(b"rebuilt")
+            (output / "release/SHA256SUMS").write_bytes(contents["SHA256SUMS"])
+            release = {
+                "draft": True,
+                "target_commitish": self.sha,
+                "assets": [
+                    {"name": "archive.tar.gz"},
+                    {"name": "release-manifest.json"},
+                ],
+            }
+
+            def download(tag, name, directory):
+                (directory / name).write_bytes(server[name])
+
+            with (
+                patch.object(publish, "OUTPUT", output),
+                patch.object(publish, "publisher_identity"),
+                patch.object(publish, "download", side_effect=download),
+                patch.object(publish, "run") as run,
+            ):
+                self.assertEqual(publish.resume_record(release, record), record)
+            self.assertEqual(run.call_count, 1)
+            self.assertEqual(run.call_args.args[-1], str(output / "release/SHA256SUMS"))
+
+    def test_failed_required_check_cannot_merge(self):
+        import subprocess
+
+        result = subprocess.CompletedProcess(
+            [], 1, '[{"bucket":"fail","name":"native"}]', ""
+        )
+        with (
+            patch.object(subprocess, "run", return_value=result),
+            patch.object(publish, "run") as run,
+            self.assertRaises(ValueError),
+        ):
+            publish.finish_packaging("https://github.com/example/pr/1", self.sha)
+        run.assert_not_called()
+
+    def test_passed_checks_use_exact_head_protected_squash(self):
+        import subprocess
+
+        result = subprocess.CompletedProcess(
+            [], 0, '[{"bucket":"pass","name":"native"}]', ""
+        )
+        with (
+            patch.object(subprocess, "run", return_value=result),
+            patch.object(
+                publish,
+                "run",
+                side_effect=["", '{"state":"MERGED","mergeCommit":{"oid":"a"}}'],
+            ) as run,
+        ):
+            publish.finish_packaging("https://github.com/example/pr/1", self.sha)
+        command = run.call_args_list[0].args
+        self.assertIn("--squash", command)
+        self.assertNotIn("--admin", command)
+        self.assertEqual(command[-2:], ("--match-head-commit", self.sha))
 
     def test_pages_preserves_history_and_removes_stale_files(self):
         import tempfile
@@ -330,6 +436,108 @@ class NativeBridgeIntegrity(unittest.TestCase):
         self.refresh()
         with self.assertRaises(ValueError):
             self.verify()
+
+
+class PublisherLeaseTests(unittest.TestCase):
+    def setUp(self):
+        from datetime import datetime, timedelta, timezone
+
+        self.datetime = datetime
+        self.timedelta = timedelta
+        self.timezone = timezone
+        self.sha = "a" * 40
+        patchers = [
+            patch.dict(
+                os.environ,
+                {
+                    "PUBLISHER_LEASE": "fixture-lease",
+                    "CI_COMMIT_SHA": self.sha,
+                    "GH_DEBUG": "api",
+                    "GIT_TRACE": "1",
+                    "GH_TOKEN": "inherited-fixture",
+                },
+                clear=True,
+            ),
+            patch.object(publish, "_cached_token", None),
+            patch.object(publish, "_cached_expiration", None),
+            patch.object(publish, "_mints", 0),
+        ]
+        for patcher in patchers:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def response(self, expiration=None):
+        import io
+        import json
+
+        expiry = (
+            expiration
+            or (
+                self.datetime.now(self.timezone.utc) + self.timedelta(hours=1)
+            ).isoformat()
+        )
+        return io.BytesIO(
+            json.dumps({"token": "fresh-fixture-only", "expires_at": expiry}).encode()
+        )
+
+    def test_fixed_endpoint_bound_identity_and_cached_redemption(self):
+        import json
+
+        with patch("urllib.request.build_opener") as build:
+            build.return_value.open.return_value = self.response()
+            self.assertEqual(publish.credentials(), "fresh-fixture-only")
+            self.assertEqual(publish.credentials(), "fresh-fixture-only")
+        build.return_value.open.assert_called_once()
+        request = build.return_value.open.call_args.args[0]
+        self.assertEqual(
+            request.full_url, "https://woodpecker.bolens.dev/publisher/credentials"
+        )
+        body = json.loads(request.data)
+        self.assertEqual(
+            {key: body[key] for key in ["lease", "repository", "commit", "purpose"]},
+            {
+                "lease": "fixture-lease",
+                "repository": publish.REPOSITORY,
+                "commit": self.sha,
+                "purpose": "github",
+            },
+        )
+        self.assertRegex(body["request_id"], r"^[0-9a-f]{32}$")
+
+    def test_near_expiry_refreshes_and_does_not_reuse_old_token(self):
+        publish._cached_token = "old-fixture-only"
+        publish._cached_expiration = self.datetime.now(
+            self.timezone.utc
+        ) + self.timedelta(seconds=60)
+        with patch("urllib.request.build_opener") as build:
+            build.return_value.open.return_value = self.response()
+            self.assertEqual(publish.credentials(), "fresh-fixture-only")
+        self.assertEqual(publish._mints, 1)
+
+    def test_expired_broker_response_denied(self):
+        with patch("urllib.request.build_opener") as build:
+            build.return_value.open.return_value = self.response("2000-01-01T00:00:00Z")
+            with self.assertRaises(RuntimeError):
+                publish.credentials()
+        self.assertIsNone(publish._cached_token)
+
+    def test_mint_budget_fails_before_network(self):
+        publish._mints = 8
+        with (
+            patch("urllib.request.build_opener") as build,
+            self.assertRaises(ValueError),
+        ):
+            publish.credentials()
+        build.assert_not_called()
+
+    def test_subprocess_gets_only_fresh_token_not_lease_or_debug(self):
+        with patch("urllib.request.build_opener") as build:
+            build.return_value.open.return_value = self.response()
+            env = publish.publisher_environment()
+        self.assertEqual(env["GH_TOKEN"], "fresh-fixture-only")
+        self.assertNotIn("PUBLISHER_LEASE", env)
+        self.assertNotIn("GH_DEBUG", env)
+        self.assertNotIn("GIT_TRACE", env)
 
 
 if __name__ == "__main__":
