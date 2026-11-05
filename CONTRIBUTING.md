@@ -49,15 +49,9 @@ setup, checks and platform limits.
 
 ## Woodpecker CI
 
-[.woodpecker.yml](.woodpecker.yml) runs on pushes, pull requests, and manual builds
-in a Gitea-connected Woodpecker installation. Either Linux Docker runner can
-execute the workflow. Container images are pinned by digest.
-
-The workflow runs go tests, vet and formatting, documentation crosslinks, and offline
-nightly-smoke regressions. Packaging, platform matrices and release publication continue
-in GitHub Actions.
-
-Activate this repository in Woodpecker after its GitHub source branch has been
-synchronized to Gitea. The existing GitHub checks remain required until their
-coverage and release responsibilities are migrated explicitly. Review image
-digest updates alongside the repository toolchain and lockfiles.
+[The delivery contract](docs/woodpecker-publishing.md) describes native Linux
+checks, direct GitHub source identity, retained platform exceptions and the
+phased publication cutover. `.woodpecker.yml` also validates reconciled Gitea
+copies without publication credentials. Existing Actions remain active until
+native exact-head checks and host requirements have migrated. Follow the owning
+release playbook; no test creates a public tag, release or AUR push.

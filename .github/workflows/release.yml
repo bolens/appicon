@@ -1,6 +1,13 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      woodpecker_bridge:
+        description: Sign and attest verified Woodpecker draft assets
+        required: true
+        type: boolean
+        default: false
   push:
     tags:
       - "v*"
@@ -13,6 +20,7 @@ permissions: {}
 
 jobs:
   await-ci:
+    if: vars.WOODPECKER_PUBLISHING != 'true' && github.event_name == 'push'
     permissions:
       actions: read
       contents: read
@@ -207,3 +215,40 @@ jobs:
           [[ -n "$run_id" ]] || { echo "CI run was not scheduled" >&2; exit 1; }
           gh run watch "$run_id" --repo "$GITHUB_REPOSITORY" --exit-status
           gh pr merge "$PR" --repo "$GITHUB_REPOSITORY" --squash --delete-branch
+
+  woodpecker-oidc:
+    name: Sign verified Woodpecker release
+    if: vars.WOODPECKER_PUBLISHING == 'true' && github.event_name == 'workflow_dispatch' && inputs.woodpecker_bridge && startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      attestations: write
+      contents: write
+      id-token: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Verify native source and immutable draft assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci/woodpecker-verify-bridge.py
+      - name: Install cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Sign native checksum manifest with existing GitHub OIDC identity
+        run: cosign sign-blob --yes --bundle .woodpecker-out/bridge/SHA256SUMS.sigstore.json .woodpecker-out/bridge/SHA256SUMS
+      - name: Attest native assets
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with:
+          subject-path: |
+            .woodpecker-out/bridge/*.tar.gz
+            .woodpecker-out/bridge/SHA256SUMS
+            .woodpecker-out/bridge/SHA256SUMS.sigstore.json
+            .woodpecker-out/bridge/woodpecker-provenance.json
+      - name: Attach signature and publish verified draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release upload "$TAG" .woodpecker-out/bridge/SHA256SUMS.sigstore.json --repo "$GITHUB_REPOSITORY"
+          gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"

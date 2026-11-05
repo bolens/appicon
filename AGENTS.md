@@ -33,3 +33,12 @@ evidence. Prose maintenance uses the normal repository workflow.
 - Keep durable corrections in the [project guide](.specify/memory/project-guide.md)
   or owning contract. Replace superseded advice and read it before reuse.
   Temporary progress belongs in task notes. Preserve existing authority rules.
+
+## CI and publication authority
+
+[Woodpecker delivery](docs/woodpecker-publishing.md) owns the phased publisher
+migration. GitHub remains the canonical exact source. The reconciled Gitea copy
+retains adoption, visibility and protected squash governance and never receives
+publisher credentials. Preserve domain safety rules and private execution evidence.
+Do not synthesize tags or releases to test publication. Host cutover requires real
+native checks and exactly one publisher; existing Actions remain until then.

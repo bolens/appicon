@@ -63,3 +63,12 @@ Regenerate managed files through Spec Kit and verify that project-owned memory s
 updates. Follow `RELEASING.md` for push, merge, release or delivery, and recovery.
 
 The retrospective specification register is [specs/README.md](../../specs/README.md).
+
+## Woodpecker publisher migration
+
+Use [the delivery contract](../../docs/woodpecker-publishing.md) for exact-source
+validation, phased host settings and publication boundaries. GitHub remains
+canonical; a reconciled Gitea copy retains its adoption and protected delivery
+contracts and cannot independently publish. Preserve private evidence, finite
+retries, isolated writable state and the distinction between validation and
+actual release. No synthetic release is an acceptance fixture.

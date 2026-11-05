@@ -83,3 +83,5 @@ Issue forms and security contact links live under
 
 See [development-environments.md](development-environments.md) for the locked devenv shell,
 container adapters, and platform validation boundaries.
+
+- [Woodpecker delivery and publication](woodpecker-publishing.md)

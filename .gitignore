@@ -95,3 +95,6 @@ __pycache__/
 !/.vscode/launch.json
 !/.vscode/*.code-snippets
 !/.vscode/README.md
+
+# Isolated Woodpecker build and publication outputs.
+.woodpecker-out/

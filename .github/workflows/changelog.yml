@@ -21,6 +21,7 @@ concurrency:
 
 jobs:
   check:
+    if: vars.WOODPECKER_LINUX_CI != 'true'
     permissions:
       contents: read
     runs-on: ubuntu-24.04

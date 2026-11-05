@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   bundle:
+    if: vars.WOODPECKER_PUBLISHING != 'true' || github.event_name == 'workflow_dispatch'
     name: Build appicon-packs-bundle
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -57,7 +58,7 @@ jobs:
             published=$(gh release view "${GITHUB_REF_NAME}" --json isDraft \
               --jq 'select(.isDraft == false) | .isDraft' 2>/dev/null || true)
             if [ "$published" = false ]; then
-              gh release upload "${GITHUB_REF_NAME}" appicon-packs-bundle.tar.gz --clobber
+              gh release upload "${GITHUB_REF_NAME}" appicon-packs-bundle.tar.gz
               exit 0
             fi
             sleep 10
