@@ -63,7 +63,9 @@ class SignedReleaseHelper(unittest.TestCase):
         self.log = self.scratch / 'git-calls'
         wrapper = bindir / 'git'
         wrapper.write_text('#!/bin/sh\nprintf "%s\\n" "$*" >> "$FIXTURE_GIT_LOG"\n'
-                           'if [ "$1" = push ]; then exit 98; fi\nexec "$FIXTURE_REAL_GIT" "$@"\n')
+                           'if [ "$1" = push ]; then exit 98; fi\n'
+                           'if [ "$1" = status ] && [ "${FIXTURE_STATUS_FAIL:-}" = 1 ]; then exit 97; fi\n'
+                           'exec "$FIXTURE_REAL_GIT" "$@"\n')
         wrapper.chmod(0o755)
         self.run_env = dict(self.env, PATH=str(bindir) + os.pathsep + self.env['PATH'],
                             FIXTURE_GIT_LOG=str(self.log), FIXTURE_REAL_GIT=GIT)
@@ -102,6 +104,10 @@ class SignedReleaseHelper(unittest.TestCase):
                      ('v1.2.3', self.sha[:12]), ('v1.2.3', 'a' * 40)]:
             with self.subTest(args=args):
                 self.assert_denied(*args)
+
+    def test_unreadable_git_status_is_not_assumed_clean(self):
+        self.run_env['FIXTURE_STATUS_FAIL'] = '1'
+        self.assert_denied()
 
     def test_offmain_dirty_and_noncanonical_origin_are_denied(self):
         self.git('checkout', '-b', 'release/fixture')

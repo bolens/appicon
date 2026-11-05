@@ -25,7 +25,8 @@ esac
 check_source() {
   [[ "$(git symbolic-ref --quiet --short HEAD)" == main ]] || fail 'check out local main before tagging'
   [[ "$(git rev-parse HEAD)" == "$validated" ]] || fail 'HEAD differs from the validated main SHA'
-  [[ -z "$(git status --porcelain)" ]] || fail 'working tree must be clean before tagging'
+  tree_status=$(git status --porcelain) || fail 'could not inspect the working tree'
+  [[ -z "$tree_status" ]] || fail 'working tree must be clean before tagging'
   [[ "$(git rev-parse refs/remotes/origin/main)" == "$validated" ]] || fail 'origin/main has advanced; validate its exact SHA first'
   source_version=$(python3 - <<'PY'
 import re
