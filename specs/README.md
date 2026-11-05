@@ -7,3 +7,5 @@ Installation validation alone does not establish feature completion.
 
 - [Development environments](002-development-environments/spec.md): [plan](002-development-environments/plan.md),
   [tasks and delivery evidence](002-development-environments/tasks.md).
+
+- [Woodpecker publisher migration](003-woodpecker-publishing/spec.md) — prospective implementation and acceptance, not a completed retrospective.

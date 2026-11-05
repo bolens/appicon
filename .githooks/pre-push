@@ -3,6 +3,8 @@ set -euo pipefail
 
 root=$(git rev-parse --show-toplevel)
 cd "$root"
+python3 scripts/ci/sync-woodpecker-validation.py --check
+python3 -m unittest discover -s scripts/ci -p test_woodpecker_validation_profile.py
 go_root=$(mise where go@1.25.13)
 export GOROOT="$go_root"
 export PATH="$go_root/bin:$PATH"

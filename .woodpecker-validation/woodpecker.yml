@@ -1,0 +1,101 @@
+# Linux validation and staged GitHub publication. See docs/woodpecker-publishing.md.
+labels:
+  platform: linux/amd64
+  backend: docker
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.6.4@sha256:d619f364acd546134a9ba06d29a9cb55156eddfc21f60307f1fdcf4e0b2aafa6
+    settings:
+      depth: 0
+      partial: false
+when:
+- event: push
+  branch: main
+- event:
+  - pull_request
+  - manual
+  - tag
+  - cron
+steps:
+- name: verify
+  image: golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
+  environment:
+    GOMAXPROCS: '2'
+    GOFLAGS: -p=2
+    XDG_CACHE_HOME: /tmp/appicon-cache
+    XDG_CONFIG_HOME: /tmp/appicon-config
+    XDG_DATA_HOME: /tmp/appicon-data
+  commands:
+  - |-
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends make python3 jq curl git xz-utils bzip2 zstd iproute2
+  - make check-fast check-docs-crosslinks check-nightly-smoke check-consumer-smoke check-aur-publish check-ci-path-filters
+    check-nix-packages check-packaging-versions check-release-build check-verify-release
+  - go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.12.2
+  - make lint check-govulncheck check-gitleaks
+  - GOOS=windows GOARCH=amd64 go build ./...
+  - for pkg in $(go list ./...); do GOOS=windows GOARCH=amd64 go test -c -o /dev/null "$pkg"; done
+  - bash scripts/ci/build-packaging.sh
+- name: source-and-workflow-policy
+  image: node:26-trixie@sha256:6d2c7d5d074bf72f81ddc252b4fbb5d625bc028eeda49cb4b8c2ff8eda1ee617
+  commands:
+  - |-
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends python3 python3-venv git curl shellcheck ca-certificates
+  - bash scripts/ci/woodpecker-lint.sh
+  - npm ci --ignore-scripts
+  - bash scripts/ci/check-markdownlint.sh
+  - python3 scripts/check-changelog.py
+- name: nix-packages
+  image: nixos/nix:2.31.3@sha256:d49538facc7757890eccfa5f57869ad18c823c24903e3b8ac6ca8a301d84a9b6
+  environment:
+    NIX_CONFIG: |-
+      experimental-features = nix-command flakes
+      sandbox = false
+      max-jobs = 1
+      cores = 2
+  commands:
+  - git config --global --add safe.directory "$CI_WORKSPACE"
+  - for attr in appicon appicon-git appicon-bin; do nix build ".#$attr" --out-link ".woodpecker-out/nix-$attr" -L;
+    ".woodpecker-out/nix-$attr/bin/appicon" version; done
+- name: pages-build
+  image: node:26-trixie@sha256:6d2c7d5d074bf72f81ddc252b4fbb5d625bc028eeda49cb4b8c2ff8eda1ee617
+  commands:
+  - |-
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends python3 git curl chromium imagemagick fonts-liberation ca-certificates
+  - python3 -m unittest discover -s scripts/ci -p test_public_release_metadata.py
+  - python3 -m unittest discover -s scripts/ci -p test_extract_lychee.py
+  - bash scripts/ci/woodpecker-build-site.sh
+- name: nightly-live-smoke
+  image: golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
+  when:
+    event: cron
+    cron: nightly-svgl
+  commands:
+  - |-
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends make python3 curl
+  - make build
+  - bash scripts/ci/nightly-svgl-smoke.sh
+- name: release-build
+  image: golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
+  environment:
+    GOMAXPROCS: '2'
+    GOFLAGS: -p=2
+    XDG_CACHE_HOME: /tmp/appicon-cache
+    XDG_CONFIG_HOME: /tmp/appicon-config
+    XDG_DATA_HOME: /tmp/appicon-data
+  when:
+    event: tag
+    evaluate: CI_FORGE_TYPE == "github" && CI_REPO == "bolens/appicon"
+  commands:
+  - |-
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y --no-install-recommends python3 curl git make
+  - bash scripts/ci/woodpecker-build-release.sh
