@@ -19,6 +19,24 @@ nix profile install .
 nix profile install .#appicon-bin
 ```
 
+The nixpkgs inputs follow the maintained `nixpkgs-26.05-darwin` branch to retain
+Intel macOS alongside ARM macOS and both Linux architectures. Nixpkgs 26.11
+[removed Intel macOS support](https://nixos.org/manual/nixpkgs/unstable/release-notes#x86_64-darwin-26.11);
+review the supported platforms before moving to a newer series.
+
+Source packages use the Go compiler selected by `flake.lock`; the development
+shell has its own compiler input in `devenv.lock`. Update the owning nixpkgs
+inputs together when applying Go security fixes, then build and check the source
+packages. Inspect the compiler with:
+
+```bash
+nix eval --raw .#packages.x86_64-linux.appicon.go.version
+```
+
+`appicon-bin` repackages an existing published release. Refreshing Nix inputs
+cannot change the Go standard library embedded in that binary; updating it
+requires a new upstream release and its verified asset hashes.
+
 Home Manager: import `homeManagerModules.default`, set `programs.appicon.enable = true`, and add `overlays.default` (or set `programs.appicon.package` to `appicon` / `appicon-bin` / `appicon-git`).
 
 Optional warm-cache daemon (Linux/systemd):

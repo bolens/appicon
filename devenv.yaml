@@ -3,7 +3,7 @@ inputs:
   devenv:
     url: github:cachix/devenv/v1.11.2
   nixpkgs:
-    url: github:cachix/devenv-nixpkgs/rolling
+    url: github:NixOS/nixpkgs/nixpkgs-26.05-darwin
   nix2container:
     url: github:nlewo/nix2container
     inputs:

@@ -5,10 +5,10 @@ locked development and platform-specific packages, which may not be linked in
 every build. Package source notices remain authoritative.
 
 ==============================================================================
-github.com/modelcontextprotocol/go-sdk v1.7.0
-Source: https://proxy.golang.org/github.com/modelcontextprotocol/go-sdk/@v/v1.7.0.zip
+github.com/modelcontextprotocol/go-sdk v1.8.0
+Source: https://proxy.golang.org/github.com/modelcontextprotocol/go-sdk/@v/v1.8.0.zip
 
---- github.com/modelcontextprotocol/go-sdk@v1.7.0/LICENSE ---
+--- github.com/modelcontextprotocol/go-sdk@v1.8.0/LICENSE ---
 The MCP project is undergoing a licensing transition from the MIT License to the Apache License, Version 2.0 ("Apache-2.0"). All new code and specification contributions to the project are licensed under Apache-2.0. Documentation contributions (excluding specifications) are licensed under CC-BY-4.0.
 
 Contributions for which relicensing consent has been obtained are licensed under Apache-2.0. Contributions made by authors who originally licensed their work under the MIT License and who have not yet granted explicit permission to relicense remain licensed under the MIT License.
@@ -304,10 +304,10 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ==============================================================================
-golang.org/x/sys v0.47.0
-Source: https://proxy.golang.org/golang.org/x/sys/@v/v0.47.0.zip
+golang.org/x/sys v0.48.0
+Source: https://proxy.golang.org/golang.org/x/sys/@v/v0.48.0.zip
 
---- golang.org/x/sys@v0.47.0/LICENSE ---
+--- golang.org/x/sys@v0.48.0/LICENSE ---
 Copyright 2009 The Go Authors.
 
 Redistribution and use in source and binary forms, with or without
