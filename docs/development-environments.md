@@ -16,7 +16,11 @@ The shell supplies Go 1.26, Python, Node.js, Bash, Git, Make, ShellCheck, and co
 OpenSSH supplies `ssh-keygen` for release-helper regression tests in the shell
 and exported image; native CI installs `openssh-client` explicitly. Those tests
 create disposable signing keys and local Git repositories with file-only
-transport. They never use maintainer keys or create product release tags.
+transport. If a Linux container runs with a caller UID absent from its passwd
+database, only those fixture subprocesses load the locked `nss_wrapper` library
+with private temporary account files. The runner UID and global environment stay
+unchanged, and real key creation, signing, and verification remain mandatory.
+The tests never use maintainer keys or create product release tags.
 
 Commit `devenv.lock` with deliberate input updates. Local state and `devenv.local.nix` / `devenv.local.yaml` overrides are ignored. Existing Nix cache settings are used without changing daemon trust.
 

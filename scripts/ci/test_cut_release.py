@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -16,6 +17,32 @@ GIT = shutil.which('git')
 SPEC = importlib.util.spec_from_file_location('release_publisher', ROOT / 'scripts/ci/woodpecker-publish.py')
 PUBLISH = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(PUBLISH)
+
+
+def signing_child_environment(environment, scratch):
+    """Supply an absent Linux UID only inside disposable signing-fixture children."""
+    child = dict(environment)
+    if sys.platform != 'linux':
+        return child
+    import pwd
+    try:
+        pwd.getpwuid(os.getuid())
+        return child
+    except KeyError:
+        pass
+    library = Path(child.get('APPICON_TEST_NSS_WRAPPER', ''))
+    if (not library.is_absolute() or not library.is_relative_to('/nix/store')
+            or not library.resolve().is_relative_to('/nix/store') or not library.is_file()):
+        raise RuntimeError('unmapped signing-fixture UID requires declared APPICON_TEST_NSS_WRAPPER')
+    if any(child.get(name) for name in ('LD_PRELOAD', 'NSS_WRAPPER_PASSWD', 'NSS_WRAPPER_GROUP')):
+        raise RuntimeError('unmapped signing-fixture UID requires an uncontaminated child NSS environment')
+    passwd, group = scratch / 'fixture-passwd', scratch / 'fixture-group'
+    passwd.write_text(f'fixture:x:{os.getuid()}:{os.getgid()}:Release signing fixture:{scratch}:/bin/sh\n')
+    group.write_text(f'fixture:x:{os.getgid()}:\n')
+    passwd.chmod(0o600)
+    group.chmod(0o600)
+    child.update(LD_PRELOAD=str(library), NSS_WRAPPER_PASSWD=str(passwd), NSS_WRAPPER_GROUP=str(group))
+    return child
 
 
 class SignedReleaseHelper(unittest.TestCase):
@@ -31,6 +58,7 @@ class SignedReleaseHelper(unittest.TestCase):
         self.env.update(HOME=str(self.scratch), XDG_CONFIG_HOME=str(self.scratch / 'xdg'),
                         GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
                         GIT_TERMINAL_PROMPT='0', GIT_ALLOW_PROTOCOL='file')
+        self.env = signing_child_environment(self.env, self.scratch)
         self.git('init', '--bare', str(self.remote))
         self.git('init', '-b', 'main')
         for key, value in [('user.name', 'Release fixture'), ('user.email', 'fixture@example.invalid'),
@@ -217,6 +245,57 @@ class SignedReleaseHelper(unittest.TestCase):
         self.assertNotIn('Created and verified', result.stdout)
         self.assertNotIn('git push origin', result.stdout)
         self.assertIn('signature verification failed', result.stderr)
+
+
+class SigningChildIdentity(unittest.TestCase):
+    def test_known_uid_and_other_platform_preserve_environment_without_files(self):
+        with tempfile.TemporaryDirectory() as root:
+            scratch = Path(root)
+            environment = {'PATH': '/fixture'}
+            with patch.object(sys, 'platform', 'linux'), patch('pwd.getpwuid', return_value=object()):
+                child = signing_child_environment(environment, scratch)
+            self.assertEqual(child, environment)
+            self.assertIsNot(child, environment)
+            with patch.object(sys, 'platform', 'darwin'):
+                self.assertEqual(signing_child_environment(environment, scratch), environment)
+            self.assertEqual(list(scratch.iterdir()), [])
+
+    def test_unmapped_uid_requires_library_and_refuses_existing_preload_mapping(self):
+        with tempfile.TemporaryDirectory() as root, patch.object(sys, 'platform', 'linux'), \
+                patch('pwd.getpwuid', side_effect=KeyError):
+            scratch = Path(root)
+            for library in ['', 'relative.so', str(scratch / 'missing.so'), '/nix/store/missing/lib.so']:
+                with self.subTest(library=library), self.assertRaises(RuntimeError):
+                    signing_child_environment({'APPICON_TEST_NSS_WRAPPER': library}, scratch)
+            library = Path('/nix/store/fixture-nss-wrapper/lib/libnss_wrapper.so')
+            with patch.object(Path, 'is_file', return_value=True):
+                for name in ['LD_PRELOAD', 'NSS_WRAPPER_PASSWD', 'NSS_WRAPPER_GROUP']:
+                    with self.subTest(name=name), self.assertRaises(RuntimeError):
+                        signing_child_environment({'APPICON_TEST_NSS_WRAPPER': str(library), name: 'inherited'}, scratch)
+                with patch.object(Path, 'resolve', return_value=scratch / 'escaped.so'), self.assertRaises(RuntimeError):
+                    signing_child_environment({'APPICON_TEST_NSS_WRAPPER': str(library)}, scratch)
+            self.assertEqual(list(scratch.iterdir()), [])
+
+    def test_mapping_is_private_dynamic_and_child_only(self):
+        with tempfile.TemporaryDirectory() as root, patch.object(sys, 'platform', 'linux'), \
+                patch('pwd.getpwuid', side_effect=KeyError), patch.object(os, 'getuid', return_value=31847), \
+                patch.object(os, 'getgid', return_value=21847), patch.object(Path, 'is_file', return_value=True):
+            scratch = Path(root)
+            library = Path('/nix/store/fixture-nss-wrapper/lib/libnss_wrapper.so')
+            environment = {'APPICON_TEST_NSS_WRAPPER': str(library), 'PATH': '/fixture'}
+            original = dict(environment)
+            process_environment = dict(os.environ)
+            # Model a real versioned library symlink that stays in its Nix output.
+            with patch.object(Path, 'resolve', return_value=library.with_name('libnss_wrapper.so.0.3.5')):
+                child = signing_child_environment(environment, scratch)
+            self.assertEqual(environment, original)
+            self.assertEqual(dict(os.environ), process_environment)
+            self.assertEqual(child['LD_PRELOAD'], str(library))
+            self.assertEqual(Path(child['NSS_WRAPPER_PASSWD']).read_text(),
+                             f'fixture:x:31847:21847:Release signing fixture:{scratch}:/bin/sh\n')
+            self.assertEqual(Path(child['NSS_WRAPPER_GROUP']).read_text(), 'fixture:x:21847:\n')
+            self.assertEqual(Path(child['NSS_WRAPPER_PASSWD']).stat().st_mode & 0o777, 0o600)
+            self.assertEqual(Path(child['NSS_WRAPPER_GROUP']).stat().st_mode & 0o777, 0o600)
 
 
 class PreparedReleaseVersion(unittest.TestCase):
