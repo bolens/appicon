@@ -77,14 +77,19 @@ Fleet policy: <https://github.com/bolens/.github/blob/main/RELEASING.md>.
 
 ## Source lint
 
-The Source lint workflow checks maintained python, javascript, css, shell files selected by
-[`.github/source-lint.json`](.github/source-lint.json) on every pull request
-and push to `main`. Existing native checks remain part of the merge gate.
-Use the [shared local reproduction instructions](https://github.com/bolens/.github/blob/7603518f305fb76f7bb1b9979f2692521f633b82/docs/source-lint.md)
-with the same tooling revision pinned in
-[the workflow](.github/workflows/source-lint.yml). Review exclusions when adding
-source files; generated and imported files retain their native validation.
-Require the new check to pass on the current PR head before merging.
+Before both `WOODPECKER_LINUX_CI` and `WOODPECKER_PUBLISHING` are literal `true`,
+the hosted [Source lint workflow](.github/workflows/source-lint.yml) checks
+maintained Python, JavaScript, CSS and shell files selected by
+[`.github/source-lint.json`](.github/source-lint.json) on pull requests and main
+pushes. Keep enabled hosted checks and native checks green on the current head.
+
+After that coordinated cutover, the native `source-and-workflow-policy` step
+runs the same pinned shared source policy; the required
+`ci/woodpecker/pr/woodpecker` context remains the merge authority while the
+duplicate hosted job is retired. Follow the [delivery contract](docs/woodpecker-publishing.md)
+for operator flags and rollback. Use the [shared local reproduction instructions](https://github.com/bolens/.github/blob/7603518f305fb76f7bb1b9979f2692521f633b82/docs/source-lint.md)
+with the pinned tooling revision. Review exclusions when adding source files;
+generated and imported files retain their native validation.
 
 Native publisher enablement and rollback coordinate the GitHub flag with the
 Woodpecker `config_file` profile. Follow the [profile and drain sequence](docs/woodpecker-publishing.md#validation-only-and-publishing-profiles);
