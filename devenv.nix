@@ -12,7 +12,7 @@ in
   process.manager.implementation = "overmind";
   packages = with pkgs; [
     bashInteractive coreutils findutils gawk git gnugrep gnumake gnused
-    go_1_26 nodejs_24 python3 shellcheck cacert curl gnutar gzip unzip which stdenv.cc
+    go_1_26 nodejs_24 python3 shellcheck openssh cacert curl gnutar gzip unzip which stdenv.cc
   ];
   # Bind Go to its own standard library even when the host exports GOROOT.
   env.GOROOT = "${pkgs.go_1_26}/share/go";

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Assert flake / AUR / Nix package versions and checksums stay aligned.
+# Assert last-published flake / AUR / Nix package metadata stays aligned.
+# Prepared source VERSION can advance before its release assets exist.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

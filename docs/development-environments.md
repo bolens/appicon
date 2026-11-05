@@ -13,6 +13,11 @@ devenv test
 
 The shell supplies Go 1.26, Python, Node.js, Bash, Git, Make, ShellCheck, and common GNU utilities. `repo-check` runs Go tests, vet, formatting checks, and Python tooling tests. Run `make check` for the full repository gate; its existing network-backed tool checks remain explicit. Existing `flake.nix` packages and Home Manager integration remain available independently of devenv. Tests use local fixtures and isolated caches; do not supply live provider credentials.
 
+OpenSSH supplies `ssh-keygen` for release-helper regression tests in the shell
+and exported image; native CI installs `openssh-client` explicitly. Those tests
+create disposable signing keys and local Git repositories with file-only
+transport. They never use maintainer keys or create product release tags.
+
 Commit `devenv.lock` with deliberate input updates. Local state and `devenv.local.nix` / `devenv.local.yaml` overrides are ignored. Existing Nix cache settings are used without changing daemon trust.
 
 ## Docker and Podman
