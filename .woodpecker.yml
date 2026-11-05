@@ -1,4 +1,7 @@
 # Portable validation on Gitea-connected Woodpecker runners. No publication credentials.
+labels:
+  platform: linux/amd64
+  backend: docker
 when:
   - event:
       - push
@@ -6,7 +9,7 @@ when:
       - manual
 steps:
   - name: verify
-    image: golang:1.25.13-bookworm@sha256:e401dae1bf814e29204a8cb7915682e1780951e609ca0dd8865ee1937f510c48
+    image: golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
     environment:
       CI: 'true'
       GOMAXPROCS: '2'

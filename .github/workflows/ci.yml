@@ -43,7 +43,7 @@ permissions:
 
 env:
   FORCE_ALL: ${{ github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' }}
-  GO_VERSION: "1.25.13"
+  GO_VERSION: "1.26.10"
 
 jobs:
   changes:
