@@ -1,0 +1,23 @@
+# Portable validation on Gitea-connected Woodpecker runners. No publication credentials.
+when:
+  - event:
+      - push
+      - pull_request
+      - manual
+steps:
+  - name: verify
+    image: golang:1.25.13-bookworm@sha256:e401dae1bf814e29204a8cb7915682e1780951e609ca0dd8865ee1937f510c48
+    environment:
+      CI: 'true'
+      GOMAXPROCS: '2'
+      GOFLAGS: -p=2
+      XDG_CACHE_HOME: /tmp/appicon-cache
+      XDG_CONFIG_HOME: /tmp/appicon-config
+      XDG_DATA_HOME: /tmp/appicon-data
+    commands:
+      - |-
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update
+        apt-get install -y --no-install-recommends make python3 jq
+      - mkdir -p /tmp/appicon-cache /tmp/appicon-config /tmp/appicon-data
+      - make check-fast check-docs-crosslinks check-nightly-smoke
