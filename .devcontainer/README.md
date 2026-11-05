@@ -8,8 +8,9 @@ packages. Setup installs dependencies from this checkout's lockfiles and runs
 `bash .devcontainer/post-create.sh` after changing dependency lockfiles.
 
 Includes Go 1.27 for the CLI and MCP server, plus Python, Ruff, ShellCheck,
-actionlint, zizmor and Markdown tooling. Setup downloads the Go modules and installs Markdown tooling from the repository
-lockfile. `make check-markdownlint` uses that local version.
+actionlint, zizmor and Markdown tooling. Setup downloads the Go modules and
+installs Markdown tooling from the repository lockfile. `make check-markdownlint`
+uses that local version.
 
 Run from the workspace root:
 
