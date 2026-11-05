@@ -1,0 +1,18 @@
+# appicon
+
+appicon resolves application names to icons for Linux desktop tools. This site is the user guide for installation, resolution behavior, troubleshooting, search, and architecture.
+
+## Documentation
+
+- Home: https://bolens.github.io/appicon/
+- Install: https://bolens.github.io/appicon/install/
+- Guide: https://bolens.github.io/appicon/guide/
+- Help and troubleshooting: https://bolens.github.io/appicon/help/
+- Search: https://bolens.github.io/appicon/search/
+- Architecture: https://bolens.github.io/appicon/architecture/
+- Changelog: https://bolens.github.io/appicon/changelog/
+
+## Source
+
+- Repository: https://github.com/bolens/appicon
+- Issues: https://github.com/bolens/appicon/issues

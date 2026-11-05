@@ -1,0 +1,14 @@
+pre.syntax-shell{
+  --syntax-command:var(--green,var(--mint,var(--accent)));
+  --syntax-option:var(--orange,var(--amber,var(--signal,var(--accent))));
+  --syntax-string:var(--cyan,var(--blue,var(--accent)));
+  --syntax-variable:var(--violet,var(--coral,var(--signal,var(--accent))));
+  --syntax-operator:var(--orange,var(--signal,var(--accent)));
+  --syntax-comment:var(--muted,#7b8790);
+}
+.syntax-shell .sh-command{color:var(--syntax-command);font-weight:800}
+.syntax-shell .sh-option{color:var(--syntax-option)}
+.syntax-shell :is(.sh-string,.sh-url){color:var(--syntax-string)}
+.syntax-shell .sh-variable{color:var(--syntax-variable)}
+.syntax-shell .sh-operator{color:var(--syntax-operator);font-weight:800}
+.syntax-shell .sh-comment{color:var(--syntax-comment);font-style:italic}

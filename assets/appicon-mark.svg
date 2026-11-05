@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Appicon">
+  <rect width="512" height="512" rx="104" fill="#0b1725"/>
+  <path d="M116 214v-98h98M298 116h98v98M396 298v98h-98M214 396h-98v-98" fill="none" stroke="#7ab5ff" stroke-width="42"/>
+  <path d="m256 190 66 66-66 66-66-66z" fill="#ff795d"/>
+  <circle cx="256" cy="256" r="18" fill="#fff7ed"/>
+</svg>

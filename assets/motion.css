@@ -1,0 +1,7 @@
+.resolver-signal { display:block; width:min(100%,32rem); height:3.6rem; margin:1.4rem 0; overflow:visible; }
+.resolver-signal path { fill:none; stroke:var(--line); stroke-width:2; stroke-dasharray:.06 .03; animation:resolver-track 5.4s linear infinite; }
+.resolver-signal g circle { fill:var(--paper); stroke:var(--accent); stroke-width:2; }
+.resolver-signal .resolver-pulse { fill:var(--signal); stroke:var(--paper); stroke-width:2; filter:drop-shadow(0 0 7px color-mix(in srgb,var(--signal) 65%,transparent)); animation:resolver-pulse 5.4s cubic-bezier(.45,0,.2,1) infinite; }
+@keyframes resolver-track { to { stroke-dashoffset:-1; } }
+@keyframes resolver-pulse { 0%,8%{transform:translateX(0)}30%{transform:translateX(162px)}56%{transform:translateX(322px)}84%,100%{transform:translateX(484px)} }
+@media(prefers-reduced-motion:reduce){.resolver-signal *{animation:none!important}.resolver-signal .resolver-pulse{transform:translateX(484px)}}
