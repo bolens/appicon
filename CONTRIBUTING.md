@@ -46,3 +46,18 @@ Docs map: [docs/README.md](docs/README.md). Security: [SECURITY.md](SECURITY.md)
 
 See [the devcontainer guide](.devcontainer/README.md) for the repository toolchain,
 setup, checks and platform limits.
+
+## Woodpecker CI
+
+[.woodpecker.yml](.woodpecker.yml) runs on pushes, pull requests, and manual builds
+in a Gitea-connected Woodpecker installation. Either Linux Docker runner can
+execute the workflow. Container images are pinned by digest.
+
+The workflow runs go tests, vet and formatting, documentation crosslinks, and offline
+nightly-smoke regressions. Packaging, platform matrices and release publication continue
+in GitHub Actions.
+
+Activate this repository in Woodpecker after its GitHub source branch has been
+synchronized to Gitea. The existing GitHub checks remain required until their
+coverage and release responsibilities are migrated explicitly. Review image
+digest updates alongside the repository toolchain and lockfiles.
