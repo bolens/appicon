@@ -8,8 +8,9 @@ clone:
     settings:
       depth: 0
 when:
+- event: push
+  branch: main
 - event:
-  - push
   - pull_request
   - manual
   - tag

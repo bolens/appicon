@@ -2,6 +2,9 @@
 
 [Documentation](README.md) · [Release playbook](../RELEASING.md) · [Contributing](../CONTRIBUTING.md)
 
+Native push validation runs only on `main`; feature branches use their pull-request
+pipeline. Existing manual, tag and cron triggers remain available.
+
 ## Authority and migration
 
 GitHub `bolens/appicon` is the canonical release source. The direct GitHub forge
