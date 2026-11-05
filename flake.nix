@@ -2,7 +2,7 @@
   description = "appicon — resolve desktop and brand icons to local file paths";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
   };
 
   outputs =

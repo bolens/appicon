@@ -8,7 +8,7 @@
 
 ### Security
 
-- CI and release builds use the supported Go 1.26.10 toolchain.
+- CI, release builds, Nix source packages and the locked development shell use Go 1.26.10.
 
 ### Added
 
