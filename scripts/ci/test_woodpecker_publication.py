@@ -271,7 +271,9 @@ class PublicationGuards(unittest.TestCase):
             patch.object(publish, "run") as run,
             self.assertRaises(ValueError),
         ):
-            publish.finish_packaging("https://github.com/example/pr/1", self.sha)
+            publish.finish_packaging(
+                7, self.sha, "b" * 40, "chore/woodpecker-packaging-v1.2.3", 123, 42
+            )
         run.assert_not_called()
 
     def test_passed_checks_use_exact_head_protected_squash(self):
@@ -283,16 +285,121 @@ class PublicationGuards(unittest.TestCase):
         with (
             patch.object(subprocess, "run", return_value=result),
             patch.object(
+                publish, "api", side_effect=[self.packaging_pr(), {"sha": "b" * 40}]
+            ),
+            patch.object(
                 publish,
                 "run",
                 side_effect=["", '{"state":"MERGED","mergeCommit":{"oid":"a"}}'],
             ) as run,
         ):
-            publish.finish_packaging("https://github.com/example/pr/1", self.sha)
+            publish.finish_packaging(
+                7, self.sha, "b" * 40, "chore/woodpecker-packaging-v1.2.3", 123, 42
+            )
         command = run.call_args_list[0].args
         self.assertIn("--squash", command)
         self.assertNotIn("--admin", command)
         self.assertEqual(command[-2:], ("--match-head-commit", self.sha))
+
+    def packaging_pr(self):
+        repo = {"id": 123, "full_name": publish.REPOSITORY}
+        return {
+            "number": 7,
+            "state": "open",
+            "merged_at": None,
+            "user": {"id": 42},
+            "head": {
+                "repo": dict(repo),
+                "ref": "chore/woodpecker-packaging-v1.2.3",
+                "sha": self.sha,
+            },
+            "base": {"repo": dict(repo), "ref": "main", "sha": "b" * 40},
+        }
+
+    def test_packaging_pr_canonical_binding(self):
+        self.assertEqual(
+            publish.validate_packaging_pr(
+                self.packaging_pr(),
+                "chore/woodpecker-packaging-v1.2.3",
+                "b" * 40,
+                123,
+                42,
+            ),
+            self.sha,
+        )
+
+    def test_packaging_pr_fork_same_name_wrong_author_base_denied(self):
+        import copy
+
+        cases = []
+        pr = self.packaging_pr()
+        pr["head"]["repo"]["full_name"] = "fork/repository"
+        cases.append(pr)
+        pr = self.packaging_pr()
+        pr["head"]["repo"]["id"] = 999
+        cases.append(pr)
+        pr = self.packaging_pr()
+        pr["head"]["ref"] = "other"
+        cases.append(pr)
+        pr = self.packaging_pr()
+        pr["user"]["id"] = 99
+        cases.append(pr)
+        pr = self.packaging_pr()
+        pr["base"]["ref"] = "development"
+        cases.append(pr)
+        pr = self.packaging_pr()
+        pr["base"]["repo"]["id"] = 999
+        cases.append(pr)
+        pr = self.packaging_pr()
+        pr["base"]["sha"] = "c" * 40
+        cases.append(pr)
+        for pr in cases:
+            with self.subTest(pr=copy.deepcopy(pr)), self.assertRaises(ValueError):
+                publish.validate_packaging_pr(
+                    pr, "chore/woodpecker-packaging-v1.2.3", "b" * 40, 123, 42
+                )
+
+    def test_packaging_pr_unrelated_tree_or_paths_denied(self):
+        for outputs in [
+            ["", "wrong-tree"],
+            ["", "expected-tree", "unrelated/source.py"],
+        ]:
+            with (
+                self.subTest(outputs=outputs),
+                patch.object(publish, "run", side_effect=outputs),
+                self.assertRaises(ValueError),
+            ):
+                publish.verify_packaging_tree(
+                    self.sha, "b" * 40, "expected-tree", ["packaging/file"]
+                )
+
+    def test_half_cutover_retains_old_actions(self):
+        import re
+
+        path = Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml"
+        source = path.read_text()
+        match = re.search(
+            r"    if: (\(vars.WOODPECKER_LINUX_CI[^\n]+?vars.WOODPECKER_PUBLISHING != 'true'\))",
+            source,
+        )
+        self.assertIsNotNone(match)
+        guard = match[1]
+        for linux, publisher, expected in [
+            (False, False, True),
+            (True, False, True),
+            (False, True, True),
+            (True, True, False),
+        ]:
+            expression = (
+                guard.replace(
+                    "vars.WOODPECKER_LINUX_CI", repr("true" if linux else "false")
+                )
+                .replace(
+                    "vars.WOODPECKER_PUBLISHING", repr("true" if publisher else "false")
+                )
+                .replace("||", "or")
+            )
+            self.assertEqual(eval(expression, {"__builtins__": {}}, {}), expected)
 
     def test_pages_preserves_history_and_removes_stale_files(self):
         import tempfile

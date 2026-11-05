@@ -409,6 +409,59 @@ def verify_assets(record: dict):
                 raise ValueError("published asset digest mismatch")
 
 
+def approved_publisher_id():
+    identity = api(f"repos/{REPOSITORY}/actions/variables/WOODPECKER_PUBLISHER_ID")[
+        "value"
+    ]
+    if not re.fullmatch(r"[1-9][0-9]*", identity):
+        raise ValueError("invalid approved publisher identity")
+    return int(identity)
+
+
+def validate_packaging_pr(
+    pr, branch, base_sha, repository_id, publisher_id, require_base=True
+):
+    """A branch-name match alone never authorizes resuming or merging a PR."""
+    for side, ref in [("head", branch), ("base", "main")]:
+        repo = pr.get(side, {}).get("repo") or {}
+        if (
+            repo.get("id") != repository_id
+            or repo.get("full_name") != REPOSITORY
+            or pr[side].get("ref") != ref
+        ):
+            raise ValueError(
+                "packaging PR is not a canonical repository/base/head binding"
+            )
+    if pr.get("user", {}).get("id") != publisher_id:
+        raise ValueError("packaging PR author is not the approved publisher")
+    if type(pr.get("number")) is not int or pr["number"] < 1:
+        raise ValueError("invalid packaging PR number")
+    if require_base and pr["base"].get("sha") != base_sha:
+        raise ValueError(
+            "packaging PR is stale against main; update and revalidate it through normal review"
+        )
+    if not re.fullmatch(r"[0-9a-f]{40}", pr["head"].get("sha", "")):
+        raise ValueError("invalid packaging PR source")
+    if pr.get("state") != "open" and not pr.get("merged_at"):
+        raise ValueError(
+            "packaging PR was closed without merge; inspect before recovery"
+        )
+    return pr["head"]["sha"]
+
+
+def verify_packaging_tree(head_sha, base_sha, expected_tree, paths):
+    run("git", "fetch", "--no-tags", f"https://github.com/{REPOSITORY}.git", head_sha)
+    if run("git", "rev-parse", "FETCH_HEAD^{tree}") != expected_tree:
+        raise ValueError(
+            "packaging PR tree differs from the freshly generated candidate"
+        )
+    changed = set(run("git", "diff", "--name-only", base_sha, head_sha).splitlines())
+    if changed - set(paths):
+        raise ValueError(
+            "packaging PR contains changes outside the generated-file allowlist"
+        )
+
+
 def packaging():
     sha, tag = guard("tag")
     record = json.loads((OUTPUT / "release-manifest.json").read_text())
@@ -416,31 +469,15 @@ def packaging():
         raise ValueError("packaging manifest belongs to another candidate")
     verify_assets(record)
     branch = f"chore/woodpecker-packaging-{tag}"
-    prior = json.loads(
-        run(
-            "gh",
-            "pr",
-            "list",
-            "--repo",
-            REPOSITORY,
-            "--state",
-            "all",
-            "--head",
-            branch,
-            "--json",
-            "url,state,headRefOid",
-        )
+    repository_id = api(f"repos/{REPOSITORY}")["id"]
+    publisher_id = approved_publisher_id()
+    # Query canonical owner/base, then independently validate full repository IDs.
+    owner = REPOSITORY.split("/")[0]
+    prior = api(
+        f"repos/{REPOSITORY}/pulls?state=all&head={owner}:{branch}&base=main&per_page=100"
     )
-    if prior:
-        if len(prior) != 1 or prior[0]["state"] == "CLOSED":
-            raise ValueError(
-                "packaging branch has ambiguous or closed PR history; inspect before recovery"
-            )
-        if prior[0]["state"] == "MERGED":
-            return
-        finish_packaging(prior[0]["url"], prior[0]["headRefOid"])
-        return
-    # Keep generated packaging updates reviewable; never push or bypass main.
+    if len(prior) > 1:
+        raise ValueError("ambiguous packaging PR history; inspect before recovery")
     import tempfile
     import urllib.request
     import shutil
@@ -462,10 +499,28 @@ def packaging():
             record["assets"][f"appicon_{tag}_linux_{arch}.tar.gz"]
             for arch in ["amd64", "arm64"]
         ]
-    # Run the generator on fresh main, not the detached tag checkout.
-    run("git", "fetch", "origin", "main")
-    branch = f"chore/woodpecker-packaging-{tag}"
-    run("git", "checkout", "--no-track", "-b", branch, "origin/main")
+        paths = [
+            "flake.nix",
+            "nix/packages.nix",
+            "packaging/aur/appicon/PKGBUILD",
+            "packaging/aur/appicon/.SRCINFO",
+            "packaging/aur/appicon-bin/PKGBUILD",
+            "packaging/aur/appicon-bin/.SRCINFO",
+            "packaging/aur/appicon-git/PKGBUILD",
+            "packaging/aur/appicon-git/.SRCINFO",
+        ]
+    else:
+        paths = ["packaging/arch/PKGBUILD", "packaging/arch/.SRCINFO"]
+    # Always regenerate on a fresh canonical base before trusting an existing PR.
+    run(
+        "git",
+        "fetch",
+        "--no-tags",
+        f"https://github.com/{REPOSITORY}.git",
+        "refs/heads/main",
+    )
+    base_sha = run("git", "rev-parse", "FETCH_HEAD")
+    run("git", "checkout", "--detach", base_sha)
     if REPOSITORY == "bolens/appicon":
         current_version = re.search(
             r'(?m)^\s*version\s*=\s*"([^"]+)";', Path("flake.nix").read_text()
@@ -477,14 +532,42 @@ def packaging():
             "main has advanced to another release version; do not downgrade packaging"
         )
     run(*command)
-    paths = (
-        ["packaging", "flake.nix"]
-        if REPOSITORY == "bolens/appicon"
-        else ["packaging/arch"]
-    )
+    changed = set(run("git", "diff", "--name-only", "HEAD").splitlines())
+    if changed - set(paths):
+        raise ValueError(
+            "generator changed files outside its explicit packaging allowlist"
+        )
     run("git", "add", "--", *paths)
-    if not run("git", "diff", "--cached", "--name-only"):
+    expected_tree = run("git", "write-tree")
+    if prior:
+        pr = prior[0]
+        completed = bool(pr.get("merged_at")) and not changed
+        head = validate_packaging_pr(
+            pr,
+            branch,
+            base_sha,
+            repository_id,
+            publisher_id,
+            require_base=not completed,
+        )
+        verify_packaging_tree(head, base_sha, expected_tree, paths)
+        if pr.get("merged_at"):
+            if changed:
+                raise ValueError(
+                    "previous packaging PR merged, but current packaging differs; use a new reviewed repair PR"
+                )
+            merged = pr.get("merge_commit_sha", "")
+            if not re.fullmatch(r"[0-9a-f]{40}", merged):
+                raise ValueError("merged packaging PR lacks an immutable merge receipt")
+            run("git", "merge-base", "--is-ancestor", merged, base_sha)
+            return
+        finish_packaging(
+            pr["number"], head, base_sha, branch, repository_id, publisher_id
+        )
         return
+    if not changed:
+        return
+    run("git", "checkout", "--no-track", "-b", branch)
     run(
         "git",
         "-c",
@@ -495,19 +578,22 @@ def packaging():
         "-m",
         f"chore(packaging): refresh {tag} immutable release hashes",
     )
-    remote = run("git", "ls-remote", "origin", f"refs/heads/{branch}")
+    if run("git", "rev-parse", "HEAD^{tree}") != expected_tree:
+        raise ValueError(
+            "committed packaging tree differs from verified generated output"
+        )
+    remote = run(
+        "git",
+        "ls-remote",
+        f"https://github.com/{REPOSITORY}.git",
+        f"refs/heads/{branch}",
+    )
     if remote:
-        run("git", "fetch", "origin", branch)
-        if run("git", "rev-parse", "FETCH_HEAD^{tree}") != run(
-            "git", "rev-parse", "HEAD^{tree}"
-        ):
-            raise ValueError(
-                "existing packaging branch differs from candidate; inspect it rather than force-push"
-            )
-        expected_head = run("git", "rev-parse", "FETCH_HEAD")
+        head = remote.split()[0]
+        verify_packaging_tree(head, base_sha, expected_tree, paths)
     else:
+        head = run("git", "rev-parse", "HEAD")
         push(branch)
-        expected_head = run("git", "rev-parse", "HEAD")
     pr_url = run(
         "gh",
         "pr",
@@ -523,11 +609,25 @@ def packaging():
         "--body",
         f"Generated from signed tag {tag} ({sha}) and verified published asset hashes. Require current checks and protected squash merge.",
     )
-    finish_packaging(pr_url, expected_head)
+    number = pr_url.rsplit("/", 1)[-1]
+    if not re.fullmatch(r"[1-9][0-9]*", number):
+        raise ValueError("host did not return an unambiguous packaging PR")
+    pr = api(f"repos/{REPOSITORY}/pulls/{number}")
+    if validate_packaging_pr(pr, branch, base_sha, repository_id, publisher_id) != head:
+        raise ValueError("packaging PR head changed during creation")
+    finish_packaging(number, head, base_sha, branch, repository_id, publisher_id)
 
 
-def finish_packaging(pr_url: str, expected_head: str):
+def finish_packaging(
+    pr_number,
+    expected_head: str,
+    base_sha: str,
+    branch: str,
+    repository_id: int,
+    publisher_id: int,
+):
     """Wait for all required checks, then use the host's protected squash merge."""
+    pr_url = str(pr_number)
     deadline = time.monotonic() + 2700
     while time.monotonic() < deadline:
         token_budget(60)
@@ -569,6 +669,20 @@ def finish_packaging(pr_url: str, expected_head: str):
                 and any(check["bucket"] == "pass" for check in checks)
                 and all(check["bucket"] in {"pass", "skipping"} for check in checks)
             ):
+                current = api(f"repos/{REPOSITORY}/pulls/{pr_number}")
+                if (
+                    validate_packaging_pr(
+                        current, branch, base_sha, repository_id, publisher_id
+                    )
+                    != expected_head
+                ):
+                    raise ValueError(
+                        "packaging PR source changed while waiting for checks"
+                    )
+                if api(f"repos/{REPOSITORY}/commits/main")["sha"] != base_sha:
+                    raise ValueError(
+                        "main advanced while packaging checks ran; revalidate on the new base"
+                    )
                 run(
                     "gh",
                     "pr",

@@ -14,17 +14,22 @@ Both Linux Docker agents can run the workflow. Its containers have no host Docke
 socket, added capabilities, host volumes or registry credentials. Native macOS
 `devenv` checks remain in GitHub Actions. Existing Linux Docker/devenv checks also
 remain there until a safe dedicated builder is available. GitHub metadata
-assignment and Spec Kit update PR automation remain in Actions.
+assignment and Spec Kit update PR automation remain in Actions. Optional manual
+pack-bundle artifact storage remains there until a native retained-artifact
+consumer is available; it cannot attach release assets after publisher cutover.
 
 Migration has three explicit host settings. Until the coordinator changes them,
 existing Actions jobs continue and publication remains disabled in Woodpecker:
 
 | Repository variable | Cutover condition | Effect |
 | --- | --- | --- |
-| `WOODPECKER_LINUX_CI=true` | Exact candidate passes native checks; required check settings migrated | Retires portable Linux Actions jobs, preserving hosted exceptions |
+| `WOODPECKER_LINUX_CI=true` | Exact candidate passes native checks; required check settings migrated | Retires portable Linux Actions jobs only when publication is also native, preserving hosted exceptions |
 | `WOODPECKER_PUBLISHER_ID` | Immutable user ID of the approved App publisher | Rejects foreign draft/release authors |
 | `WOODPECKER_PUBLISHING=true` | Native validation green, scoped credential installed, Pages branch configured, publication contract reviewed | Selects Woodpecker as the sole release and Pages builder/publisher |
 
+Move publication first while both providers still validate; retire portable Linux
+Actions only after native contexts pass and required checks have migrated. A
+half-cutover keeps the old Linux jobs so the old release gate cannot lose CI.
 Never flip these flags solely because YAML parses. Require a real GitHub-forge
 pull-request and main pipeline, verify external status contexts and the retained
 macOS job, and exercise credential-free release/Pages contracts. Existing public
@@ -92,7 +97,15 @@ actual Woodpecker build. Do not describe the bridge as the compiler.
 The packaging phase generates hash updates on fresh canonical main, refusing a
 version downgrade, and opens or resumes its normal pull request. It waits for
 required native checks, then requests protected squash merge with an exact head
-SHA. Host review/conversation requirements still apply; no admin bypass is used.
+SHA. Existing PRs must have canonical numeric repository IDs on both sides,
+`main` as base, the deterministic head branch and the approved App author. The
+helper regenerates an expected tree on fresh main and verifies the PR tree and
+exact generated-file allowlist before trusting its checks. Stale, forked or
+unrelated branches are rejected for normal reviewed repair, never force-updated.
+Completed-PR recovery also requires the original head tree to match the current
+expected tree. Even an unrelated later main change can therefore require manual
+reviewed recovery rather than automatic success.
+Host review/conversation requirements still apply; no admin bypass is used.
 It verifies the merged state before reporting completion. Actual
 `aur.archlinux.org` pushes remain the existing explicit maintainer operation.
 No AUR account ownership or SSH key is assumed by this pipeline. A failed or
