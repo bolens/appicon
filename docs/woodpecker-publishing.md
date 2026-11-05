@@ -193,6 +193,13 @@ GitHub's branch-based Pages hosting is a platform service, not a second custom
 site builder. To refresh release metadata, run the next reviewed main change;
 release publication itself does not create an unreviewed main commit.
 
+The pinned Lychee checker keeps the same accepted statuses and changelog
+exclusion. Its adapter repeats a complete scan only when every reported failure
+is a typed HTTP 5xx response: at most three 180-second scans with 2-second and
+4-second waits, preserving each original report and an 8 MiB combined output
+bound per scan. Permanent or mixed failures, non-HTTP errors, unknown or malformed
+reports, and timeouts fail immediately; persistent 5xx responses still fail.
+
 ## Verification and recovery
 
 Run `python3 -m unittest discover -s scripts/ci -p test_woodpecker_publication.py`,

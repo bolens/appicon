@@ -31,7 +31,12 @@ These trees are **reference copies** in this repo — the AUR git repos are cano
 
 Nix mirrors the same three styles as flake attrs `appicon`, `appicon-bin`, and `appicon-git` — see [nix/README.md](../../nix/README.md).
 
-CI: `make check-packaging-versions` keeps flake / AUR / Nix versions + binary checksums aligned; `make build-packaging` (and CI matrix jobs) smoke-build all three styles; `make check-aur-publish` refuses `SKIP` checksums on stable/bin.
+CI: `make check-packaging-versions` keeps the last-published flake / AUR / Nix
+versions and binary checksums aligned. Prepared source `VERSION` may advance
+before those assets exist; the post-publication generator then advances this
+package group from verified hashes without changing `VERSION`.
+`make build-packaging` smoke-builds all three styles; `make check-aur-publish`
+refuses `SKIP` checksums on stable/bin. AUR SSH publication remains manual.
 
 ## See also
 

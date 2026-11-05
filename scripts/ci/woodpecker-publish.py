@@ -235,6 +235,14 @@ def context(event: str) -> tuple[str, str]:
     return sha, tag
 
 
+def prepared_version():
+    """Source release intent is independent of last-published package hashes."""
+    match = re.fullmatch(r"([0-9]+\.[0-9]+\.[0-9]+)\n?", Path("VERSION").read_text())
+    if match is None:
+        raise ValueError("VERSION must contain exactly one stable X.Y.Z version")
+    return match[1]
+
+
 def verify_tag_source(sha, tag):
     ref = api(f"repos/{REPOSITORY}/git/ref/tags/{tag}")["object"]
     if ref["type"] != "tag":
@@ -249,12 +257,7 @@ def verify_tag_source(sha, tag):
     relation = api(f"repos/{REPOSITORY}/compare/{sha}...main")
     if relation["status"] not in {"ahead", "identical"}:
         raise ValueError("tagged source is not on canonical main")
-    if REPOSITORY == "bolens/appicon":
-        version = re.search(
-            r'(?m)^\s*version\s*=\s*"([^"]+)";', Path("flake.nix").read_text()
-        )[1]
-    else:
-        version = Path("VERSION").read_text().strip()
+    version = prepared_version()
     if tag != f"v{version}":
         raise ValueError("release tag differs from the prepared source version")
 
@@ -638,12 +641,7 @@ def packaging():
     )
     base_sha = run("git", "rev-parse", "FETCH_HEAD")
     run("git", "checkout", "--detach", base_sha)
-    if REPOSITORY == "bolens/appicon":
-        current_version = re.search(
-            r'(?m)^\s*version\s*=\s*"([^"]+)";', Path("flake.nix").read_text()
-        )[1]
-    else:
-        current_version = Path("VERSION").read_text().strip()
+    current_version = prepared_version()
     if current_version != tag[1:]:
         raise ValueError(
             "main has advanced to another release version; do not downgrade packaging"

@@ -22,7 +22,7 @@ trap 'kill "$server" 2>/dev/null || true' EXIT
 npx --yes lighthouse@12.8.2 http://127.0.0.1:4173/ --only-categories=accessibility --chrome-flags='--headless --no-sandbox' --preset=desktop --output=json --output-path=lighthouse.json --quiet
 python3 -c 'import json; score=json.load(open("lighthouse.json"))["categories"]["accessibility"]["score"]; print(f"accessibility={score:.0%}"); assert score >= 0.95'
 # Keep the same external-link allowance and changelog exclusion as Pages links.
-lychee --no-progress --accept 200,429 --exclude '^https://bolens[.]github[.]io/appicon/changelog/$' '_site/**/*.html'
+python3 scripts/ci/check-pages-links.py
 kill "$server"
 trap - EXIT)
 rm -rf .woodpecker-out/site

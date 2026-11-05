@@ -84,7 +84,13 @@ nix flake lock   # needs network once
 nix build
 ```
 
-On each GitHub release, update `version` and the `binHashes` in [packages.nix](packages.nix) from `SHA256SUMS` (convert with `nix hash convert --hash-algo sha256 --to sri <hex>`).
+On each verified GitHub release, the packaging generator updates `version` and
+the `binHashes` in [packages.nix](packages.nix) from accepted assets. These describe
+the last published package group; prepared source `VERSION` may advance first.
+The fixed-version source package retains that published package version, and
+`appicon-git` adds its revision suffix. Tagged release archives instead embed the
+exact release tag. Do not point `appicon-bin` at an unpublished version or invent
+future hashes. See [the release playbook](../RELEASING.md).
 
 CI: `make check-packaging-versions` aligns flake / AUR / Nix hashes; the `packaging-nix-build` matrix runs `nix build .#{appicon,appicon-git,appicon-bin}`.
 
