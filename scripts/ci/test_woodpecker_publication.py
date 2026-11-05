@@ -633,6 +633,7 @@ class PublisherLeaseTests(unittest.TestCase):
         self.assertEqual(
             request.full_url, "https://woodpecker.bolens.dev/publisher/credentials"
         )
+        self.assertEqual(request.get_header("User-agent"), "woodpecker-publisher/1")
         body = json.loads(request.data)
         self.assertEqual(
             {key: body[key] for key in ["lease", "repository", "commit", "purpose"]},

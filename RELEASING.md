@@ -75,3 +75,7 @@ with the same tooling revision pinned in
 [the workflow](.github/workflows/source-lint.yml). Review exclusions when adding
 source files; generated and imported files retain their native validation.
 Require the new check to pass on the current PR head before merging.
+
+Native publisher enablement and rollback coordinate the GitHub flag with the
+Woodpecker `config_file` profile. Follow the [profile and drain sequence](docs/woodpecker-publishing.md#validation-only-and-publishing-profiles);
+the publishing flag alone is not a complete rollback.

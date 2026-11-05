@@ -151,7 +151,7 @@ def credentials(minimum=120):
                 "request_id": secrets.token_hex(16),
             }
         ).encode(),
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": "application/json", "User-Agent": "woodpecker-publisher/1"},
     )
     _mints += 1
     try:

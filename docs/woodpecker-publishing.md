@@ -22,14 +22,14 @@ assignment and Spec Kit update PR automation remain in Actions. Optional manual
 pack-bundle artifact storage remains there until a native retained-artifact
 consumer is available; it cannot attach release assets after publisher cutover.
 
-Migration has three explicit host settings. Until the coordinator changes them,
-existing Actions jobs continue and publication remains disabled in Woodpecker:
+Migration coordinates these GitHub variables with the Woodpecker configuration
+profile and push-cancellation policy. Existing Actions remain active by default:
 
 | Repository variable | Cutover condition | Effect |
 | --- | --- | --- |
 | `WOODPECKER_LINUX_CI=true` | Exact candidate passes native checks; required check settings migrated | Retires portable Linux Actions jobs only when publication is also native, preserving hosted exceptions |
 | `WOODPECKER_PUBLISHER_ID` | Immutable user ID of the approved App publisher | Rejects foreign draft/release authors |
-| `WOODPECKER_PUBLISHING=true` | Native validation green, scoped credential installed, Pages branch configured, publication contract reviewed | Selects Woodpecker as the sole release and Pages builder/publisher |
+| `WOODPECKER_PUBLISHING=true` | Native validation green, scoped credential installed, Pages branch configured, publication contract reviewed | Authorizes native publication with the full profile and disables the legacy publisher |
 
 Move publication first while both providers still validate; retire portable Linux
 Actions only after native contexts pass and required checks have migrated. A
@@ -38,6 +38,49 @@ Never flip these flags solely because YAML parses. Require a real GitHub-forge
 pull-request and main pipeline, verify external status contexts and the retained
 macOS job, and exercise credential-free release/Pages contracts. Existing public
 versions are immutable. This migration creates no tag, release or AUR publication.
+
+## Validation-only and publishing profiles
+
+Woodpecker's repository `config_file` setting selects one literal file or a
+trailing-slash directory; it does not accept a list or glob. Default-off and
+rollback use `.woodpecker-validation/`. Its `woodpecker.yml` is the exact generated
+prefix of canonical `.woodpecker.yml` before the publication-boundary marker.
+The basename preserves the existing `woodpecker` status identity, and every
+validation gate, clone pin and event selector remains in that prefix. It contains
+no publisher secret references. Normal trusted-clone authentication is unchanged.
+
+Regenerate after changing the canonical validation steps:
+
+```sh
+python3 scripts/ci/sync-woodpecker-validation.py --write
+python3 scripts/ci/sync-woodpecker-validation.py --check
+```
+
+Native source-policy checks and normal push hooks reject a missing or stale
+profile. Edit the canonical file and regenerate; do not hand-edit the profile.
+The full `.woodpecker.yml` intentionally fails closed if publishing authorization
+is withheld. Empty broker responses do not make selected publishers silently
+succeed, and no placeholder lease or registry credential is configured.
+
+Profile changes affect a newly created genuine main-push pipeline or a new manual
+validation run. Restart reuses archived configuration and cannot activate a new
+profile. Cancel or drain queued/restarted pipelines with the old configuration.
+
+For enablement, first drain active producers and hosted signing/merge bridges.
+After exact-source validation, broker and Pages prerequisites are accepted, set
+GitHub `WOODPECKER_PUBLISHING=true`, select full `.woodpecker.yml`, and remove only
+`push` from Woodpecker `cancel_previous_pipeline_events` before the first real
+main publication. Preserve pull-request cancellation; tag cancellation remains
+disabled. Read back all settings before merging the protected source. Keep the
+Linux retirement flag off until exact merged-main checks and protection migration
+are complete.
+
+For rollback, drain native producers and hosted bridges and inspect pending
+receipts. Select `.woodpecker-validation/` **first**, then set GitHub
+`WOODPECKER_PUBLISHING=false` to restore the legacy publisher. Restore the prior
+push-cancellation policy only after draining. Read back both the profile and flag;
+the flag alone does not select a healthy validation-only pipeline. These operator
+settings do not create a release or authorize reusing a published tag.
 
 ## Credentials and event boundaries
 

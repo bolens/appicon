@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
+python3 scripts/ci/sync-woodpecker-validation.py --check
+python3 -m unittest discover -s scripts/ci -p test_woodpecker_validation_profile.py
 out="$PWD/.woodpecker-out"
 mkdir -p "$out"
 python3 -m venv "$out/lint-venv"
