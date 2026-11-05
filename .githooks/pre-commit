@@ -3,7 +3,14 @@ set -euo pipefail
 
 root=$(git rev-parse --show-toplevel)
 cd "$root"
-go_root=$(mise where go@1.25.13)
+# Match the repository's existing CI toolchain pin.
+go_version=$(sed -nE 's/^  GO_VERSION: "([0-9]+\.[0-9]+\.[0-9]+)"$/\1/p' .github/workflows/ci.yml)
+go_declarations=$(grep -cE '^[[:space:]]+GO_VERSION[[:space:]]*:' .github/workflows/ci.yml || true)
+if [[ "$go_declarations" != 1 || ! "$go_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo 'cannot determine the unique CI Go toolchain pin' >&2
+  exit 1
+fi
+go_root=$(mise where "go@$go_version")
 export GOROOT="$go_root"
 export PATH="$go_root/bin:$PATH"
 git diff --cached --check
