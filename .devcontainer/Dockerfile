@@ -47,7 +47,7 @@ COPY --from=hadolint /bin/hadolint /usr/local/bin/hadolint
 COPY --from=golang /usr/local/go/ /usr/local/go/
 ENV PATH="/usr/local/go/bin:/home/vscode/go/bin:${PATH}"
 
-RUN npm install --global corepack@0.36.0 markdownlint-cli2@0.23.2 \
+RUN npm install --global corepack@0.36.0 \
     && corepack enable \
     && UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin uv tool install zizmor==1.30.0
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 COREPACK_ENABLE_DOWNLOAD_PROMPT=0
