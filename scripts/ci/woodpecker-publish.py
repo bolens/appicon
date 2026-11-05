@@ -20,6 +20,63 @@ class PublicationDisabled(ValueError):
     """A reviewed migration has not selected this publisher yet."""
 
 
+_coordinator_token = None
+_coordinator_request = None
+
+
+def authorize_coordinator():
+    """Accept only the protected signed-tag GitHub workflow, never a PR credential."""
+    sha = os.environ.get("GITHUB_SHA", "")
+    tag = os.environ.get("GITHUB_REF_NAME", "")
+    expected = {
+        "GITHUB_ACTIONS": "true",
+        "GITHUB_REPOSITORY": REPOSITORY,
+        "GITHUB_EVENT_NAME": "workflow_dispatch",
+        "GITHUB_REF_TYPE": "tag",
+        "GITHUB_REF": f"refs/tags/{tag}",
+        "GITHUB_WORKFLOW_REF": f"{REPOSITORY}/.github/workflows/release.yml@refs/tags/{tag}",
+        "WOODPECKER_PUBLISHING": "true",
+    }
+    if any(os.environ.get(key) != value for key, value in expected.items()):
+        raise ValueError(
+            "merge coordination requires the canonical enabled signed-tag workflow"
+        )
+    if not re.fullmatch(r"[0-9a-f]{40}", sha) or not re.fullmatch(
+        r"v[0-9]+\.[0-9]+\.[0-9]+", tag
+    ):
+        raise ValueError("invalid coordinator release source")
+    if run("git", "rev-parse", "HEAD") != sha or run(
+        "git", "status", "--porcelain", "--untracked-files=no"
+    ):
+        raise ValueError("coordinator checkout differs from the signed-tag source")
+    request = {
+        "repository": REPOSITORY,
+        "commit": sha,
+        "tag": tag,
+        "pr": os.environ.get("PACKAGING_PR", ""),
+        "head": os.environ.get("PACKAGING_HEAD", ""),
+        "base": os.environ.get("PACKAGING_BASE", ""),
+        "tree": os.environ.get("PACKAGING_TREE", ""),
+    }
+    if not re.fullmatch(r"[1-9][0-9]*", request["pr"]) or any(
+        not re.fullmatch(r"[0-9a-f]{40}", request[key])
+        for key in ["head", "base", "tree"]
+    ):
+        raise ValueError("invalid immutable packaging merge intent")
+    identity = os.environ.get("WOODPECKER_PUBLISHER_ID", "")
+    token = os.environ.get("GITHUB_COORDINATOR_TOKEN", "")
+    if (
+        not re.fullmatch(r"[1-9][0-9]*", identity)
+        or not token
+        or any(ord(c) < 33 or ord(c) > 126 for c in token)
+    ):
+        raise ValueError("coordinator publisher identity or platform token unavailable")
+    global _coordinator_token, _coordinator_request
+    _coordinator_token = os.environ.pop("GITHUB_COORDINATOR_TOKEN")
+    _coordinator_request = request
+    return request
+
+
 BROKER_URL = "https://woodpecker.bolens.dev/publisher/credentials"
 _cached_token = None
 _cached_expiration = None
@@ -30,6 +87,7 @@ def clean_environment():
     blocked = {
         "GH_TOKEN",
         "GITHUB_TOKEN",
+        "GITHUB_COORDINATOR_TOKEN",
         "GH_ENTERPRISE_TOKEN",
         "GITHUB_ENTERPRISE_TOKEN",
         "GH_DEBUG",
@@ -58,6 +116,8 @@ def clean_environment():
 
 def credentials(minimum=120):
     """Redeem the pipeline-bound lease; keep short-lived App tokens only in memory."""
+    if _coordinator_token is not None:
+        return _coordinator_token
     from datetime import datetime, timezone
     import secrets
     import urllib.request
@@ -166,9 +226,37 @@ def context(event: str) -> tuple[str, str]:
         raise ValueError("publication denied: invalid release tag")
     if event == "tag" and os.environ.get("CI_COMMIT_REF") != f"refs/tags/{tag}":
         raise ValueError("publication denied: release ref differs from tag")
-    if event == "push" and (os.environ.get("CI_COMMIT_BRANCH") != "main" or tag):
+    if event == "push" and (
+        os.environ.get("CI_COMMIT_BRANCH") != "main"
+        or tag
+        or os.environ.get("CI_COMMIT_REF") != "refs/heads/main"
+    ):
         raise ValueError("publication denied: Pages requires main push")
     return sha, tag
+
+
+def verify_tag_source(sha, tag):
+    ref = api(f"repos/{REPOSITORY}/git/ref/tags/{tag}")["object"]
+    if ref["type"] != "tag":
+        raise ValueError("release tag must be signed and annotated")
+    signed = api(f"repos/{REPOSITORY}/git/tags/{ref['sha']}")
+    if (
+        not signed["verification"]["verified"]
+        or signed["object"]["type"] != "commit"
+        or signed["object"]["sha"] != sha
+    ):
+        raise ValueError("release tag signature/source verification failed")
+    relation = api(f"repos/{REPOSITORY}/compare/{sha}...main")
+    if relation["status"] not in {"ahead", "identical"}:
+        raise ValueError("tagged source is not on canonical main")
+    if REPOSITORY == "bolens/appicon":
+        version = re.search(
+            r'(?m)^\s*version\s*=\s*"([^"]+)";', Path("flake.nix").read_text()
+        )[1]
+    else:
+        version = Path("VERSION").read_text().strip()
+    if tag != f"v{version}":
+        raise ValueError("release tag differs from the prepared source version")
 
 
 def guard(event: str) -> tuple[str, str]:
@@ -178,27 +266,7 @@ def guard(event: str) -> tuple[str, str]:
     if setting["value"] != "true":
         raise PublicationDisabled("Woodpecker publication has not been enabled")
     if event == "tag":
-        ref = api(f"repos/{REPOSITORY}/git/ref/tags/{tag}")["object"]
-        if ref["type"] != "tag":
-            raise ValueError("release tag must be signed and annotated")
-        signed = api(f"repos/{REPOSITORY}/git/tags/{ref['sha']}")
-        if (
-            not signed["verification"]["verified"]
-            or signed["object"]["type"] != "commit"
-            or signed["object"]["sha"] != sha
-        ):
-            raise ValueError("release tag signature/source verification failed")
-        relation = api(f"repos/{REPOSITORY}/compare/{sha}...main")
-        if relation["status"] not in {"ahead", "identical"}:
-            raise ValueError("tagged source is not on canonical main")
-        if REPOSITORY == "bolens/appicon":
-            version = re.search(
-                r'(?m)^\s*version\s*=\s*"([^"]+)";', Path("flake.nix").read_text()
-            )[1]
-        else:
-            version = Path("VERSION").read_text().strip()
-        if tag != f"v{version}":
-            raise ValueError("release tag differs from the prepared source version")
+        verify_tag_source(sha, tag)
     elif api(f"repos/{REPOSITORY}/commits/main")["sha"] != sha:
         raise ValueError("superseded Pages deployment")
     return sha, tag
@@ -221,12 +289,7 @@ def manifest() -> dict:
 
 
 def publisher_identity(release: dict):
-    identity = api(f"repos/{REPOSITORY}/actions/variables/WOODPECKER_PUBLISHER_ID")[
-        "value"
-    ]
-    if not re.fullmatch(r"[1-9][0-9]*", identity) or release.get("author", {}).get(
-        "id"
-    ) != int(identity):
+    if release.get("author", {}).get("id") != approved_publisher_id():
         raise ValueError("release author differs from the approved publisher identity")
 
 
@@ -375,6 +438,36 @@ def draft() -> dict:
     return record
 
 
+def verify_signed_checksums(directory, record):
+    """Bind packaging hashes to the retained tag-specific keyless signing identity."""
+    run(
+        "cosign",
+        "verify-blob",
+        "--bundle",
+        str(directory / "SHA256SUMS.sigstore.json"),
+        "--certificate-identity",
+        f"https://github.com/{REPOSITORY}/.github/workflows/release.yml@refs/tags/{record['tag']}",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        str(directory / "SHA256SUMS"),
+    )
+    expected = {
+        name: digest
+        for name, digest in record["assets"].items()
+        if name != "SHA256SUMS"
+    }
+    signed = {}
+    for line in (directory / "SHA256SUMS").read_text().splitlines():
+        match = re.fullmatch(r"([0-9a-f]{64})  ([A-Za-z0-9_.-]+)", line)
+        if not match or match[2] in signed:
+            raise ValueError("unsafe or duplicate signed checksum subject")
+        signed[match[2]] = match[1]
+    if signed != expected:
+        raise ValueError(
+            "packaging hashes differ from the tag-signed checksum subjects"
+        )
+
+
 def verify_assets(record: dict):
     release = api(f"repos/{REPOSITORY}/releases/tags/{record['tag']}")
     if release["draft"] or release["target_commitish"] != record["commit"]:
@@ -407,9 +500,14 @@ def verify_assets(record: dict):
                 != expected
             ):
                 raise ValueError("published asset digest mismatch")
+        if REPOSITORY == "bolens/appicon" and _coordinator_request is not None:
+            download(record["tag"], "SHA256SUMS.sigstore.json", Path(directory))
+            verify_signed_checksums(Path(directory), record)
 
 
 def approved_publisher_id():
+    if _coordinator_request is not None:
+        return int(os.environ["WOODPECKER_PUBLISHER_ID"])
     identity = api(f"repos/{REPOSITORY}/actions/variables/WOODPECKER_PUBLISHER_ID")[
         "value"
     ]
@@ -462,8 +560,27 @@ def verify_packaging_tree(head_sha, base_sha, expected_tree, paths):
         )
 
 
+def validate_coordinator_intent(intent, base_sha, expected_tree, prior, changed):
+    if expected_tree != intent["tree"] or (
+        base_sha != intent["base"]
+        and not (prior and prior[0].get("merged_at") and not changed)
+    ):
+        raise ValueError(
+            "coordinator generated tree/base differs from the native merge intent"
+        )
+    if (
+        len(prior) != 1
+        or str(prior[0]["number"]) != intent["pr"]
+        or prior[0]["head"]["sha"] != intent["head"]
+    ):
+        raise ValueError("coordinator PR/head differs from the native merge intent")
+
+
 def packaging():
-    sha, tag = guard("tag")
+    if _coordinator_request is not None:
+        sha, tag = _coordinator_request["commit"], _coordinator_request["tag"]
+    else:
+        sha, tag = guard("tag")
     record = json.loads((OUTPUT / "release-manifest.json").read_text())
     if (record["commit"], record["tag"]) != (sha, tag):
         raise ValueError("packaging manifest belongs to another candidate")
@@ -539,6 +656,10 @@ def packaging():
         )
     run("git", "add", "--", *paths)
     expected_tree = run("git", "write-tree")
+    if _coordinator_request is not None:
+        validate_coordinator_intent(
+            _coordinator_request, base_sha, expected_tree, prior, changed
+        )
     if prior:
         pr = prior[0]
         completed = bool(pr.get("merged_at")) and not changed
@@ -560,12 +681,56 @@ def packaging():
             if not re.fullmatch(r"[0-9a-f]{40}", merged):
                 raise ValueError("merged packaging PR lacks an immutable merge receipt")
             run("git", "merge-base", "--is-ancestor", merged, base_sha)
+            (OUTPUT / "packaging-receipt.json").write_text(
+                json.dumps(
+                    {
+                        "status": "merged",
+                        "repository": REPOSITORY,
+                        "commit": sha,
+                        "tag": tag,
+                        "pr": str(pr["number"]),
+                        "head": head,
+                        "base": base_sha,
+                        "tree": expected_tree,
+                        "merge_commit": merged,
+                    },
+                    indent=2,
+                )
+                + "\n"
+            )
             return
-        finish_packaging(
-            pr["number"], head, base_sha, branch, repository_id, publisher_id
-        )
+        if _coordinator_request is not None:
+            finish_packaging(
+                pr["number"], head, base_sha, branch, repository_id, publisher_id
+            )
+        else:
+            request_packaging_merge(
+                pr["number"],
+                head,
+                base_sha,
+                expected_tree,
+                branch,
+                repository_id,
+                publisher_id,
+                sha,
+                tag,
+            )
         return
     if not changed:
+        (OUTPUT / "packaging-receipt.json").write_text(
+            json.dumps(
+                {
+                    "status": "packaging_current",
+                    "repository": REPOSITORY,
+                    "commit": sha,
+                    "tag": tag,
+                    "base": base_sha,
+                    "tree": expected_tree,
+                },
+                indent=2,
+            )
+            + "\n"
+        )
         return
     run("git", "checkout", "--no-track", "-b", branch)
     run(
@@ -615,7 +780,92 @@ def packaging():
     pr = api(f"repos/{REPOSITORY}/pulls/{number}")
     if validate_packaging_pr(pr, branch, base_sha, repository_id, publisher_id) != head:
         raise ValueError("packaging PR head changed during creation")
-    finish_packaging(number, head, base_sha, branch, repository_id, publisher_id)
+    request_packaging_merge(
+        number,
+        head,
+        base_sha,
+        expected_tree,
+        branch,
+        repository_id,
+        publisher_id,
+        sha,
+        tag,
+    )
+
+
+def request_packaging_merge(
+    pr_number,
+    head,
+    base_sha,
+    tree,
+    branch,
+    repository_id,
+    publisher_id,
+    release_sha,
+    tag,
+):
+    """Hand off the wait to the forge so both native runners remain available."""
+    current = api(f"repos/{REPOSITORY}/pulls/{pr_number}")
+    if (
+        validate_packaging_pr(current, branch, base_sha, repository_id, publisher_id)
+        != head
+    ):
+        raise ValueError("packaging PR source changed before coordinator dispatch")
+    if api(f"repos/{REPOSITORY}/commits/main")["sha"] != base_sha:
+        raise ValueError("packaging base changed before coordinator dispatch")
+    inputs = {
+        "woodpecker_finalize": "true",
+        "packaging_pr": str(pr_number),
+        "packaging_head": head,
+        "packaging_base": base_sha,
+        "packaging_tree": tree,
+    }
+    if REPOSITORY == "bolens/appicon":
+        inputs["woodpecker_bridge"] = "false"
+    api(
+        f"repos/{REPOSITORY}/actions/workflows/release.yml/dispatches",
+        "POST",
+        {"ref": tag, "inputs": inputs},
+    )
+    receipt = {
+        "status": "packaging_pending",
+        "repository": REPOSITORY,
+        "commit": release_sha,
+        "tag": tag,
+        "pr": str(pr_number),
+        "head": head,
+        "base": base_sha,
+        "tree": tree,
+        "coordinator": f"https://github.com/{REPOSITORY}/actions/workflows/release.yml",
+    }
+    (OUTPUT / "packaging-receipt.json").write_text(json.dumps(receipt, indent=2) + "\n")
+    print("Release assets verified; packaging merge requested, not yet completed.")
+
+
+def finalize_packaging():
+    request = authorize_coordinator()
+    OUTPUT.mkdir(exist_ok=True)
+    receipt = dict(request, status="packaging_pending")
+    path = OUTPUT / "packaging-receipt.json"
+    path.write_text(json.dumps(receipt, indent=2) + "\n")
+    try:
+        verify_tag_source(request["commit"], request["tag"])
+        download(request["tag"], "release-manifest.json", OUTPUT)
+        record = json.loads((OUTPUT / "release-manifest.json").read_text())
+        if any(
+            record.get(key) != request[key] for key in ["repository", "commit", "tag"]
+        ):
+            raise ValueError("published native receipt belongs to another source")
+        packaging()
+        state = api(f"repos/{REPOSITORY}/pulls/{request['pr']}")
+        if not state.get("merged_at") or state["head"]["sha"] != request["head"]:
+            raise ValueError("packaging merge completion was not verified")
+        receipt.update(status="merged", merge_commit=state["merge_commit_sha"])
+    except BaseException as error:
+        receipt.update(status="failed", error_type=type(error).__name__)
+        raise
+    finally:
+        path.write_text(json.dumps(receipt, indent=2) + "\n")
 
 
 def finish_packaging(
@@ -745,6 +995,11 @@ def push(branch: str, directory: str | None = None):
 
 def pages(directory: str):
     sha, _ = guard("push")
+    release = json.loads((OUTPUT / "site-release.json").read_text())
+    if release.get("repository") != REPOSITORY or api(
+        f"repos/{REPOSITORY}/releases/latest"
+    )["tag_name"] != release.get("tag"):
+        raise ValueError("site was built for a superseded published release")
     import shutil
     import tempfile
 
@@ -790,6 +1045,8 @@ def pages(directory: str):
         )
         # Guard a second time immediately before changing the publishing branch.
         guard("push")
+        if api(f"repos/{REPOSITORY}/releases/latest")["tag_name"] != release["tag"]:
+            raise ValueError("published release changed before the Pages push")
         push("gh-pages", str(dest))
 
 
@@ -808,6 +1065,8 @@ def main():
         draft()
     elif args.phase == "packaging":
         packaging()
+    elif args.phase == "finalize-packaging":
+        finalize_packaging()
     elif args.phase == "pages":
         if not args.site:
             parser.error("pages requires --site")

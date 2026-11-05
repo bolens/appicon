@@ -10,14 +10,8 @@ export PATH="$PWD/.woodpecker-out/site-tools:$PATH"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
 git archive HEAD | tar -x -C "$work"
-python3 - "$work" <<'LATEST'
-import json, sys, urllib.request
-from pathlib import Path
-with urllib.request.urlopen('https://api.github.com/repos/bolens/appicon/releases/latest', timeout=30) as response:
-    release = json.load(response)
-(Path(sys.argv[1]) / 'latest-release.json').write_text(json.dumps(release))
-LATEST
-(cd "$work" && version=$(python3 -c 'import json; print(json.load(open("latest-release.json"))["tag_name"])')
+python3 scripts/ci/public-release-metadata.py "$work/latest-release.json"
+(cd "$work" && version=$(python3 -c 'import json; print(json.load(open("latest-release.json"))["tag"])')
 [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
 python3 scripts/render-changelog.py --name AppIcon --base-url https://bolens.github.io/appicon/ --accent "#5eead4" --social-image assets/social-card.png --favicon assets/favicon.png --docs-shell --output site/changelog/index.html
 python3 scripts/ci/check-pages-site.py --site site --architecture docs/architecture/appicon.html --architecture-source docs/architecture/appicon.architecture.json
@@ -33,3 +27,5 @@ kill "$server"
 trap - EXIT)
 rm -rf .woodpecker-out/site
 cp -R "$work/_site" .woodpecker-out/site
+
+cp "$work/latest-release.json" .woodpecker-out/site-release.json

@@ -12,7 +12,8 @@ second copy. This authorization moves the publisher, not source ownership.
 
 Both Linux Docker agents can run the workflow. Its containers have no host Docker
 socket, added capabilities, host volumes or registry credentials. Native macOS
-`devenv` checks remain in GitHub Actions. Existing Linux Docker/devenv checks also
+`devenv` checks and a thin forge-only packaging merge coordinator remain in
+GitHub Actions. The latter performs no build, test suite or release publication. Existing Linux Docker/devenv checks also
 remain there until a safe dedicated builder is available. GitHub metadata
 assignment and Spec Kit update PR automation remain in Actions. Optional manual
 pack-bundle artifact storage remains there until a native retained-artifact
@@ -60,8 +61,9 @@ boundary. The script independently requires the GitHub forge type/URL, exact
 repository, matching checkout and event, clean tracked source and cutover flag.
 
 Prefer a GitHub App installed only on this repository with Contents write,
-Pull requests write, Variables read and Metadata read. Appicon additionally needs
-Actions write for its OIDC bridge; retained platform validation may need Checks
+Pull requests write, Variables read and Metadata read. Both repositories need
+Actions write for merge-coordinator dispatch; Appicon also uses it for the OIDC
+bridge; retained platform validation may need Checks
 and Commit statuses read. Credentials go through the secret store, never Git,
 URL parameters, logged commands, clone configuration or uploaded artifacts.
 There is no OCI registry consumer or package registry publication in this repo.
@@ -94,27 +96,46 @@ The existing keyless verification identity remains valid. GitHub's attestation
 identifies this signing bridge; the accompanying native provenance identifies the
 actual Woodpecker build. Do not describe the bridge as the compiler.
 
-The packaging phase generates hash updates on fresh canonical main, refusing a
-version downgrade, and opens or resumes its normal pull request. It waits for
-required native checks, then requests protected squash merge with an exact head
-SHA. Existing PRs must have canonical numeric repository IDs on both sides,
-`main` as base, the deterministic head branch and the approved App author. The
-helper regenerates an expected tree on fresh main and verifies the PR tree and
-exact generated-file allowlist before trusting its checks. Stale, forked or
-unrelated branches are rejected for normal reviewed repair, never force-updated.
-Completed-PR recovery also requires the original head tree to match the current
-expected tree. Even an unrelated later main change can therefore require manual
-reviewed recovery rather than automatic success.
-Host review/conversation requirements still apply; no admin bypass is used.
-It verifies the merged state before reporting completion. Actual
-`aur.archlinux.org` pushes remain the existing explicit maintainer operation.
-No AUR account ownership or SSH key is assumed by this pipeline. A failed or
-expired-token run resumes the existing packaging PR rather than creating another.
+The native packaging phase generates hash updates on fresh canonical main,
+refusing a version downgrade, and opens or resumes its normal pull request.
+Existing PRs must have canonical numeric repository IDs on both sides, `main`
+as base, the deterministic head branch and the approved App author. The helper
+regenerates an expected tree on fresh main and verifies that tree and the exact
+generated-file allowlist before trusting the PR.
+
+It then dispatches only the thin `release.yml` merge-coordinator job at the
+verified signed tag, passing the immutable PR/head/base/tree intent as data, and
+exits with a local `packaging_pending` receipt. It does not hold a native runner
+while waiting for the PR checks: concurrent releases must leave ci01/ci02 free to
+run those checks. A green release-build pipeline is not evidence of a completed
+packaging merge.
+
+The retained forge-only job checks its own canonical signed-tag workflow context,
+uses only the native job-scoped GitHub token, verifies published native assets,
+and regenerates the exact intended packaging tree from protected main. Appicon
+also cryptographically verifies the checksum bundle against the existing
+tag-specific GitHub OIDC identity before using those hashes for packaging. It never
+executes code from the PR checkout. It checks the canonical repo/base/head/App
+author again, waits for normal required checks, then rechecks source identity and
+requests protected squash merge with `--match-head-commit`. No auto-merge setting,
+admin bypass, PR credential lease or webhook service is introduced. Completion is
+reported only after the actual merge state and commit are verified. Each workflow
+attempt retains a `native-packaging-merge-receipt-*` artifact showing `merged` or
+`failed`; use it with the native pending receipt for asynchronous acceptance.
+
+Stale, forked or unrelated branches fail for normal reviewed repair rather than
+being force-updated. Completed-PR recovery also requires the historical head tree
+to match the current expected tree; unrelated later main changes can therefore
+require manual reviewed recovery. Actual `aur.archlinux.org` pushes remain the
+explicit maintainer operation; no AUR ownership or SSH key is assumed.
 
 ## Pages
 
 Woodpecker assembles and checks the site in a disposable source copy using the
-latest published release metadata. Existing accessibility, links and browser
+latest published release metadata. Credential-free builds resolve GitHub’s public
+`releases/latest` redirect instead of sharing the unauthenticated REST quota,
+validate its canonical stable tag, and retry transient failures only three times.
+The authenticated publisher rechecks the latest tag immediately before pushing. Existing accessibility, links and browser
 checks remain gates. On a current canonical main push, the publisher appends a
 commit containing the generated site and `.nojekyll` to `gh-pages`, using no force
 push. Concurrent or superseded deployments fail rather than overwriting history.
@@ -126,6 +147,7 @@ release publication itself does not create an unreviewed main commit.
 ## Verification and recovery
 
 Run `python3 -m unittest discover -s scripts/ci -p test_woodpecker_publication.py`,
+`python3 -m unittest discover -s scripts/ci -p test_public_release_metadata.py`,
 `shellcheck scripts/ci/woodpecker-*.sh`, `actionlint`, the repository native gates
 and the shared workflow-security/source-lint checks. Tests use mocked host APIs;
 they do not publish. Native PR execution proves the runtime path. Release OIDC

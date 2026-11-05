@@ -401,6 +401,33 @@ class PublicationGuards(unittest.TestCase):
             )
             self.assertEqual(eval(expression, {"__builtins__": {}}, {}), expected)
 
+    def test_pages_release_change_cannot_push_stale_metadata(self):
+        import json
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "site"
+            source.mkdir()
+            (source / "index.html").write_text("fixture")
+            (root / "site-release.json").write_text(
+                json.dumps({"repository": publish.REPOSITORY, "tag": "v1.2.3"})
+            )
+            with (
+                patch.object(publish, "OUTPUT", root),
+                patch.object(publish, "guard", return_value=(self.sha, "")),
+                patch.object(
+                    publish,
+                    "api",
+                    side_effect=[{"tag_name": "v1.2.3"}, {"tag_name": "v1.2.4"}],
+                ),
+                patch.object(publish, "run", return_value=""),
+                patch.object(publish, "push") as push,
+                self.assertRaises(ValueError),
+            ):
+                publish.pages(str(source))
+            push.assert_not_called()
+
     def test_pages_preserves_history_and_removes_stale_files(self):
         import tempfile
 
@@ -432,7 +459,14 @@ class PublicationGuards(unittest.TestCase):
                     cwd=directory,
                 )
 
+            import json
+
+            (root / "site-release.json").write_text(
+                json.dumps({"repository": publish.REPOSITORY, "tag": "v1.2.3"})
+            )
             with (
+                patch.object(publish, "OUTPUT", root),
+                patch.object(publish, "api", return_value={"tag_name": "v1.2.3"}),
                 patch.object(publish, "guard", return_value=(self.sha, "")),
                 patch.object(publish, "run", side_effect=local_run),
                 patch.object(publish, "push", side_effect=local_push),
@@ -645,6 +679,209 @@ class PublisherLeaseTests(unittest.TestCase):
         self.assertNotIn("PUBLISHER_LEASE", env)
         self.assertNotIn("GH_DEBUG", env)
         self.assertNotIn("GIT_TRACE", env)
+
+
+class ForgeCoordinatorTests(unittest.TestCase):
+    def setUp(self):
+        self.sha, self.head, self.base, self.tree = [
+            letter * 40 for letter in ["a", "c", "b", "d"]
+        ]
+        self.tag = "v1.2.3"
+        self.env = {
+            "GITHUB_ACTIONS": "true",
+            "GITHUB_REPOSITORY": publish.REPOSITORY,
+            "GITHUB_EVENT_NAME": "workflow_dispatch",
+            "GITHUB_REF_TYPE": "tag",
+            "GITHUB_REF": "refs/tags/" + self.tag,
+            "GITHUB_REF_NAME": self.tag,
+            "GITHUB_WORKFLOW_REF": publish.REPOSITORY
+            + "/.github/workflows/release.yml@refs/tags/"
+            + self.tag,
+            "GITHUB_SHA": self.sha,
+            "WOODPECKER_PUBLISHING": "true",
+            "WOODPECKER_PUBLISHER_ID": "42",
+            "GITHUB_COORDINATOR_TOKEN": "platform-fixture-only",
+            "PACKAGING_PR": "7",
+            "PACKAGING_HEAD": self.head,
+            "PACKAGING_BASE": self.base,
+            "PACKAGING_TREE": self.tree,
+        }
+        for patcher in [
+            patch.dict(os.environ, self.env, clear=True),
+            patch.object(publish, "_coordinator_token", None),
+            patch.object(publish, "_coordinator_request", None),
+        ]:
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.intent = {
+            "repository": publish.REPOSITORY,
+            "commit": self.sha,
+            "tag": self.tag,
+            "pr": "7",
+            "head": self.head,
+            "base": self.base,
+            "tree": self.tree,
+        }
+        repo = {"id": 123, "full_name": publish.REPOSITORY}
+        self.pr = {
+            "number": 7,
+            "state": "open",
+            "merged_at": None,
+            "user": {"id": 42},
+            "head": {
+                "repo": dict(repo),
+                "ref": "chore/woodpecker-packaging-" + self.tag,
+                "sha": self.head,
+            },
+            "base": {"repo": dict(repo), "ref": "main", "sha": self.base},
+        }
+
+    def test_only_exact_enabled_signed_tag_workflow_can_authorize(self):
+        with patch.object(publish, "run", side_effect=[self.sha, ""]):
+            self.assertEqual(publish.authorize_coordinator(), self.intent)
+        self.assertNotIn("GITHUB_COORDINATOR_TOKEN", os.environ)
+        self.assertEqual(publish.credentials(), "platform-fixture-only")
+        self.assertNotIn("GITHUB_COORDINATOR_TOKEN", publish.publisher_environment())
+
+    def test_pr_fork_branch_wrong_source_or_disabled_context_cannot_authorize(self):
+        for key, value in [
+            ("GITHUB_EVENT_NAME", "pull_request"),
+            ("GITHUB_REPOSITORY", "fork/other"),
+            ("GITHUB_REF_TYPE", "branch"),
+            ("WOODPECKER_PUBLISHING", "false"),
+            (
+                "GITHUB_WORKFLOW_REF",
+                publish.REPOSITORY + "/.github/workflows/release.yml@refs/heads/main",
+            ),
+            ("PACKAGING_HEAD", "not-a-sha"),
+        ]:
+            with (
+                self.subTest(key=key),
+                patch.dict(os.environ, {key: value}),
+                patch.object(publish, "run", side_effect=[self.sha, ""]),
+                patch.object(publish, "api") as api,
+                self.assertRaises(ValueError),
+            ):
+                publish.authorize_coordinator()
+            api.assert_not_called()
+            self.assertIsNone(publish._coordinator_token)
+
+    def test_native_handoff_does_not_hold_runner_waiting_for_checks(self):
+        import json
+        import tempfile
+
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.object(publish, "OUTPUT", Path(temporary)),
+            patch.object(
+                publish, "api", side_effect=[self.pr, {"sha": self.base}, None]
+            ) as api,
+            patch.object(publish, "finish_packaging") as wait,
+        ):
+            publish.request_packaging_merge(
+                7,
+                self.head,
+                self.base,
+                self.tree,
+                self.pr["head"]["ref"],
+                123,
+                42,
+                self.sha,
+                self.tag,
+            )
+            receipt = json.loads(
+                (Path(temporary) / "packaging-receipt.json").read_text()
+            )
+        self.assertEqual(receipt["status"], "packaging_pending")
+        self.assertNotIn("merge_commit", receipt)
+        wait.assert_not_called()
+        dispatch = api.call_args_list[-1]
+        self.assertEqual(
+            dispatch.args[:2],
+            (
+                f"repos/{publish.REPOSITORY}/actions/workflows/release.yml/dispatches",
+                "POST",
+            ),
+        )
+        self.assertEqual(dispatch.args[2]["ref"], self.tag)
+        self.assertEqual(dispatch.args[2]["inputs"]["packaging_head"], self.head)
+        self.assertEqual(dispatch.args[2]["inputs"]["packaging_tree"], self.tree)
+
+    def test_async_intent_cannot_drift_pr_head_base_or_generated_tree(self):
+        publish.validate_coordinator_intent(
+            self.intent, self.base, self.tree, [self.pr], {"packaging/file"}
+        )
+        import copy
+
+        scenarios = [(self.base, "e" * 40, [self.pr]), ("e" * 40, self.tree, [self.pr])]
+        wrong = copy.deepcopy(self.pr)
+        wrong["head"]["sha"] = "e" * 40
+        scenarios.append((self.base, self.tree, [wrong]))
+        wrong = copy.deepcopy(self.pr)
+        wrong["number"] = 8
+        scenarios.append((self.base, self.tree, [wrong]))
+        for base, tree, prior in scenarios:
+            with (
+                self.subTest(base=base, tree=tree, prior=prior),
+                self.assertRaises(ValueError),
+            ):
+                publish.validate_coordinator_intent(
+                    self.intent, base, tree, prior, {"packaging/file"}
+                )
+
+    def test_foreign_release_receipt_cannot_reach_merge_or_pr_creation(self):
+        import json
+        import tempfile
+
+        with (
+            tempfile.TemporaryDirectory() as temporary,
+            patch.object(publish, "OUTPUT", Path(temporary)),
+            patch.object(publish, "authorize_coordinator", return_value=self.intent),
+            patch.object(publish, "verify_tag_source"),
+            patch.object(publish, "packaging") as packaging,
+        ):
+
+            def download(tag, name, directory):
+                (directory / name).write_text(
+                    json.dumps(dict(self.intent, commit="f" * 40))
+                )
+
+            with (
+                patch.object(publish, "download", side_effect=download),
+                self.assertRaises(ValueError),
+            ):
+                publish.finalize_packaging()
+            packaging.assert_not_called()
+            self.assertEqual(
+                json.loads((Path(temporary) / "packaging-receipt.json").read_text())[
+                    "status"
+                ],
+                "failed",
+            )
+
+
+class CoordinatorSignatureTests(unittest.TestCase):
+    def test_packaging_hashes_require_tag_specific_signature_and_exact_subjects(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            (directory / "SHA256SUMS").write_text("a" * 64 + "  archive.tar.gz\n")
+            record = {
+                "tag": "v1.2.3",
+                "assets": {"archive.tar.gz": "a" * 64, "SHA256SUMS": "b" * 64},
+            }
+            with patch.object(publish, "run") as cosign:
+                publish.verify_signed_checksums(directory, record)
+            command = cosign.call_args.args
+            self.assertIn(
+                "https://github.com/bolens/appicon/.github/workflows/release.yml@refs/tags/v1.2.3",
+                command,
+            )
+            self.assertIn("https://token.actions.githubusercontent.com", command)
+            record["assets"]["archive.tar.gz"] = "c" * 64
+            with patch.object(publish, "run"), self.assertRaises(ValueError):
+                publish.verify_signed_checksums(directory, record)
 
 
 if __name__ == "__main__":
