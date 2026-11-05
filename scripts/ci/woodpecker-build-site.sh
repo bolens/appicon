@@ -5,7 +5,7 @@ mkdir -p .woodpecker-out
 mkdir -p .woodpecker-out/site-tools
 curl --fail --location --retry 3 --output .woodpecker-out/lychee.tar.gz https://github.com/lycheeverse/lychee/releases/download/lychee-v0.24.2/lychee-x86_64-unknown-linux-gnu.tar.gz
 printf '%s  %s\n' 1f4e0ef7f6554a6ed33dd7ac144fb2e1bbed98598e7af973042fc5cd43951c9a .woodpecker-out/lychee.tar.gz | sha256sum --check --strict
-tar -xzf .woodpecker-out/lychee.tar.gz -C .woodpecker-out/site-tools lychee
+python3 scripts/ci/extract-lychee.py .woodpecker-out/lychee.tar.gz .woodpecker-out/site-tools
 export PATH="$PWD/.woodpecker-out/site-tools:$PATH"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

@@ -7,6 +7,7 @@ clone:
     image: woodpeckerci/plugin-git:2.6.4@sha256:d619f364acd546134a9ba06d29a9cb55156eddfc21f60307f1fdcf4e0b2aafa6
     settings:
       depth: 0
+      partial: false
 when:
 - event: push
   branch: main
@@ -67,6 +68,7 @@ steps:
     apt-get update
     apt-get install -y --no-install-recommends python3 git curl chromium imagemagick fonts-liberation ca-certificates
   - python3 -m unittest discover -s scripts/ci -p test_public_release_metadata.py
+  - python3 -m unittest discover -s scripts/ci -p test_extract_lychee.py
   - bash scripts/ci/woodpecker-build-site.sh
 - name: nightly-live-smoke
   image: golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
