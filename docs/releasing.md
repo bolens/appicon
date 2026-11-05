@@ -29,7 +29,9 @@ The helper requires clean local `main`, refreshes canonical `origin/main`, check
 the supplied full SHA and prepared `VERSION`, and reruns `make check`. It refreshes
 the remote again before creating and verifying a signed annotated tag on that
 exact commit. It never pushes; failed signing or verification requires deliberate
-local recovery before any push. Local checks do not replace authoritative CI.
+local recovery before any push. Older Git versions can leave an unsigned local
+tag after a signing error. Inspect its signature and confirm it is unpublished
+before deleting that local tag or retrying. The helper leaves local tag removal to the maintainer. Local checks do not replace authoritative CI.
 
 After native cutover, follow the tag's Woodpecker validation, release build and
 publisher, then the retained GitHub OIDC signing/attestation bridge and packaging

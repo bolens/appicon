@@ -67,7 +67,7 @@ check_absent_tag
 git tag -s -m "Release $ver" -- "$ver" "$validated"
 [[ "$(git cat-file -t "refs/tags/$ver")" == tag ]] || fail 'release tag is not annotated'
 [[ "$(git rev-parse "$ver^{commit}")" == "$validated" ]] || fail 'release tag source mismatch'
-git verify-tag "$ver"
+git verify-tag "$ver" || fail "signature verification failed for $ver; inspect the unpublished local tag before retrying"
 echo "Created and verified local signed tag $ver at $validated"
 echo 'After the authoritative exact-main CI and release review, push only this tag:'
 echo "  git push origin refs/tags/$ver:refs/tags/$ver"

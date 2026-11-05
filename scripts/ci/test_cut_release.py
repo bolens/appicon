@@ -193,13 +193,30 @@ class SignedReleaseHelper(unittest.TestCase):
 
     def test_signing_and_verification_failures_never_push(self):
         self.git('config', 'user.signingKey', str(self.scratch / 'absent-key'))
-        self.assert_denied()
+        result = self.invoke()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('Created and verified', result.stdout)
+        self.assertNotIn('git push origin', result.stdout)
+        # Git 2.39 can leave an unsigned local tag despite a signing error.
+        # Prove that exact fixture artifact is invalid before removing it here;
+        # the real helper must not automatically delete a possibly raced ref.
+        tags = self.git('tag', '--list')
+        self.assertIn(tags, ('', 'v1.2.3'))
+        if tags:
+            self.assertEqual(self.git('cat-file', '-t', 'refs/tags/v1.2.3'), 'tag')
+            self.assertEqual(self.git('rev-parse', 'v1.2.3^{commit}'), self.sha)
+            verification = subprocess.run([GIT, 'verify-tag', 'v1.2.3'], cwd=self.repo,
+                                          env=self.env, capture_output=True)
+            self.assertNotEqual(verification.returncode, 0)
+            self.git('tag', '-d', 'v1.2.3')
         self.git('config', 'user.signingKey', str(self.scratch / 'signing-key'))
         self.git('config', 'gpg.ssh.allowedSignersFile', str(self.scratch / 'absent-signers'))
         result = self.invoke()
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(self.git('cat-file', '-t', 'refs/tags/v1.2.3'), 'tag')
-        self.assertNotIn('Push only', result.stdout)
+        self.assertNotIn('Created and verified', result.stdout)
+        self.assertNotIn('git push origin', result.stdout)
+        self.assertIn('signature verification failed', result.stderr)
 
 
 class PreparedReleaseVersion(unittest.TestCase):
