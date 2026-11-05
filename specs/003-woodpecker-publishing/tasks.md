@@ -23,7 +23,8 @@ Unchecked tasks are not claimed as completed by source review or YAML parsing.
 - [x] Add the owning locked Linux development gate to native validation and its generated profile.
 - [ ] Verify local hooks, workflow lint and actual compiler/event/profile fixtures.
 - [ ] Complete independent review and exact-head native PR proof.
-- [ ] Retire only the duplicate hosted Linux development step after native proof.
+- [x] Add a separate default-off hosted Linux guard without changing macOS or Docker gates.
+- [ ] Root enables and reads back `WOODPECKER_NIX_CI` only after exact PR and merged-main proof.
 - [ ] Verify merged-main native execution and reconcile accepted source to Gitea.
 
 Cold Nix storage and runtime acceptance remain required; no source review claims

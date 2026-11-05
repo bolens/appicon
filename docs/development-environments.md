@@ -48,6 +48,7 @@ Resolver fixtures set explicit XDG and native application roots so host-installe
 
 Woodpecker runs the locked Linux `devenv test` gate in its existing source
 validation workflow without a Docker socket, host mounts or publication
-credentials. The hosted Linux copy stays enabled until the native candidate
-passes. Native macOS and actual Docker development and editor-image checks
+credentials. The hosted Linux copy stays enabled until exact native PR and
+genuine merged-main proof, followed by the separate `WOODPECKER_NIX_CI=true`
+operator cutover. Native macOS and actual Docker development and editor-image checks
 remain in GitHub Actions; Linux Nix validation does not require that builder.

@@ -37,5 +37,7 @@ retiring its hosted Linux copy. Extend the existing Nix package step so the lock
 Nix store. Preserve the
 same workflow identity, generated validation profile, immutable CLI/image pins
 and existing runner limits. Keep native macOS and actual Docker development and
-editor-image checks hosted. Exact native proof precedes any Linux step guard;
-source mirrors follow after the initial reconciliation is accepted.
+editor-image checks hosted. A separate default-off `WOODPECKER_NIX_CI` guard preserves the hosted Linux
+copy until exact native PR and genuine merged-main proof, followed by operator
+readback. Existing Linux/publication flags and required producer bindings stay
+unchanged. Source mirrors follow after initial reconciliation is accepted.
