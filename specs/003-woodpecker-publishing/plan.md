@@ -29,3 +29,15 @@ The operator drains producers and hosted bridges, enables the GitHub flag,
 selects the full profile and removes only push cancellation before the genuine
 main merge. Rollback drains first, selects validation-only, then clears the flag;
 restarting an old pipeline cannot change its archived profile.
+
+## Linux development-environment parity follow-up
+
+Run the existing locked `devenv test` command in native validation before
+retiring its hosted Linux copy. Extend the existing Nix package step so the locked development gate reuses its
+Nix store. Preserve the
+same workflow identity, generated validation profile, immutable CLI/image pins
+and existing runner limits. Keep native macOS and actual Docker development and
+editor-image checks hosted. A separate default-off `WOODPECKER_NIX_CI` guard preserves the hosted Linux
+copy until exact native PR and genuine merged-main proof, followed by operator
+readback. Existing Linux/publication flags and required producer bindings stay
+unchanged. Source mirrors follow after initial reconciliation is accepted.

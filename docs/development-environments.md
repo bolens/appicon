@@ -43,3 +43,12 @@ The helper exports an OCI archive and uses `container image load`. Native ARM Ma
 Apple execution is not verified by Linux tests. Host desktop integration and optional systemd daemon installation still require their owning platform; container tests do not establish those capabilities.
 
 Resolver fixtures set explicit XDG and native application roots so host-installed Mac applications cannot satisfy fixture queries. Shared socket fixtures use short private directories to stay within macOS socket-path limits.
+
+## Continuous integration
+
+Woodpecker runs the locked Linux `devenv test` gate in its existing source
+validation workflow without a Docker socket, host mounts or publication
+credentials. The hosted Linux copy stays enabled until exact native PR and
+genuine merged-main proof, followed by the separate `WOODPECKER_NIX_CI=true`
+operator cutover. Native macOS and actual Docker development and editor-image checks
+remain in GitHub Actions; Linux Nix validation does not require that builder.
