@@ -16,8 +16,10 @@ second copy. This authorization moves the publisher, not source ownership.
 Both Linux Docker agents can run the workflow. Its containers have no host Docker
 socket, added capabilities, host volumes or registry credentials. Native macOS
 `devenv` checks and a thin forge-only packaging merge coordinator remain in
-GitHub Actions. The latter performs no build, test suite or release publication. Existing Linux Docker/devenv checks also
-remain there until a safe dedicated builder is available. GitHub metadata
+GitHub Actions. The latter performs no build, test suite or release publication. Actual Linux Docker development and editor-image checks
+remain there until a safe dedicated builder is available. Native validation also
+runs the locked Linux `devenv test` gate. Its hosted copy stays enabled unless
+`WOODPECKER_NIX_CI=true` after native PR and genuine merged-main proof. GitHub metadata
 assignment and Spec Kit update PR automation remain in Actions. Optional manual
 pack-bundle artifact storage remains there until a native retained-artifact
 consumer is available; it cannot attach release assets after publisher cutover.
@@ -28,6 +30,7 @@ profile and push-cancellation policy. Existing Actions remain active by default:
 | Repository variable | Cutover condition | Effect |
 | --- | --- | --- |
 | `WOODPECKER_LINUX_CI=true` | Exact candidate passes native checks; required check settings migrated | Retires portable Linux Actions jobs only when publication is also native, preserving hosted exceptions |
+| `WOODPECKER_NIX_CI=true` | Exact native PR and new merged-main Linux development gate pass | Retires only the hosted Linux `devenv test` step; macOS and real Docker checks stay active |
 | `WOODPECKER_PUBLISHER_ID` | Immutable user ID of the approved App publisher | Rejects foreign draft/release authors |
 | `WOODPECKER_PUBLISHING=true` | Native validation green, scoped credential installed, Pages branch configured, publication contract reviewed | Authorizes native publication with the full profile and disables the legacy publisher |
 
@@ -229,3 +232,19 @@ Node/native image digests, checksum-pinned actionlint/lychee, shared tooling
 commits and Python tools. Existing runtime/package locks stay authoritative.
 Verify upstream release identity and update the native and retained-host
 contracts together; an immutable reference alone is not update monitoring.
+
+## Linux development-environment cutover
+
+Keep `WOODPECKER_NIX_CI` unset or `false` while validating the native candidate.
+After its exact PR and genuine merged-main native runs succeed, the operator may
+set this GitHub repository variable to the literal value `true` and read it back.
+A cached restart does not establish that a new workflow configuration executed.
+Preserve the required native PR check and `Development environment`, including
+their current producer bindings, branch protections and platform checks.
+
+This flag is independent of `WOODPECKER_LINUX_CI` and publication settings. It
+only skips the hosted Linux `devenv test` step. macOS, Docker development and
+editor-image checks keep their existing conditions. Set it to `false` or remove
+it to restore the hosted Linux check without changing publication profiles,
+credentials, required checks or runner policy. Gitea continues full native
+validation regardless of this GitHub-only flag.
