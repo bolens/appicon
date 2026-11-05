@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Building from source now requires Go 1.26 or newer for the updated platform and MCP dependencies.
+
+### Security
+
+- CI and release builds use the supported Go 1.26.10 toolchain.
+
 ### Added
 
 - Pages code examples use theme-aware shell syntax highlighting without changing copied commands.
