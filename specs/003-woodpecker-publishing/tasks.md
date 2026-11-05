@@ -17,3 +17,14 @@ Unchecked tasks are not claimed as completed by source review or YAML parsing.
 - [ ] Deliver the final profile and broker-client source through current-head checks.
 - [ ] Verify live profile/flag/cancellation readbacks and a new genuine main push
   before retiring duplicate validation; do not use cached restart as acceptance.
+
+## Linux development-environment parity follow-up
+
+- [x] Add the owning locked Linux development gate to native validation and its generated profile.
+- [ ] Verify local hooks, workflow lint and actual compiler/event/profile fixtures.
+- [ ] Complete independent review and exact-head native PR proof.
+- [ ] Retire only the duplicate hosted Linux development step after native proof.
+- [ ] Verify merged-main native execution and reconcile accepted source to Gitea.
+
+Cold Nix storage and runtime acceptance remain required; no source review claims
+that the native development environment has executed successfully.

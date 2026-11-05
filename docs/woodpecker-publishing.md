@@ -16,8 +16,10 @@ second copy. This authorization moves the publisher, not source ownership.
 Both Linux Docker agents can run the workflow. Its containers have no host Docker
 socket, added capabilities, host volumes or registry credentials. Native macOS
 `devenv` checks and a thin forge-only packaging merge coordinator remain in
-GitHub Actions. The latter performs no build, test suite or release publication. Existing Linux Docker/devenv checks also
-remain there until a safe dedicated builder is available. GitHub metadata
+GitHub Actions. The latter performs no build, test suite or release publication. Actual Linux Docker development and editor-image checks
+remain there until a safe dedicated builder is available. Native validation also
+runs the locked Linux `devenv test` gate; its hosted copy remains enabled during
+parity acceptance and is retired only after exact native proof. GitHub metadata
 assignment and Spec Kit update PR automation remain in Actions. Optional manual
 pack-bundle artifact storage remains there until a native retained-artifact
 consumer is available; it cannot attach release assets after publisher cutover.

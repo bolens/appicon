@@ -51,15 +51,20 @@ steps:
 - name: nix-packages
   image: nixos/nix:2.31.3@sha256:d49538facc7757890eccfa5f57869ad18c823c24903e3b8ac6ca8a301d84a9b6
   environment:
+    GOMAXPROCS: '2'
+    GOFLAGS: -p=2
     NIX_CONFIG: |-
       experimental-features = nix-command flakes
       sandbox = false
       max-jobs = 1
       cores = 2
+      extra-substituters = https://devenv.cachix.org
+      extra-trusted-public-keys = devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=
   commands:
   - git config --global --add safe.directory "$CI_WORKSPACE"
   - for attr in appicon appicon-git appicon-bin; do nix build ".#$attr" --out-link ".woodpecker-out/nix-$attr" -L;
     ".woodpecker-out/nix-$attr/bin/appicon" version; done
+  - nix run github:cachix/devenv/42246161fa3bf7cd18f8334d08c73d6aaa8762d3 -- test
 - name: pages-build
   image: node:26-trixie@sha256:6d2c7d5d074bf72f81ddc252b4fbb5d625bc028eeda49cb4b8c2ff8eda1ee617
   commands:
