@@ -30,7 +30,13 @@ make build
 | `make check-aur-publish` | Stable/bin PKGBUILDs have real checksums (publish to AUR remains a human step) |
 | `make check-ci-path-filters` | Push `on.paths` covers dorny filters; required CI jobs present |
 
-CI runs the same gates on pull requests (required check: **CI result**). Release workflow builds linux amd64/arm64 + `SHA256SUMS`, keyless cosign, and build provenance attestations on `v*` tags.
+Pull requests require `ci/woodpecker/pr/woodpecker` and the retained
+`Development environment` check. Keep every active required check green on the
+current head. After publisher cutover, Woodpecker prepares release archives,
+the packs bundle and checksums; the retained GitHub bridge signs and attests
+with OIDC, and the packaging coordinator merges the verified packaging PR.
+Follow the [delivery contract](docs/woodpecker-publishing.md) and
+[release playbook](RELEASING.md) for signed tags, publisher selection and rollback.
 
 Markdown lint uses pinned `markdownlint-cli` from `package.json` / `package-lock.json` (`npm ci` locally if you run `make check-markdownlint`).
 
