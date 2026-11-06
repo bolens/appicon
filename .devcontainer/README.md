@@ -32,4 +32,7 @@ together. Existing native and Nix workflows remain available independently.
 
 The Development environment workflow builds this Dockerfile on Linux when its
 configuration or dependency lockfiles change. It runs setup, tool smoke checks
-and repository checks with the checkout mounted as the runner UID and GID.
+and repository checks as the image's existing `vscode` account. CI mounts the
+checkout read-only and copies it into a temporary workspace owned by that
+account. This gives signing fixtures a real passwd entry, as in the editor,
+while dependency installation and generated files stay inside the container.

@@ -90,14 +90,19 @@ jobs:
       - name: Validate setup and repository checks as the workspace user
         run: |
           docker run --rm \
-            --user "$(id -u):$(id -g)" \
-            --volume "$PWD:/workspace" --workdir /workspace \
+            --user vscode \
+            --mount "type=bind,source=$PWD,target=/source,readonly" --workdir /tmp \
             --env HOME=/tmp/appicon-home \
             --env GOPATH=/tmp/appicon-go --env GOCACHE=/tmp/appicon-go-cache \
             --env GOMAXPROCS=2 --env GOFLAGS=-p=2 \
             appicon-devcontainer:ci bash -euc '
+              test "$(id -u)" -ne 0
+              id -un >/dev/null
+              workspace=$(mktemp -d /tmp/appicon-workspace.XXXXXX)
+              cp -R /source/. "$workspace/"
+              cd "$workspace"
               mkdir -p "$HOME"
-              git config --global --add safe.directory /workspace
+              git config --global --add safe.directory "$workspace"
               bash .devcontainer/post-create.sh
               make check-fast check-nightly-smoke check-markdownlint
             '
