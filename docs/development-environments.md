@@ -74,3 +74,9 @@ Accept cache configuration only on the immutable upstream CLI invocation,
 never globally for repository flakes. Preserve the existing publication,
 source-validation and platform cutover flags; require current native and
 hosted execution before accepting the upgrade.
+
+Temporary overrides pin Markdown-tool security fixes while upstream dependency
+ranges catch up. Review them monthly and on tool updates. Remove them once
+upstream includes the fixes and frozen installation, the full Markdown CLI,
+glob/ignore fixtures and the vulnerability audit pass. Preserve the declared
+Node support floor when updating the matcher and its dependencies.

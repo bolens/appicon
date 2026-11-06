@@ -4,5 +4,19 @@
   "description": "Dev-only Node deps for repo hygiene (markdownlint). Not part of the Go module.",
   "devDependencies": {
     "markdownlint-cli": "0.50.0"
+  },
+  "overrides": {
+    "markdownlint-cli@0.50.0": {
+      "minimatch": {
+        ".": "11.0.4",
+        "@isaacs/nonrecursive-glob-match": "1.0.3"
+      }
+    },
+    "markdownlint@0.42.0": {
+      "re2js": "2.8.7"
+    },
+    "micromark-extension-math@3.1.0": {
+      "katex": "0.18.2"
+    }
   }
 }
