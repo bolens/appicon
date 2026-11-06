@@ -61,3 +61,22 @@ credentials. The hosted Linux copy stays enabled until exact native PR and
 genuine merged-main proof, followed by the separate `WOODPECKER_NIX_CI=true`
 operator cutover. Native macOS and actual Docker development and editor-image checks
 remain in GitHub Actions; Linux Nix validation does not require that builder.
+
+## Nix compatibility and warning checks
+
+Use the locked devenv 2.4.0 CLI and reviewed nix2container revision with the
+existing unrelated inputs preserved. Keep the git-hooks input and its legacy
+alias explicit. Standard `nixbld` users prevent Go build telemetry from creating
+the placeholder home in disposable Nix containers. The container helper uses
+the 2.x `copy` subcommand registry option.
+
+Accept cache configuration only on the immutable upstream CLI invocation,
+never globally for repository flakes. Preserve the existing publication,
+source-validation and platform cutover flags; require current native and
+hosted execution before accepting the upgrade.
+
+Temporary overrides pin Markdown-tool security fixes while upstream dependency
+ranges catch up. Review them monthly and on tool updates. Remove them once
+upstream includes the fixes and frozen installation, the full Markdown CLI,
+glob/ignore fixtures and the vulnerability audit pass. Preserve the declared
+Node support floor when updating the matcher and its dependencies.
