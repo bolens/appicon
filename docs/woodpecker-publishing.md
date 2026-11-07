@@ -5,6 +5,21 @@
 Native push validation runs only on `main`; feature branches use their pull-request
 pipeline. Existing manual, tag and cron triggers remain available.
 
+## CI organization
+
+Use the [shared CI vocabulary](https://github.com/bolens/.github/blob/main/docs/woodpecker-transition.md#ci-organization): `validate`, `test`, `site` and `publish` describe purpose; existing workflow names and required status identities stay unchanged. Run commands from the repository root with the documented toolchain.
+
+| Phase / group | Canonical local entrypoint | Native mapping / retained owner |
+| --- | --- | --- |
+| `validate` / Go and contracts | `make check-fast`; `make check` | `woodpecker` / `verify` includes offline consumer, packaging and release-contract checks; Windows cross-compilation is compile coverage, not a Windows runtime test. |
+| `validate` / source and workflow policy | `bash scripts/ci/woodpecker-lint.sh`; `make check-markdownlint`; `python3 scripts/check-changelog.py` | `source-and-workflow-policy`; the helper prepares pinned tools in `.woodpecker-out`, requires Linux/amd64 and uses no publisher credential. |
+| `test` / Nix and development | `make check-nix-packages`; `devenv test` | `nix-packages` builds all three package variants and runs the locked Linux environment; macOS and actual Docker/editor checks remain hosted. |
+| `test` / live provider smoke | `make check-nightly-smoke` for fixtures; `bash scripts/ci/nightly-svgl-smoke.sh` only for the explicit live check | `nightly-live-smoke` runs only on cron; normal tests stay fixture-backed and cache-first. |
+| `site` / build and acceptance | `bash scripts/ci/woodpecker-build-site.sh` | `pages-build` uses a disposable source copy and public release metadata, including existing browser/accessibility/link checks. |
+| `publish` / Pages and releases | The signed-tag and review procedure in [RELEASING.md](../RELEASING.md); build helpers are not publication permission | `pages-publish` and `release-build` / `release-publish` use the protected-source broker. GitHub retains OIDC signing/attestation and the packaging merge coordinator; branch-based Pages hosts accepted site commits. Manual AUR publication remains separate. |
+
+Duplicate hosted CI, Changelog, Nightly SVGL smoke, Pages links, Pages and Source lint workflows are retired. Development-environment platform exceptions, the Release bridge, manual Packs bundle artifacts, managed security and metadata automation retain their roles. The profile/flag/drain contracts below still govern ownership changes; no PR or Gitea validation receives publisher credentials.
+
 ## Authority and migration
 
 GitHub `bolens/appicon` is the canonical release source. The direct GitHub forge
