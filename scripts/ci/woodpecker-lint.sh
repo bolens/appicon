@@ -16,7 +16,7 @@ npm ci --ignore-scripts --prefix "$out/source-tooling/tools/source-lint"
 python3 "$out/source-tooling/scripts/lint-source.py" "$PWD"
 git init "$out/spec-tooling"
 git -C "$out/spec-tooling" remote add origin https://github.com/bolens/.github.git
-git -C "$out/spec-tooling" fetch --depth 1 origin 7159a187479e511a9420f8f4eec93246a43fea12
+git -C "$out/spec-tooling" fetch --depth 1 origin c161a6757130ea687def9eb1e81c6a4190488f07
 git -C "$out/spec-tooling" checkout --detach FETCH_HEAD
 python3 "$out/spec-tooling/scripts/validate-spec-kit.py" --expected-version current .
 curl --fail --location --retry 3 --output "$out/actionlint.tar.gz" https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz

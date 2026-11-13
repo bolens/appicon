@@ -40,6 +40,10 @@ Select focused Go tests from the touched package before wider gates. Do not use 
 provider credentials or caller caches as test fixtures. Report unavailable platform
 checks separately from passing tests.
 
+The retained `.agents/skills/speckit-taskstoissues/SKILL.md` is a project-owned
+compatibility artifact. Spec Kit no longer manages it. Preserve its local contents
+when regenerating managed skills and review any retirement as a separate change.
+
 ## Working through Spec Kit
 
 Use Spec Kit for new capabilities, architectural or security-sensitive changes,
