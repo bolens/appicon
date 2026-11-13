@@ -122,7 +122,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
 
       - name: Sign SHA256SUMS (keyless)
         run: |
@@ -140,7 +140,7 @@ jobs:
             dist/SHA256SUMS.sigstore.json
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
         with:
           files: |
             dist/*.tar.gz
@@ -190,7 +190,7 @@ jobs:
 
       - name: Create packaging PR
         id: pr
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
+        uses: peter-evans/create-pull-request@15733dbdfeedb4f7fdb73d13c6f5ac83b710fab8 # v8
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           commit-message: "chore(packaging): update v${{ needs.release.outputs.version }} hashes"
@@ -257,7 +257,7 @@ jobs:
           WOODPECKER_PUBLISHER_ID: ${{ vars.WOODPECKER_PUBLISHER_ID }}
         run: python3 scripts/ci/woodpecker-verify-bridge.py
       - name: Install cosign
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
       - name: Verify retained native signature during draft recovery
         if: steps.native.outputs.signature_exists == 'true'
         env:
@@ -307,7 +307,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install existing release signature verifier
-        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+        uses: sigstore/cosign-installer@756fe2d284c7292c4e9b62c8a28f1e5629c59532 # v4.1.3
       - name: Verify immutable native intent and coordinate protected squash merge
         env:
           GITHUB_COORDINATOR_TOKEN: ${{ github.token }}
