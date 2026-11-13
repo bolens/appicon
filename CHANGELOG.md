@@ -8,7 +8,7 @@
 
 ### Security
 
-- CI, release builds, Nix source packages and the locked development shell use Go 1.26.10.
+- CI, release builds, Nix source packages and development shells use Go 1.26.11 with the net/http fix for CVE-2026-97054.
 
 ### Added
 

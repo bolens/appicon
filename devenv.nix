@@ -1,5 +1,6 @@
 { pkgs, config, lib, ... }:
 let
+  goToolchain = import ./nix/go.nix { inherit pkgs; };
   developmentHome = pkgs.runCommand "development-home" { } ''
     mkdir -p "$out/env"
   '';
@@ -12,13 +13,13 @@ in
   process.manager.implementation = "overmind";
   packages = with pkgs; [
     bashInteractive coreutils findutils gawk git gnugrep gnumake gnused
-    go_1_26 nodejs_24 python3 shellcheck openssh cacert curl gnutar gzip unzip which stdenv.cc
+    goToolchain nodejs_24 python3 shellcheck openssh cacert curl gnutar gzip unzip which stdenv.cc
   ] ++ lib.optionals pkgs.stdenv.hostPlatform.isLinux [ pkgs.nss_wrapper ];
   # Only isolated signing-fixture children load this library for an unmapped UID.
   env.APPICON_TEST_NSS_WRAPPER = lib.optionalString pkgs.stdenv.hostPlatform.isLinux
     "${lib.getLib pkgs.nss_wrapper}/lib/libnss_wrapper.so";
   # Bind Go to its own standard library even when the host exports GOROOT.
-  env.GOROOT = "${pkgs.go_1_26}/share/go";
+  env.GOROOT = "${goToolchain}/share/go";
   env.GOTOOLCHAIN = "local";
   env.SSL_CERT_FILE = "${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt";
   scripts.repo-check.exec = "make check-fast check-nightly-smoke";
