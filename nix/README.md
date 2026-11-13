@@ -24,9 +24,11 @@ Intel macOS alongside ARM macOS and both Linux architectures. Nixpkgs 26.11
 [removed Intel macOS support](https://nixos.org/manual/nixpkgs/unstable/release-notes#x86_64-darwin-26.11);
 review the supported platforms before moving to a newer series.
 
-Source packages use the Go compiler selected by `flake.lock`; the development
-shell has its own compiler input in `devenv.lock`. Update the owning nixpkgs
-inputs together when applying Go security fixes, then build and check the source
+Source packages and both development shells share the reviewed compiler in
+[`go.nix`](go.nix). It applies Go 1.26.11 and its verified upstream source hash
+to the locked Darwin-compatible nixpkgs compiler, whose maintained series still
+ships Go 1.26.10. Update this shared pin together with the native and hosted CI
+compilers when applying security fixes, then build and check the source
 packages. Inspect the compiler with:
 
 ```bash

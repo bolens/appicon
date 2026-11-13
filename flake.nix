@@ -53,7 +53,7 @@
         {
           default = pkgs.mkShell {
             packages = [
-              pkgs.go
+              (import ./nix/go.nix { inherit pkgs; })
               pkgs.golangci-lint
               self.packages.${system}.appicon
             ];

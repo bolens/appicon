@@ -22,6 +22,9 @@ with private temporary account files. The runner UID and global environment stay
 unchanged, and real key creation, signing, and verification remain mandatory.
 The tests never use maintainer keys or create product release tags.
 
+The Go compiler and its standard library share the reviewed security pin in
+[`nix/go.nix`](../nix/go.nix) with the flake source packages and development shell.
+
 Commit `devenv.lock` with deliberate input updates. Local state and `devenv.local.nix` / `devenv.local.yaml` overrides are ignored. Existing Nix cache settings are used without changing daemon trust.
 
 ## Docker and Podman

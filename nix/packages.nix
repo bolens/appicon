@@ -15,6 +15,8 @@
 }:
 let
   inherit (pkgs) lib;
+  goToolchain = import ./go.nix { inherit pkgs; };
+  buildGoModule = pkgs.buildGoModule.override { go = goToolchain; };
   revSuffix =
     if self ? shortRev then self.shortRev
     else if self ? dirtyShortRev then self.dirtyShortRev
@@ -26,7 +28,7 @@ let
       version,
       src,
     }:
-    pkgs.buildGoModule {
+    buildGoModule {
       inherit pname version src vendorHash;
       ldflags = [
         "-s"

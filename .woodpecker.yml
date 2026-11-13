@@ -18,7 +18,7 @@ when:
   - cron
 steps:
 - name: verify
-  image: golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
+  image: golang:1.26.11-bookworm@sha256:dc40a13b61304647ed7e5d581d246b86413dfc29d63c6d018310feb93cd98fc0
   environment:
     GOMAXPROCS: '2'
     GOFLAGS: -p=2
@@ -77,7 +77,7 @@ steps:
   - python3 -m unittest discover -s scripts/ci -p test_extract_lychee.py
   - bash scripts/ci/woodpecker-build-site.sh
 - name: nightly-live-smoke
-  image: golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
+  image: golang:1.26.11-bookworm@sha256:dc40a13b61304647ed7e5d581d246b86413dfc29d63c6d018310feb93cd98fc0
   when:
     event: cron
     cron: nightly-svgl
@@ -89,7 +89,7 @@ steps:
   - make build
   - bash scripts/ci/nightly-svgl-smoke.sh
 - name: release-build
-  image: golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
+  image: golang:1.26.11-bookworm@sha256:dc40a13b61304647ed7e5d581d246b86413dfc29d63c6d018310feb93cd98fc0
   environment:
     GOMAXPROCS: '2'
     GOFLAGS: -p=2
@@ -107,7 +107,7 @@ steps:
   - bash scripts/ci/woodpecker-build-release.sh
 # Generated validation profile ends here; protected-ref publishers follow.
 - name: release-publish
-  image: golang:1.26.10-bookworm@sha256:23ce71337b726608afb1bc00986e630a05034a87a87ea1fc2cd1ae5cf33387eb
+  image: golang:1.26.11-bookworm@sha256:dc40a13b61304647ed7e5d581d246b86413dfc29d63c6d018310feb93cd98fc0
   when:
     event: tag
     evaluate: CI_FORGE_TYPE == "github" && CI_REPO == "bolens/appicon"
