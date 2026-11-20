@@ -16,7 +16,7 @@
       ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
       version = "0.4.1";
-      vendorHash = "sha256-2jcaOU5zXdDQ5tzHj2xWPmkAf1GcHmvErzl12/VyUKU=";
+      vendorHash = "sha256-j6x2RnPau2rvnXRF1k+NWBjqwHg9rB4hubWVCdbGuyY=";
       packagesFor =
         system:
         let
