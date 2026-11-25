@@ -3,7 +3,7 @@
   "private": true,
   "description": "Dev-only Node deps for repo hygiene (markdownlint). Not part of the Go module.",
   "devDependencies": {
-    "markdownlint-cli": "0.50.0"
+    "markdownlint-cli": "0.50.1"
   },
   "overrides": {
     "markdownlint-cli@0.50.0": {
